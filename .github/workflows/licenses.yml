@@ -22,6 +22,7 @@ jobs:
       - name: Generate Go license notices
         run: |
           go install github.com/google/go-licenses@latest
+          mkdir "$LICENSE_DIR"
           go-licenses report "$GOPACKAGE" --template=../.github/licenses.tmpl --stderrthreshold=ERROR --logtostderr=false > "$LICENSE_DIR"/README.md
           go-licenses save "$GOPACKAGE" --stderrthreshold=ERROR --logtostderr=false --save_path "$LICENSE_DIR"
 

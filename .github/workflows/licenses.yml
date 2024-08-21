@@ -1,0 +1,40 @@
+name: Licensing
+on:
+  push:
+    tags:
+      - "v*"
+env:
+  GOPACKAGE: github.com/cli/cli/v2
+  LICENSE_DIR: licenses
+  LICENSE_ARCHIVE: licenses.tgz
+jobs:
+  go-licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Generate Go license notices
+        working-directory: ${{ env.LICENSE_DIR }}
+        run: |
+          go install github.com/google/go-licenses@latest
+          go-licenses report "$GOPACKAGE" --template=../.github/licenses.tmpl --stderrthreshold=ERROR --logtostderr=false > README.md
+          go-licenses save "$GOPACKAGE" --stderrthreshold=ERROR --logtostderr=false
+
+      - name: Upload Go license notices
+        run: |
+          tar czf "$LICENSE_ARCHIVE" "$LICENSE_DIR"
+          gh release upload "$GITHUB_REF_NAME" --clobber -- "$LICENSE_ARCHIVE"
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null; then
+            echo "uploading assets to an existing release..."
+            gh release upload "$GITHUB_REF_NAME" --clobber -- "$LICENSE_ARCHIVE"
+          else
+            echo "cannot upload as something else should create the release first..."
+            exit 1
+          fi

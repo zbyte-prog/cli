@@ -22,7 +22,7 @@ jobs:
         run: |
           go install github.com/google/go-licenses@latest
           mkdir "$LICENSE_DIR"
-          GOROOT=$(go env GOROOT) go-licenses report ./... --template=../.github/licenses.tmpl --stderrthreshold=ERROR --logtostderr=false > "$LICENSE_DIR"/README.md
+          GOROOT=$(go env GOROOT) go-licenses report ./... --template=.github/licenses.tmpl --stderrthreshold=ERROR --logtostderr=false > "$LICENSE_DIR"/README.md
           GOROOT=$(go env GOROOT) go-licenses save ./... --stderrthreshold=ERROR --logtostderr=false --save_path "$LICENSE_DIR"
 
       - name: Upload Go license notices

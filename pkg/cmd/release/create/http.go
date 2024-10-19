@@ -8,12 +8,16 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/release/shared"
 	"github.com/shurcooL/githubv4"
+
+	ghauth "github.com/cli/go-gh/v2/pkg/auth"
 )
 
 type tag struct {
@@ -174,6 +178,26 @@ func createRelease(httpClient *http.Client, repo ghrepo.Interface, params map[st
 	}
 	defer resp.Body.Close()
 
+	// This code checks if we received a 404 while attempting to create a release without
+	// the workflow scope, and if so, returns an error message that explains a possible
+	// solution to the user.
+	//
+	// If the same file (with both the same path and contents) exists
+	// on another branch in the repo, releases with workflow file changes can be
+	// created without the workflow scope. Otherwise, the workflow scope is
+	// required to create the release.
+	//
+	// https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps#available-scopes
+	if resp.StatusCode == http.StatusNotFound && tokenMissingWorkflowScope(resp) {
+		normalizedHostname := ghauth.NormalizeHostname(resp.Request.URL.Hostname())
+		errMissingRequiredWorkflowScope := errors.New(heredoc.Docf(`
+				HTTP 404: Failed to create release, "workflow" scope may be required
+				To request it, run gh auth refresh -h %[1]s -s workflow
+			`, normalizedHostname))
+
+		return nil, errMissingRequiredWorkflowScope
+	}
+
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300
 	if !success {
 		return nil, api.HandleHTTPError(resp)
@@ -253,4 +277,25 @@ func deleteRelease(httpClient *http.Client, release *shared.Release) error {
 		_, _ = io.Copy(io.Discard, resp.Body)
 	}
 	return nil
+}
+
+// Given an http.Response, check if the token used in
+// the request is missing the workflow scope.
+func tokenMissingWorkflowScope(resp *http.Response) bool {
+	scopes := resp.Header.Get("X-Oauth-Scopes")
+
+	// Return false when no scopes are present - no scopes in this header
+	// means that the user is probably authenticating with a token type other
+	// than an OAuth token, and we don't know what this token's scopes actually are.
+	if scopes == "" {
+		return false
+	}
+
+	for _, s := range strings.Split(scopes, ",") {
+		if s == "workflow" {
+			return false
+		}
+	}
+
+	return true
 }

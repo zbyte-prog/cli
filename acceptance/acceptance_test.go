@@ -54,6 +54,15 @@ func TestGPGKeys(t *testing.T) {
 	testscript.Run(t, testScriptParamsFor(tsEnv, "gpg-key"))
 }
 
+func TestExtensions(t *testing.T) {
+	var tsEnv testScriptEnv
+	if err := tsEnv.fromEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	testscript.Run(t, testScriptParamsFor(tsEnv, "extension"))
+}
+
 func TestIssues(t *testing.T) {
 	var tsEnv testScriptEnv
 	if err := tsEnv.fromEnv(); err != nil {

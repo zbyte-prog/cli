@@ -117,6 +117,15 @@ func TestRepo(t *testing.T) {
 	testscript.Run(t, testScriptParamsFor(tsEnv, "repo"))
 }
 
+func TestRulesets(t *testing.T) {
+	var tsEnv testScriptEnv
+	if err := tsEnv.fromEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	testscript.Run(t, testScriptParamsFor(tsEnv, "ruleset"))
+}
+
 func TestSearches(t *testing.T) {
 	var tsEnv testScriptEnv
 	if err := tsEnv.fromEnv(); err != nil {

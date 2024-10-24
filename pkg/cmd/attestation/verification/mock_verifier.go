@@ -12,8 +12,6 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
-const SLSAPredicateType = "https://slsa.dev/provenance/v1"
-
 type MockSigstoreVerifier struct {
 	t *testing.T
 }

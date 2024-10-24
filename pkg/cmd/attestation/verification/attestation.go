@@ -15,6 +15,8 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 )
 
+const SLSAPredicateType = "https://slsa.dev/provenance/v1"
+
 var ErrUnrecognisedBundleExtension = errors.New("bundle file extension not supported, must be json or jsonl")
 var ErrEmptyBundleFile = errors.New("provided bundle file is empty")
 

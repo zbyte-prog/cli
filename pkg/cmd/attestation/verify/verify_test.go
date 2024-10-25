@@ -302,17 +302,18 @@ func TestNewVerifyCmd(t *testing.T) {
 
 			assert.Equal(t, tc.wants.ArtifactPath, opts.ArtifactPath)
 			assert.Equal(t, tc.wants.BundlePath, opts.BundlePath)
-			assert.Equal(t, tc.wants.TrustedRoot, opts.TrustedRoot)
 			assert.Equal(t, tc.wants.DenySelfHostedRunner, opts.DenySelfHostedRunner)
 			assert.Equal(t, tc.wants.DigestAlgorithm, opts.DigestAlgorithm)
+			assert.Equal(t, tc.wants.Hostname, opts.Hostname)
 			assert.Equal(t, tc.wants.Limit, opts.Limit)
 			assert.Equal(t, tc.wants.NoPublicGood, opts.NoPublicGood)
 			assert.Equal(t, tc.wants.OIDCIssuer, opts.OIDCIssuer)
 			assert.Equal(t, tc.wants.Owner, opts.Owner)
+			assert.Equal(t, tc.wants.PredicateType, opts.PredicateType)
 			assert.Equal(t, tc.wants.Repo, opts.Repo)
 			assert.Equal(t, tc.wants.SAN, opts.SAN)
 			assert.Equal(t, tc.wants.SANRegex, opts.SANRegex)
-			assert.Equal(t, tc.wants.Hostname, opts.Hostname)
+			assert.Equal(t, tc.wants.TrustedRoot, opts.TrustedRoot)
 			assert.NotNil(t, opts.APIClient)
 			assert.NotNil(t, opts.Logger)
 			assert.NotNil(t, opts.OCIClient)
@@ -362,11 +363,12 @@ func TestJSONOutput(t *testing.T) {
 		OCIClient:        oci.MockClient{},
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
 		Owner:            "sigstore",
+		PredicateType:    verification.SLSAPredicateType,
 		SANRegex:         "^https://github.com/sigstore/",
 		SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
 		exporter:         cmdutil.NewJSONExporter(),
 	}
-	require.Nil(t, runVerify(&opts))
+	require.NoError(t, runVerify(&opts))
 
 	var target []*verification.AttestationProcessingResult
 	err := json.Unmarshal(out.Bytes(), &target)
@@ -385,12 +387,13 @@ func TestRunVerify(t *testing.T) {
 		OCIClient:        oci.MockClient{},
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
 		Owner:            "sigstore",
+		PredicateType:    verification.SLSAPredicateType,
 		SANRegex:         "^https://github.com/sigstore/",
 		SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
 	}
 
 	t.Run("with valid artifact and bundle", func(t *testing.T) {
-		require.Nil(t, runVerify(&publicGoodOpts))
+		require.NoError(t, runVerify(&publicGoodOpts))
 	})
 
 	t.Run("with failing OCI artifact fetch", func(t *testing.T) {

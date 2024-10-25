@@ -55,7 +55,9 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 			By default, the verify command will attempt to fetch attestations associated
 			with the provided artifact from the GitHub API. If you would prefer to verify
 			the artifact using attestations stored on disk (c.f. the %[1]sdownload%[1]s command),
-			provide a path to the %[1]s--bundle%[1]s flag.
+			provide a path to the %[1]s--bundle%[1]s flag. Additionally, the command
+			will only verify provenance attestations by default. To verify
+			other types of attestations, use the %[1]s--predicate-type%[1]s flag.
 
 			To see the full results that are generated upon successful verification, i.e.
 			for use with a policy engine, provide the %[1]s--format=json%[1]s flag.

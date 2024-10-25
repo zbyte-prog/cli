@@ -259,7 +259,7 @@ func runVerify(opts *Options) error {
 		return err
 	}
 
-	opts.Logger.VerbosePrintf("Verifying attestations with the predicate type %s\n", opts.PredicateType)
+	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", opts.PredicateType)
 
 	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, policy)
 	if sigstoreRes.Error != nil {

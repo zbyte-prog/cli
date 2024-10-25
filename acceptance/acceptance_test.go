@@ -14,7 +14,7 @@ import (
 	"math/rand"
 
 	"github.com/cli/cli/v2/internal/ghcmd"
-	"github.com/rogpeppe/go-internal/testscript"
+	"github.com/cli/go-internal/testscript"
 )
 
 func ghMain() int {

@@ -246,22 +246,20 @@ func runVerify(opts *Options) error {
 	}
 
 	// Apply predicate type filter to returned attestations
-	if opts.PredicateType != "" {
-		filteredAttestations := verification.FilterAttestations(opts.PredicateType, attestations)
-
-		if len(filteredAttestations) == 0 {
-			opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found with predicate type: %s\n"), opts.PredicateType)
-			return err
-		}
-
-		attestations = filteredAttestations
+	filteredAttestations := verification.FilterAttestations(opts.PredicateType, attestations)
+	if len(filteredAttestations) == 0 {
+		opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found with predicate type: %s\n"), opts.PredicateType)
+		return err
 	}
+	attestations = filteredAttestations
 
 	policy, err := buildVerifyPolicy(opts, *artifact)
 	if err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
 		return err
 	}
+
+	opts.Logger.VerbosePrintf("Verifying attestations with the predicate type %s\n", opts.PredicateType)
 
 	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, policy)
 	if sigstoreRes.Error != nil {

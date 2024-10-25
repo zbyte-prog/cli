@@ -14,7 +14,7 @@ import (
 	"math/rand"
 
 	"github.com/cli/cli/v2/internal/ghcmd"
-	"github.com/rogpeppe/go-internal/testscript"
+	"github.com/cli/go-internal/testscript"
 )
 
 func ghMain() int {
@@ -63,6 +63,15 @@ func TestAPI(t *testing.T) {
 	testscript.Run(t, testScriptParamsFor(tsEnv, "api"))
 }
 
+func TestAuth(t *testing.T) {
+	var tsEnv testScriptEnv
+	if err := tsEnv.fromEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	testscript.Run(t, testScriptParamsFor(tsEnv, "auth"))
+}
+
 func TestReleases(t *testing.T) {
 	var tsEnv testScriptEnv
 	if err := tsEnv.fromEnv(); err != nil {
@@ -86,7 +95,7 @@ func TestRepo(t *testing.T) {
 	if err := tsEnv.fromEnv(); err != nil {
 		t.Fatal(err)
 	}
-  
+
 	testscript.Run(t, testScriptParamsFor(tsEnv, "repo"))
 }
 
@@ -106,6 +115,42 @@ func TestVariables(t *testing.T) {
 	}
 
 	testscript.Run(t, testScriptParamsFor(tsEnv, "variable"))
+}
+
+func TestGPGKeys(t *testing.T) {
+	var tsEnv testScriptEnv
+	if err := tsEnv.fromEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	testscript.Run(t, testScriptParamsFor(tsEnv, "gpg-key"))
+}
+
+func TestLabels(t *testing.T) {
+	var tsEnv testScriptEnv
+	if err := tsEnv.fromEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	testscript.Run(t, testScriptParamsFor(tsEnv, "label"))
+}
+
+func TestSSHKeys(t *testing.T) {
+	var tsEnv testScriptEnv
+	if err := tsEnv.fromEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	testscript.Run(t, testScriptParamsFor(tsEnv, "ssh-key"))
+}
+
+func TestOrg(t *testing.T) {
+	var tsEnv testScriptEnv
+	if err := tsEnv.fromEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	testscript.Run(t, testScriptParamsFor(tsEnv, "org"))
 }
 
 func testScriptParamsFor(tsEnv testScriptEnv, command string) testscript.Params {

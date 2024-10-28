@@ -42,6 +42,8 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 		{
 			name:         "with no attestations",
 			attestations: []*api.Attestation{},
+			expectErr:    true,
+			errContains:  "no attestations were verified",
 		},
 	}
 
@@ -53,12 +55,12 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 		res := verifier.Verify(tc.attestations, publicGoodPolicy(t))
 
 		if tc.expectErr {
-			require.Error(t, res.Error)
-			require.ErrorContains(t, res.Error, "verifying with issuer \"sigstore.dev\"")
-			require.Nil(t, res.VerifyResults)
+			require.Error(t, res.Error, "test case: %s", tc.name)
+			require.ErrorContains(t, res.Error, tc.errContains, "test case: %s", tc.name)
+			require.Nil(t, res.VerifyResults, "test case: %s", tc.name)
 		} else {
-			require.Len(t, len(tc.attestations), len(res.VerifyResults))
-			require.NoError(t, res.Error)
+			require.Equal(t, len(tc.attestations), len(res.VerifyResults), "test case: %s", tc.name)
+			require.NoError(t, res.Error, "test case: %s", tc.name)
 		}
 	}
 

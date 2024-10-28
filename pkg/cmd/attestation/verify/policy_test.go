@@ -74,10 +74,8 @@ func TestValidateSignerWorkflow(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		cmdFactory := factory.New("test")
-
 		opts := &Options{
-			Config:         cmdFactory.Config,
+			Config:         factory.New("test").Config,
 			SignerWorkflow: tc.providedSignerWorkflow,
 		}
 

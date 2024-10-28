@@ -52,12 +52,15 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 			The %[1]s--owner%[1]s flag value must match the name of the GitHub organization
 			that the artifact's linked repository belongs to.
 
-			By default, the verify command will attempt to fetch attestations associated
-			with the provided artifact from the GitHub API. If you would prefer to verify
-			the artifact using attestations stored on disk (c.f. the %[1]sdownload%[1]s command),
-			provide a path to the %[1]s--bundle%[1]s flag. Additionally, the command
-			will only verify provenance attestations by default. To verify
-			other types of attestations, use the %[1]s--predicate-type%[1]s flag.
+			By default, the verify command will:
+			- only verify provenance attestations
+			- attempt to fetch relevant attestations via the GitHub API.
+
+			To verify other types of attestations, use the predicate-type flag.
+
+			To use your artifact's OCI registry instead of GitHub's API, use the
+			--bundle-from-oci flag. For offline verification, using attestations
+			stored on desk (c.f. the download command), provide a path to the --bundle flag.
 
 			To see the full results that are generated upon successful verification, i.e.
 			for use with a policy engine, provide the %[1]s--format=json%[1]s flag.

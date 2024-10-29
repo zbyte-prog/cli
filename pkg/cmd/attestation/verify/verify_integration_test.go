@@ -40,7 +40,7 @@ func TestVerifyIntegration(t *testing.T) {
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
 		Owner:            "sigstore",
-		PredicateType:    verification.SLSAPredicateType,
+		PredicateType:    verification.SLSAPredicateV1,
 		SANRegex:         "^https://github.com/sigstore/",
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}
@@ -113,7 +113,7 @@ func TestVerifyIntegrationCustomIssuer(t *testing.T) {
 		Logger:           logger,
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       "https://token.actions.githubusercontent.com/hammer-time",
-		PredicateType:    verification.SLSAPredicateType,
+		PredicateType:    verification.SLSAPredicateV1,
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}
 
@@ -183,7 +183,7 @@ func TestVerifyIntegrationReusableWorkflow(t *testing.T) {
 		Logger:           logger,
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
-		PredicateType:    verification.SLSAPredicateType,
+		PredicateType:    verification.SLSAPredicateV1,
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}
 
@@ -274,7 +274,7 @@ func TestVerifyIntegrationReusableWorkflowSignerWorkflow(t *testing.T) {
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
 		Owner:            "malancas",
-		PredicateType:    verification.SLSAPredicateType,
+		PredicateType:    verification.SLSAPredicateV1,
 		Repo:             "malancas/attest-demo",
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}

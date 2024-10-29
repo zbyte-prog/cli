@@ -59,8 +59,8 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 			To verify other types of attestations, use the %[1]s--predicate-type%[1]s flag.
 
 			To use your artifact's OCI registry instead of GitHub's API, use the
-			--bundle-from-oci flag. For offline verification, using attestations
-			stored on desk (c.f. the download command), provide a path to the --bundle flag.
+			%[1]s--bundle-from-oci%[1]s flag. For offline verification, using attestations
+			stored on desk (c.f. the download command), provide a path to the %[1]s--bundle%[1]s flag.
 
 			To see the full results that are generated upon successful verification, i.e.
 			for use with a policy engine, provide the %[1]s--format=json%[1]s flag.

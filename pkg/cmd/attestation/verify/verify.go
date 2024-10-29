@@ -364,3 +364,31 @@ func buildTableVerifyContent(tenant string, results []*verification.AttestationP
 
 	return content, nil
 }
+
+func verifyAll(opts *Options, artifact artifact.DigestedArtifact, attestations []*api.Attestation) error {
+	policy, err := newPolicy(opts, artifact)
+	if err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
+		return err
+	}
+
+	sp, err := policy.SigstorePolicy()
+	if err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
+		return err
+	}
+
+	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, sp)
+	if sigstoreRes.Error != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
+		return sigstoreRes.Error
+	}
+
+	// Verify extensions
+	if err := verification.VerifyCertExtensions(sigstoreRes.VerifyResults, opts.Tenant, opts.Owner, opts.Repo, opts.OIDCIssuer); err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
+		return err
+	}
+
+	return nil
+}

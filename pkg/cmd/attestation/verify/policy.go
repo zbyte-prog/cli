@@ -21,19 +21,58 @@ const (
 
 type ExpectedExtensions struct {
 	RunnerEnvironment string
+	SANRegex          string
 	SAN               string
-	buildSourceRepo   string
+	BuildSourceRepo   string
 	SignerWorkflow    string
 }
+
+type SigstoreInstance string
+
+const (
+	PublicGood SigstoreInstance = "public-good"
+	GitHub     SigstoreInstance = "github"
+	Custom     SigstoreInstance = "custom"
+)
 
 type Policy struct {
 	ExpectedExtensions       ExpectedExtensions
 	ExpectedPredicateType    string
 	ExpectedSigstoreInstance string
+	Artifact                 artifact.DigestedArtifact
 }
 
-func buildPolicy(opts *Options, a artifact.DigestedArtifact) Policy {
-	return Policy{}
+func newPolicy(opts *Options, a artifact.DigestedArtifact) (Policy, error) {
+	p := Policy{}
+
+	if opts.SignerRepo != "" {
+		signedRepoRegex := expandToGitHubURL(opts.Tenant, opts.SignerRepo)
+		p.ExpectedExtensions.SANRegex = signedRepoRegex
+	} else if opts.SignerWorkflow != "" {
+		validatedWorkflowRegex, err := validateSignerWorkflow(opts)
+		if err != nil {
+			return Policy{}, err
+		}
+
+		p.ExpectedExtensions.SANRegex = validatedWorkflowRegex
+	} else {
+		p.ExpectedExtensions.SANRegex = opts.SANRegex
+		p.ExpectedExtensions.SAN = opts.SAN
+	}
+
+	if opts.DenySelfHostedRunner {
+		p.ExpectedExtensions.RunnerEnvironment = GitHubRunner
+	} else {
+		p.ExpectedExtensions.RunnerEnvironment = "*"
+	}
+
+	if opts.Repo != "" {
+		if opts.Tenant != "" {
+			p.ExpectedExtensions.BuildSourceRepo = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
+		}
+		p.ExpectedExtensions.BuildSourceRepo = fmt.Sprintf("https://github.com/%s", opts.Repo)
+	}
+	return p, nil
 }
 
 func (p *Policy) Verify(a []*api.Attestation) (bool, string) {
@@ -52,26 +91,8 @@ func expandToGitHubURL(tenant, ownerOrRepo string) string {
 	return fmt.Sprintf("(?i)^https://%s.ghe.com/%s/", tenant, ownerOrRepo)
 }
 
-func buildSANMatcher(opts *Options) (verify.SubjectAlternativeNameMatcher, error) {
-	if opts.SignerRepo != "" {
-		signedRepoRegex := expandToGitHubURL(opts.Tenant, opts.SignerRepo)
-		return verify.NewSANMatcher("", signedRepoRegex)
-	} else if opts.SignerWorkflow != "" {
-		validatedWorkflowRegex, err := validateSignerWorkflow(opts)
-		if err != nil {
-			return verify.SubjectAlternativeNameMatcher{}, err
-		}
-
-		return verify.NewSANMatcher("", validatedWorkflowRegex)
-	} else if opts.SAN != "" || opts.SANRegex != "" {
-		return verify.NewSANMatcher(opts.SAN, opts.SANRegex)
-	}
-
-	return verify.SubjectAlternativeNameMatcher{}, nil
-}
-
-func buildCertificateIdentityOption(opts *Options, runnerEnv string) (verify.PolicyOption, error) {
-	sanMatcher, err := buildSANMatcher(opts)
+func (p *Policy) buildCertificateIdentityOption() (verify.PolicyOption, error) {
+	sanMatcher, err := verify.NewSANMatcher(p.ExpectedExtensions.SAN, p.ExpectedExtensions.SANRegex)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +104,7 @@ func buildCertificateIdentityOption(opts *Options, runnerEnv string) (verify.Pol
 	}
 
 	extensions := certificate.Extensions{
-		RunnerEnvironment: runnerEnv,
+		RunnerEnvironment: p.ExpectedExtensions.RunnerEnvironment,
 	}
 
 	certId, err := verify.NewCertificateIdentity(sanMatcher, issuerMatcher, extensions)
@@ -94,34 +115,13 @@ func buildCertificateIdentityOption(opts *Options, runnerEnv string) (verify.Pol
 	return verify.WithCertificateIdentity(certId), nil
 }
 
-func buildVerifyCertIdOption(opts *Options) (verify.PolicyOption, error) {
-	if opts.DenySelfHostedRunner {
-		withGHRunner, err := buildCertificateIdentityOption(opts, GitHubRunner)
-		if err != nil {
-			return nil, err
-		}
-
-		return withGHRunner, nil
-	}
-
-	// if Extensions.RunnerEnvironment value is set to the empty string
-	// through the second function argument,
-	// no certificate matching will happen on the RunnerEnvironment field
-	withAnyRunner, err := buildCertificateIdentityOption(opts, "")
-	if err != nil {
-		return nil, err
-	}
-
-	return withAnyRunner, nil
-}
-
-func buildVerifyPolicy(opts *Options, a artifact.DigestedArtifact) (verify.PolicyBuilder, error) {
-	artifactDigestPolicyOption, err := verification.BuildDigestPolicyOption(a)
+func (p *Policy) SigstorePolicy() (verify.PolicyBuilder, error) {
+	artifactDigestPolicyOption, err := verification.BuildDigestPolicyOption(p.Artifact)
 	if err != nil {
 		return verify.PolicyBuilder{}, err
 	}
 
-	certIdOption, err := buildVerifyCertIdOption(opts)
+	certIdOption, err := p.buildCertificateIdentityOption()
 	if err != nil {
 		return verify.PolicyBuilder{}, err
 	}
@@ -143,12 +143,12 @@ func validateSignerWorkflow(opts *Options) (string, error) {
 	}
 
 	if match {
-		return addSchemeToRegex(opts.SignerWorkflow), nil
+		return fmt.Sprintf("^https://%s", opts.SignerWorkflow), nil
 	}
 
 	if opts.Hostname == "" {
 		return "", errors.New("unknown host")
 	}
 
-	return addSchemeToRegex(fmt.Sprintf("%s/%s", opts.Hostname, opts.SignerWorkflow)), nil
+	return fmt.Sprintf("^https://%s/%s/%s", opts.Hostname, opts.SignerWorkflow), nil
 }

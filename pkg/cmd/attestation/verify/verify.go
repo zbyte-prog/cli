@@ -56,7 +56,7 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 			- only verify provenance attestations
 			- attempt to fetch relevant attestations via the GitHub API.
 
-			To verify other types of attestations, use the predicate-type flag.
+			To verify other types of attestations, use the %[1]s--predicate-type%[1]s flag.
 
 			To use your artifact's OCI registry instead of GitHub's API, use the
 			--bundle-from-oci flag. For offline verification, using attestations

@@ -8,6 +8,7 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 
+	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
 )
@@ -17,6 +18,32 @@ const (
 	GitHubRunner = "github-hosted"
 	hostRegex    = `^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+.*$`
 )
+
+type ExpectedExtensions struct {
+	RunnerEnvironment string
+	SAN               string
+	buildSourceRepo   string
+	SignerWorkflow    string
+}
+
+type Policy struct {
+	ExpectedExtensions       ExpectedExtensions
+	ExpectedPredicateType    string
+	ExpectedSigstoreInstance string
+}
+
+func buildPolicy(opts *Options, a artifact.DigestedArtifact) Policy {
+	return Policy{}
+}
+
+func (p *Policy) Verify(a []*api.Attestation) (bool, string) {
+	filtered := verification.FilterAttestations(p.ExpectedPredicateType, a)
+	if len(filtered) == 0 {
+		return false, fmt.Sprintf("✗ No attestations found with predicate type: %s\n", p.ExpectedPredicateType)
+	}
+
+	return true, ""
+}
 
 func expandToGitHubURL(tenant, ownerOrRepo string) string {
 	if tenant == "" {

@@ -18,7 +18,7 @@ type MockSigstoreVerifier struct {
 
 func (v *MockSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults {
 	statement := &in_toto.Statement{}
-	statement.PredicateType = SLSAPredicateType
+	statement.PredicateType = SLSAPredicateV1
 
 	result := AttestationProcessingResult{
 		Attestation: &api.Attestation{

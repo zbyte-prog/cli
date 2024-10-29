@@ -15,6 +15,7 @@ import (
 	in_toto "github.com/in-toto/attestation/go/v1"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
+	"github.com/sigstore/sigstore-go/pkg/verify"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -127,17 +128,22 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 	return inspectCmd
 }
 
+type BundleInspectResult struct {
+	InspectedBundles []BundleInspection `json:"inspectedBundles"`
+}
+
 type BundleInspection struct {
-	Certificate            CertificateInspection
-	Statement              in_toto.Statement
-	TransparencyLogEntries []TlogEntryInspection
-	SignedTimestamps       []time.Time
+	Verifiable             bool                  `json:"verifiable"`
+	Certificate            CertificateInspection `json:"certificate"`
+	TransparencyLogEntries []TlogEntryInspection `json:"transparencyLogEntries"`
+	SignedTimestamps       []time.Time           `json:"signedTimestamps"`
+	Statement              in_toto.Statement     `json:"statement"`
 }
 
 type CertificateInspection struct {
 	certificate.Summary
-	NotBefore time.Time
-	NotAfter  time.Time
+	NotBefore time.Time `json:"notBefore"`
+	NotAfter  time.Time `json:"notAfter"`
 }
 
 type TlogEntryInspection struct {
@@ -146,22 +152,21 @@ type TlogEntryInspection struct {
 }
 
 func runInspect(opts *Options) error {
-	// artifact, err := artifact.NewDigestedArtifact(opts.OCIClient, opts.ArtifactPath, opts.DigestAlgorithm)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to digest artifact: %s", err)
-	// }
-	//
-	// opts.Logger.Printf("Verifying attestations for the artifact found at %s\n\n", artifact.URL)
-
 	attestations, err := verification.GetLocalAttestations(opts.BundlePath)
 	if err != nil {
 		return fmt.Errorf("failed to read attestations")
 	}
 
 	inspectedBundles := []BundleInspection{}
+	sigstorePolicy := verify.NewPolicy(verify.WithoutArtifactUnsafe(), verify.WithoutIdentitiesUnsafe())
 
 	for _, a := range attestations {
 		inspectedBundle := BundleInspection{}
+
+		sigstoreRes := opts.SigstoreVerifier.Verify([]*api.Attestation{a}, sigstorePolicy)
+		if sigstoreRes.Error == nil {
+			inspectedBundle.Verifiable = true
+		}
 
 		entity := a.Bundle
 		verificationContent, err := entity.VerificationContent()
@@ -183,7 +188,7 @@ func runInspect(opts *Options) error {
 			}
 
 			inspectedBundle.Certificate = inspectedCert
-			PrettyPrint(inspectedCert)
+			// PrettyPrint(inspectedCert)
 		}
 
 		sigContent, err := entity.SignatureContent()
@@ -198,7 +203,7 @@ func runInspect(opts *Options) error {
 			}
 
 			inspectedBundle.Statement = *stmt
-			PrettyPrint(stmt)
+			// PrettyPrint(stmt)
 		}
 
 		tlogTimestamps, err := dumpTlogs(entity)
@@ -206,20 +211,26 @@ func runInspect(opts *Options) error {
 			return fmt.Errorf("failed to dump tlog: %w", err)
 		}
 		inspectedBundle.TransparencyLogEntries = tlogTimestamps
-		PrettyPrint(tlogTimestamps)
+		// PrettyPrint(tlogTimestamps)
 
 		signedTimestamps, err := dumpSignedTimestamps(entity)
 		if err != nil {
-			return fmt.Errorf("faield to dump tsa: %w", err)
+			return fmt.Errorf("failed to dump tsa: %w", err)
 		}
 		inspectedBundle.SignedTimestamps = signedTimestamps
-		PrettyPrint(signedTimestamps)
+		// PrettyPrint(signedTimestamps)
 
 		// collect timestamps
 
 		// fmt.Println(a.Bundle)
 		inspectedBundles = append(inspectedBundles, inspectedBundle)
 	}
+
+	result := BundleInspectResult{
+		InspectedBundles: inspectedBundles,
+	}
+
+	PrettyPrint(result)
 
 	// policy, err := buildPolicy(*artifact)
 	// if err != nil {
@@ -270,7 +281,6 @@ func runInspect(opts *Options) error {
 	// }
 	//
 
-	PrettyPrint(inspectedBundles)
 	return nil
 }
 

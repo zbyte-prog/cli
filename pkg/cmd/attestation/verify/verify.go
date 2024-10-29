@@ -255,21 +255,9 @@ func runVerify(opts *Options) error {
 		attestations = filteredAttestations
 	}
 
-	policy, err := buildVerifyPolicy(opts, *artifact)
+	sigstoreResults, err := verifyAll(opts, *artifact, attestations)
 	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
-		return err
-	}
-
-	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, policy)
-	if sigstoreRes.Error != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
-		return sigstoreRes.Error
-	}
-
-	// Verify extensions
-	if err := verification.VerifyCertExtensions(sigstoreRes.VerifyResults, opts.Tenant, opts.Owner, opts.Repo, opts.OIDCIssuer); err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
+		opts.Logger.Println(opts.Logger.ColorScheme.Red(err.Error()))
 		return err
 	}
 
@@ -278,7 +266,7 @@ func runVerify(opts *Options) error {
 	// If an exporter is provided with the --json flag, write the results to the terminal in JSON format
 	if opts.exporter != nil {
 		// print the results to the terminal as an array of JSON objects
-		if err = opts.exporter.Write(opts.Logger.IO, sigstoreRes.VerifyResults); err != nil {
+		if err = opts.exporter.Write(opts.Logger.IO, sigstoreResults.VerifyResults); err != nil {
 			opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to write JSON output"))
 			return err
 		}
@@ -288,7 +276,7 @@ func runVerify(opts *Options) error {
 	opts.Logger.Printf("%s was attested by:\n", artifact.DigestWithAlg())
 
 	// Otherwise print the results to the terminal in a table
-	tableContent, err := buildTableVerifyContent(opts.Tenant, sigstoreRes.VerifyResults)
+	tableContent, err := buildTableVerifyContent(opts.Tenant, sigstoreResults.VerifyResults)
 	if err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse results"))
 		return err
@@ -365,30 +353,26 @@ func buildTableVerifyContent(tenant string, results []*verification.AttestationP
 	return content, nil
 }
 
-func verifyAll(opts *Options, artifact artifact.DigestedArtifact, attestations []*api.Attestation) error {
+func verifyAll(opts *Options, artifact artifact.DigestedArtifact, attestations []*api.Attestation) (*verification.SigstoreResults, error) {
 	policy, err := newPolicy(opts, artifact)
 	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
-		return err
+		return nil, fmt.Errorf("✗ Failed to build verification policy")
 	}
 
 	sp, err := policy.SigstorePolicy()
 	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
-		return err
+		return nil, fmt.Errorf("✗ Failed to build Sigstore verification policy")
 	}
 
 	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, sp)
 	if sigstoreRes.Error != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
-		return sigstoreRes.Error
+		return nil, fmt.Errorf("✗ Sigstore verification failed")
 	}
 
 	// Verify extensions
 	if err := verification.VerifyCertExtensions(sigstoreRes.VerifyResults, opts.Tenant, opts.Owner, opts.Repo, opts.OIDCIssuer); err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
-		return err
+		return nil, fmt.Errorf("✗ Policy verification failed")
 	}
 
-	return nil
+	return sigstoreRes, nil
 }

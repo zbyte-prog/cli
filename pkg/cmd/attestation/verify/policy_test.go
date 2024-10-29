@@ -26,7 +26,7 @@ func TestBuildPolicy(t *testing.T) {
 		SANRegex:     "^https://github.com/sigstore/",
 	}
 
-	_, err = buildVerifyPolicy(opts, *artifact)
+	_, err = newPolicy(opts, *artifact)
 	require.NoError(t, err)
 }
 
@@ -87,7 +87,6 @@ func TestValidateSignerWorkflow(t *testing.T) {
 		workflowRegex, err := validateSignerWorkflow(opts)
 		require.NoError(t, err)
 		require.Equal(t, tc.expectedWorkflowRegex, workflowRegex)
-
 	}
 }
 

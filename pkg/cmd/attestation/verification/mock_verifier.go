@@ -12,15 +12,13 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
-const SLSAPredicateType = "https://slsa.dev/provenance/v1"
-
 type MockSigstoreVerifier struct {
 	t *testing.T
 }
 
 func (v *MockSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults {
 	statement := &in_toto.Statement{}
-	statement.PredicateType = SLSAPredicateType
+	statement.PredicateType = SLSAPredicateV1
 
 	result := AttestationProcessingResult{
 		Attestation: &api.Attestation{

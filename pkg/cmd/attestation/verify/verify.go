@@ -52,10 +52,15 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 			The %[1]s--owner%[1]s flag value must match the name of the GitHub organization
 			that the artifact's linked repository belongs to.
 
-			By default, the verify command will attempt to fetch attestations associated
-			with the provided artifact from the GitHub API. If you would prefer to verify
-			the artifact using attestations stored on disk (c.f. the %[1]sdownload%[1]s command),
-			provide a path to the %[1]s--bundle%[1]s flag.
+			By default, the verify command will:
+			- only verify provenance attestations
+			- attempt to fetch relevant attestations via the GitHub API.
+
+			To verify other types of attestations, use the %[1]s--predicate-type%[1]s flag.
+
+			To use your artifact's OCI registry instead of GitHub's API, use the
+			%[1]s--bundle-from-oci%[1]s flag. For offline verification, using attestations
+			stored on desk (c.f. the download command), provide a path to the %[1]s--bundle%[1]s flag.
 
 			To see the full results that are generated upon successful verification, i.e.
 			for use with a policy engine, provide the %[1]s--format=json%[1]s flag.
@@ -179,7 +184,7 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 	verifyCmd.Flags().StringVarP(&opts.Repo, "repo", "R", "", "Repository name in the format <owner>/<repo>")
 	verifyCmd.MarkFlagsMutuallyExclusive("owner", "repo")
 	verifyCmd.MarkFlagsOneRequired("owner", "repo")
-	verifyCmd.Flags().StringVarP(&opts.PredicateType, "predicate-type", "", "", "Filter attestations by provided predicate type")
+	verifyCmd.Flags().StringVarP(&opts.PredicateType, "predicate-type", "", verification.SLSAPredicateV1, "Filter attestations by provided predicate type")
 	verifyCmd.Flags().BoolVarP(&opts.NoPublicGood, "no-public-good", "", false, "Do not verify attestations signed with Sigstore public good instance")
 	verifyCmd.Flags().StringVarP(&opts.TrustedRoot, "custom-trusted-root", "", "", "Path to a trusted_root.jsonl file; likely for offline verification")
 	verifyCmd.Flags().IntVarP(&opts.Limit, "limit", "L", api.DefaultLimit, "Maximum number of attestations to fetch")
@@ -244,16 +249,14 @@ func runVerify(opts *Options) error {
 	}
 
 	// Apply predicate type filter to returned attestations
-	if opts.PredicateType != "" {
-		filteredAttestations := verification.FilterAttestations(opts.PredicateType, attestations)
-
-		if len(filteredAttestations) == 0 {
-			opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found with predicate type: %s\n"), opts.PredicateType)
-			return err
-		}
-
-		attestations = filteredAttestations
+	filteredAttestations := verification.FilterAttestations(opts.PredicateType, attestations)
+	if len(filteredAttestations) == 0 {
+		opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found with predicate type: %s\n"), opts.PredicateType)
+		return err
 	}
+	attestations = filteredAttestations
+
+	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", opts.PredicateType)
 
 	ec, err := newEnforcementCriteria(opts, *artifact)
 	if err != nil {

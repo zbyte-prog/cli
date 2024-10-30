@@ -113,7 +113,7 @@ func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.Bundle) (*verify.SignedE
 					// issuer. We *must* use the trusted root provided.
 					if issuer == PublicGoodIssuerOrg {
 						if v.config.NoPublicGood {
-							return nil, "", fmt.Errorf("Detected public good instance but requested verification without public good instance")
+							return nil, "", fmt.Errorf("detected public good instance but requested verification without public good instance")
 						}
 						verifier, err := newPublicGoodVerifierWithTrustedRoot(trustedRoot)
 						if err != nil {

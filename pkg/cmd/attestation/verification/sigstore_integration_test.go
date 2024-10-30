@@ -15,32 +15,54 @@ import (
 )
 
 func TestLiveSigstoreVerifier(t *testing.T) {
-	t.Run("with invalid signature", func(t *testing.T) {
-		attestations := getAttestationsFor(t, "../test/data/sigstoreBundle-invalid-signature.json")
-		require.NotNil(t, attestations)
+	type testcase struct {
+		name         string
+		attestations []*api.Attestation
+		expectErr    bool
+		errContains  string
+	}
 
+	testcases := []testcase{
+		{
+			name:         "with invalid signature",
+			attestations: getAttestationsFor(t, "../test/data/sigstoreBundle-invalid-signature.json"),
+			expectErr:    true,
+			errContains:  "verifying with issuer \"sigstore.dev\"",
+		},
+		{
+			name:         "with valid artifact and JSON lines file containing multiple Sigstore bundles",
+			attestations: getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl"),
+		},
+		{
+			name:         "with invalid bundle version",
+			attestations: getAttestationsFor(t, "../test/data/sigstore-js-2.1.0-bundle-v0.1.json"),
+			expectErr:    true,
+			errContains:  "unsupported bundle version",
+		},
+		{
+			name:         "with no attestations",
+			attestations: []*api.Attestation{},
+			expectErr:    true,
+			errContains:  "no attestations were verified",
+		},
+	}
+
+	for _, tc := range testcases {
 		verifier := NewLiveSigstoreVerifier(SigstoreConfig{
 			Logger: io.NewTestHandler(),
 		})
 
-		res := verifier.Verify(attestations, publicGoodPolicy(t))
-		require.Error(t, res.Error)
-		require.ErrorContains(t, res.Error, "verifying with issuer \"sigstore.dev\"")
-		require.Nil(t, res.VerifyResults)
-	})
+		res := verifier.Verify(tc.attestations, publicGoodPolicy(t))
 
-	t.Run("with valid artifact and JSON lines file containing multiple Sigstore bundles", func(t *testing.T) {
-		attestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
-		require.Len(t, attestations, 2)
-
-		verifier := NewLiveSigstoreVerifier(SigstoreConfig{
-			Logger: io.NewTestHandler(),
-		})
-
-		res := verifier.Verify(attestations, publicGoodPolicy(t))
-		require.Len(t, res.VerifyResults, 2)
-		require.NoError(t, res.Error)
-	})
+		if tc.expectErr {
+			require.Error(t, res.Error, "test case: %s", tc.name)
+			require.ErrorContains(t, res.Error, tc.errContains, "test case: %s", tc.name)
+			require.Nil(t, res.VerifyResults, "test case: %s", tc.name)
+		} else {
+			require.Equal(t, len(tc.attestations), len(res.VerifyResults), "test case: %s", tc.name)
+			require.NoError(t, res.Error, "test case: %s", tc.name)
+		}
+	}
 
 	t.Run("with GitHub Sigstore artifact", func(t *testing.T) {
 		githubArtifactPath := test.NormalizeRelativePath("../test/data/github_provenance_demo-0.0.12-py3-none-any.whl")
@@ -72,34 +94,6 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 		require.Len(t, res.VerifyResults, 2)
 		require.NoError(t, res.Error)
 	})
-
-	t.Run("with invalid bundle version", func(t *testing.T) {
-		attestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0-bundle-v0.1.json")
-		require.Len(t, attestations, 1)
-
-		verifier := NewLiveSigstoreVerifier(SigstoreConfig{
-			Logger: io.NewTestHandler(),
-		})
-
-		res := verifier.Verify(attestations, publicGoodPolicy(t))
-		require.Len(t, res.VerifyResults, 0)
-		require.ErrorContains(t, res.Error, "unsupported bundle version")
-	})
-
-	t.Run("with no attestations", func(t *testing.T) {
-		attestations := []*api.Attestation{}
-		require.Len(t, attestations, 0)
-
-		verifier := NewLiveSigstoreVerifier(SigstoreConfig{
-			Logger:      io.NewTestHandler(),
-			TrustedRoot: test.NormalizeRelativePath("../test/data/trusted_root.json"),
-		})
-
-		res := verifier.Verify(attestations, publicGoodPolicy(t))
-		require.Len(t, res.VerifyResults, 0)
-		require.NotNil(t, res.Error)
-	})
-
 }
 
 func publicGoodPolicy(t *testing.T) verify.PolicyBuilder {

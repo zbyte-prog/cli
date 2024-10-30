@@ -42,14 +42,14 @@ func TestVerifyCertExtensions(t *testing.T) {
 		expectedCriteria := c
 		expectedCriteria.Extensions.SourceRepositoryOwnerURI = "https://github.com/wrong"
 		err := VerifyCertExtensions(results, expectedCriteria)
-		require.ErrorContains(t, err, "expected SourceRepositoryOwnerURI to be https://github.com/owner, got https://github.com/wrong")
+		require.ErrorContains(t, err, "expected SourceRepositoryOwnerURI to be https://github.com/wrong, got https://github.com/owner")
 	})
 
 	t.Run("with wrong SourceRepositoryURI", func(t *testing.T) {
 		expectedCriteria := c
 		expectedCriteria.Extensions.SourceRepositoryURI = "https://github.com/foo/wrong"
 		err := VerifyCertExtensions(results, expectedCriteria)
-		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/owner/wrong, got https://github.com/wrong/bar")
+		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/foo/wrong, got https://github.com/foo/bar")
 	})
 
 	t.Run("with wrong OIDCIssuer", func(t *testing.T) {
@@ -60,9 +60,9 @@ func TestVerifyCertExtensions(t *testing.T) {
 	})
 
 	t.Run("with partial OIDCIssuer match", func(t *testing.T) {
-		expectedCriteria := c
-		expectedCriteria.OIDCIssuer = "https://token.actions.githubusercontent.com"
-		err := VerifyCertExtensions(results, expectedCriteria)
+		expectedResults := results
+		expectedResults[0].VerificationResult.Signature.Certificate.Extensions.Issuer = "https://token.actions.githubusercontent.com/foo-bar"
+		err := VerifyCertExtensions(expectedResults, c)
 		require.ErrorContains(t, err, "expected Issuer to be https://token.actions.githubusercontent.com, got https://token.actions.githubusercontent.com/foo-bar -- if you have a custom OIDC issuer")
 	})
 }

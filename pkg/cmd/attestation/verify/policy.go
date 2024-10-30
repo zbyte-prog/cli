@@ -83,8 +83,8 @@ func newEnforcementCriteria(opts *Options, a artifact.DigestedArtifact) (verific
 		c.Extensions.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
 	}
 
-	// if issuer is anything other than the default, use the user-provided value;
-	// otherwise, select the appropriate default based on the tenant
+	// if tenant is provided, select the appropriate default based on the tenant
+	// otherwise, use the provided OIDCIssuer
 	if opts.Tenant != "" {
 		c.OIDCIssuer = fmt.Sprintf(verification.GitHubTenantOIDCIssuer, opts.Tenant)
 	} else {

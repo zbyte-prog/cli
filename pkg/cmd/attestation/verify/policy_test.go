@@ -10,24 +10,157 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// This tests that a policy can be built from a valid artifact
-// Note that policy use is tested in verify_test.go in this package
-func TestBuildPolicy(t *testing.T) {
-	ociClient := oci.MockClient{}
+func TestNewEnforcementCriteria(t *testing.T) {
 	artifactPath := "../test/data/sigstore-js-2.1.0.tgz"
-	digestAlg := "sha256"
 
-	artifact, err := artifact.NewDigestedArtifact(ociClient, artifactPath, digestAlg)
+	artifact, err := artifact.NewDigestedArtifact(oci.MockClient{}, artifactPath, "sha256")
 	require.NoError(t, err)
 
-	opts := &Options{
-		ArtifactPath: artifactPath,
-		Owner:        "sigstore",
-		SANRegex:     "^https://github.com/sigstore/",
-	}
+	t.Run("sets SANRegex using SignerRepo", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+			SignerRepo:   "foo/bar",
+		}
 
-	_, err = newEnforcementCriteria(opts, *artifact)
-	require.NoError(t, err)
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "^https://github.com/foo/bar", c.Extensions.SANRegex)
+		require.Zero(t, c.Extensions.SAN)
+	})
+
+	t.Run("sets SANRegex using SignerWorkflow", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:   artifactPath,
+			Owner:          "foo",
+			Repo:           "bar",
+			SignerWorkflow: "foo/bar/.github/workflows/attest.yml",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "^https://github.com/foo/bar/.github/workflows/attest.yml", c.Extensions.SANRegex)
+		require.Zero(t, c.Extensions.SAN)
+	})
+
+	t.Run("sets SANRegex and SAN using SANRegex and SAN", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+			SAN:          "https://github/foo/bar/.github/workflows/attest.yml",
+			SANRegex:     "^https://github/foo",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.Extensions.SANRegex)
+		require.Equal(t, "^https://github/foo", c.Extensions.SAN)
+	})
+
+	t.Run("sets Extensions.RunnerEnvironment to GitHubRunner value if opts.DenySelfHostedRunner is true", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:         artifactPath,
+			Owner:                "foo",
+			Repo:                 "bar",
+			DenySelfHostedRunner: true,
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, GitHubRunner, c.Extensions.RunnerEnvironment)
+	})
+
+	t.Run("sets Extensions.RunnerEnvironment to * value if opts.DenySelfHostedRunner is false", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:         artifactPath,
+			Owner:                "foo",
+			Repo:                 "bar",
+			DenySelfHostedRunner: false,
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "*", c.Extensions.RunnerEnvironment)
+	})
+
+	t.Run("sets Extensions.BuildSourceRepoURI using opts.Repo and opts.Tenant", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+			Tenant:       "baz",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "https://baz.ghe.com/foo/bar", c.Extensions.BuildSourceRepoURI)
+	})
+
+	t.Run("sets Extensions.BuildSourceRepoURI using opts.Repo", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "https://github.com/foo/bar", c.Extensions.BuildSourceRepoURI)
+	})
+
+	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner and opts.Tenant", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+			Tenant:       "baz",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "https://baz.ghe.com/foo", c.Extensions.SourceRepositoryOwnerURI)
+	})
+
+	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "https://github.com/foo", c.Extensions.SourceRepositoryOwnerURI)
+	})
+
+	t.Run("sets OIDCIssuer using opts.OIDCIssuer and opts.Tenant", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+			Tenant:       "baz",
+			OIDCIssuer:   "https://foo.com",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "https://token.actions.baz.ghe.com", c.OIDCIssuer)
+	})
+
+	t.Run("sets OIDCIssuer using opts.OIDCIssuer", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "bar",
+			OIDCIssuer:   "https://foo.com",
+		}
+
+		c, err := newEnforcementCriteria(opts, *artifact)
+		require.NoError(t, err)
+		require.Equal(t, "https://foo.com", c.OIDCIssuer)
+	})
 }
 
 func TestValidateSignerWorkflow(t *testing.T) {

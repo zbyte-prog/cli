@@ -344,6 +344,7 @@ func Test_editRun_interactive(t *testing.T) {
 					}`))
 				reg.Exclude(t, httpmock.REST("PATCH", "repos/OWNER/REPO"))
 			},
+			wantsStderr: "Changing the repository visibility to private will cause permanent loss of 10 stars and 0 watchers.",
 		},
 		{
 			name: "changing visibility with confirmation",
@@ -378,6 +379,9 @@ func Test_editRun_interactive(t *testing.T) {
 									"name": "main"
 								},
 								"stargazerCount": 10,
+								"watchers": {
+									"totalCount": 15
+								},
 								"isInOrganization": false,
 								"repositoryTopics": {
 									"nodes": [{
@@ -395,6 +399,7 @@ func Test_editRun_interactive(t *testing.T) {
 						assert.Equal(t, "private", payload["visibility"])
 					}))
 			},
+			wantsStderr: "Changing the repository visibility to private will cause permanent loss of 10 stars and 15 watchers",
 		},
 		{
 			name: "the rest",
@@ -631,7 +636,7 @@ func Test_editRun_interactive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ios, _, _, _ := iostreams.Test()
+			ios, _, _, stderr := iostreams.Test()
 			ios.SetStdoutTTY(true)
 			ios.SetStdinTTY(true)
 			ios.SetStderrTTY(true)
@@ -656,9 +661,11 @@ func Test_editRun_interactive(t *testing.T) {
 			if tt.wantsErr == "" {
 				require.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, tt.wantsErr)
+				require.EqualError(t, err, tt.wantsErr)
 				return
 			}
+
+			assert.Contains(t, stderr.String(), tt.wantsStderr)
 		})
 	}
 }

@@ -83,6 +83,33 @@ func TestVerifyIntegration(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/fakeowner/fakerepo, got https://github.com/sigstore/sigstore-js")
 	})
+
+	t.Run("with no matching OIDC issuer", func(t *testing.T) {
+		opts := publicGoodOpts
+		opts.OIDCIssuer = "some-other-issuer"
+
+		err := runVerify(&opts)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "expected Issuer to be some-other-issuer, got https://token.actions.githubusercontent.com")
+	})
+
+	t.Run("with invalid SAN", func(t *testing.T) {
+		opts := publicGoodOpts
+		opts.SAN = "fake san"
+
+		err := runVerify(&opts)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "verifying with issuer \"sigstore.dev\"")
+	})
+
+	t.Run("with invalid SAN regex", func(t *testing.T) {
+		opts := publicGoodOpts
+		opts.SANRegex = "^https://github.com/sigstore/not-real/"
+
+		err := runVerify(&opts)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "verifying with issuer \"sigstore.dev\"")
+	})
 }
 
 func TestVerifyIntegrationCustomIssuer(t *testing.T) {

@@ -20,7 +20,7 @@ const (
 	hostRegex    = `^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+.*$`
 )
 
-type ExpectedExtensions struct {
+type Extensions struct {
 	RunnerEnvironment        string
 	SANRegex                 string
 	SAN                      string
@@ -30,20 +30,11 @@ type ExpectedExtensions struct {
 	SourceRepositoryURI      string
 }
 
-type SigstoreInstance string
-
-const (
-	PublicGood SigstoreInstance = "public-good"
-	GitHub     SigstoreInstance = "github"
-	Custom     SigstoreInstance = "custom"
-)
-
 type Policy struct {
-	ExpectedExtensions       ExpectedExtensions
-	ExpectedPredicateType    string
-	ExpectedSigstoreInstance string
-	Artifact                 artifact.DigestedArtifact
-	OIDCIssuer               string
+	Extensions    Extensions
+	PredicateType string
+	Artifact      artifact.DigestedArtifact
+	OIDCIssuer    string
 }
 
 func newPolicy(opts *Options, a artifact.DigestedArtifact) (Policy, error) {
@@ -53,36 +44,36 @@ func newPolicy(opts *Options, a artifact.DigestedArtifact) (Policy, error) {
 
 	if opts.SignerRepo != "" {
 		signedRepoRegex := expandToGitHubURL(opts.Tenant, opts.SignerRepo)
-		p.ExpectedExtensions.SANRegex = signedRepoRegex
+		p.Extensions.SANRegex = signedRepoRegex
 	} else if opts.SignerWorkflow != "" {
 		validatedWorkflowRegex, err := validateSignerWorkflow(opts)
 		if err != nil {
 			return Policy{}, err
 		}
 
-		p.ExpectedExtensions.SANRegex = validatedWorkflowRegex
+		p.Extensions.SANRegex = validatedWorkflowRegex
 	} else {
-		p.ExpectedExtensions.SANRegex = opts.SANRegex
-		p.ExpectedExtensions.SAN = opts.SAN
+		p.Extensions.SANRegex = opts.SANRegex
+		p.Extensions.SAN = opts.SAN
 	}
 
 	if opts.DenySelfHostedRunner {
-		p.ExpectedExtensions.RunnerEnvironment = GitHubRunner
+		p.Extensions.RunnerEnvironment = GitHubRunner
 	} else {
-		p.ExpectedExtensions.RunnerEnvironment = "*"
+		p.Extensions.RunnerEnvironment = "*"
 	}
 
 	if opts.Repo != "" {
 		if opts.Tenant != "" {
-			p.ExpectedExtensions.BuildSourceRepoURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
+			p.Extensions.BuildSourceRepoURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
 		}
-		p.ExpectedExtensions.BuildSourceRepoURI = fmt.Sprintf("https://github.com/%s", opts.Repo)
+		p.Extensions.BuildSourceRepoURI = fmt.Sprintf("https://github.com/%s", opts.Repo)
 	}
 
 	if opts.Tenant != "" {
-		p.ExpectedExtensions.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Owner)
+		p.Extensions.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Owner)
 	} else {
-		p.ExpectedExtensions.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
+		p.Extensions.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
 	}
 
 	// if issuer is anything other than the default, use the user-provided value;
@@ -97,9 +88,9 @@ func newPolicy(opts *Options, a artifact.DigestedArtifact) (Policy, error) {
 }
 
 func (p *Policy) Verify(a []*api.Attestation) (bool, string) {
-	filtered := verification.FilterAttestations(p.ExpectedPredicateType, a)
+	filtered := verification.FilterAttestations(p.PredicateType, a)
 	if len(filtered) == 0 {
-		return false, fmt.Sprintf("✗ No attestations found with predicate type: %s\n", p.ExpectedPredicateType)
+		return false, fmt.Sprintf("✗ No attestations found with predicate type: %s\n", p.PredicateType)
 	}
 
 	return true, ""
@@ -113,7 +104,7 @@ func expandToGitHubURL(tenant, ownerOrRepo string) string {
 }
 
 func (p *Policy) buildCertificateIdentityOption() (verify.PolicyOption, error) {
-	sanMatcher, err := verify.NewSANMatcher(p.ExpectedExtensions.SAN, p.ExpectedExtensions.SANRegex)
+	sanMatcher, err := verify.NewSANMatcher(p.Extensions.SAN, p.Extensions.SANRegex)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +116,7 @@ func (p *Policy) buildCertificateIdentityOption() (verify.PolicyOption, error) {
 	}
 
 	extensions := certificate.Extensions{
-		RunnerEnvironment: p.ExpectedExtensions.RunnerEnvironment,
+		RunnerEnvironment: p.Extensions.RunnerEnvironment,
 	}
 
 	certId, err := verify.NewCertificateIdentity(sanMatcher, issuerMatcher, extensions)
@@ -137,10 +128,10 @@ func (p *Policy) buildCertificateIdentityOption() (verify.PolicyOption, error) {
 }
 
 func (p *Policy) VerifyPredicateType(a []*api.Attestation) ([]*api.Attestation, error) {
-	filteredAttestations := verification.FilterAttestations(p.ExpectedPredicateType, a)
+	filteredAttestations := verification.FilterAttestations(p.PredicateType, a)
 
 	if len(filteredAttestations) == 0 {
-		return nil, fmt.Errorf("✗ No attestations found with predicate type: %s\n", p.ExpectedPredicateType)
+		return nil, fmt.Errorf("✗ No attestations found with predicate type: %s\n", p.PredicateType)
 	}
 
 	return filteredAttestations, nil
@@ -201,18 +192,18 @@ func (p *Policy) VerifyCertExtensions(results []*verification.AttestationProcess
 }
 
 func (p *Policy) verifyCertExtensions(attestation *verification.AttestationProcessingResult) error {
-	if p.ExpectedExtensions.SourceRepositoryOwnerURI != "" {
+	if p.Extensions.SourceRepositoryOwnerURI != "" {
 		sourceRepositoryOwnerURI := attestation.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryOwnerURI
-		if !strings.EqualFold(p.ExpectedExtensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI) {
-			return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", p.ExpectedExtensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI)
+		if !strings.EqualFold(p.Extensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI) {
+			return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", p.Extensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI)
 		}
 	}
 
 	// if repo is set, check the SourceRepositoryURI field
-	if p.ExpectedExtensions.SourceRepositoryURI != "" {
+	if p.Extensions.SourceRepositoryURI != "" {
 		sourceRepositoryURI := attestation.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryURI
-		if !strings.EqualFold(p.ExpectedExtensions.SourceRepositoryURI, sourceRepositoryURI) {
-			return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", p.ExpectedExtensions.SourceRepositoryURI, sourceRepositoryURI)
+		if !strings.EqualFold(p.Extensions.SourceRepositoryURI, sourceRepositoryURI) {
+			return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", p.Extensions.SourceRepositoryURI, sourceRepositoryURI)
 		}
 	}
 

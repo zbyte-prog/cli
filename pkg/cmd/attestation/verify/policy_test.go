@@ -26,7 +26,7 @@ func TestBuildPolicy(t *testing.T) {
 		SANRegex:     "^https://github.com/sigstore/",
 	}
 
-	_, err = newPolicy(opts, *artifact)
+	_, err = newEnforcementCriteria(opts, *artifact)
 	require.NoError(t, err)
 }
 

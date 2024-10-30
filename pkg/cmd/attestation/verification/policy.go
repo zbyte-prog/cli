@@ -18,3 +18,20 @@ func BuildDigestPolicyOption(a artifact.DigestedArtifact) (verify.ArtifactPolicy
 	}
 	return verify.WithArtifactDigest(a.Algorithm(), decoded), nil
 }
+
+type Extensions struct {
+	RunnerEnvironment        string
+	SANRegex                 string
+	SAN                      string
+	BuildSourceRepoURI       string
+	SignerWorkflow           string
+	SourceRepositoryOwnerURI string
+	SourceRepositoryURI      string
+}
+
+type EnforcementCriteria struct {
+	Extensions    Extensions
+	PredicateType string
+	Artifact      artifact.DigestedArtifact
+	OIDCIssuer    string
+}

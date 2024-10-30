@@ -212,9 +212,8 @@ func (p *Policy) verifyCertExtensions(attestation *verification.AttestationProce
 		if !strings.EqualFold(p.OIDCIssuer, certIssuer) {
 			if strings.Index(certIssuer, p.OIDCIssuer+"/") == 0 {
 				return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", p.OIDCIssuer, certIssuer)
-			} else {
-				return fmt.Errorf("expected Issuer to be %s, got %s", p.OIDCIssuer, certIssuer)
 			}
+			return fmt.Errorf("expected Issuer to be %s, got %s", p.OIDCIssuer, certIssuer)
 		}
 	}
 

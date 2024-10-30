@@ -49,7 +49,7 @@ func TestVerifyCertExtensions(t *testing.T) {
 		expectedCriteria := c
 		expectedCriteria.Extensions.SourceRepositoryURI = "https://github.com/foo/wrong"
 		err := VerifyCertExtensions(results, expectedCriteria)
-		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/foo/wrong, got https://github.com/foo/bar")
+		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/foo/wrong, got https://github.com/owner/repo")
 	})
 
 	t.Run("with wrong OIDCIssuer", func(t *testing.T) {

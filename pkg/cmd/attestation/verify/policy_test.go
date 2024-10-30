@@ -20,22 +20,23 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 			SignerRepo:   "foo/bar",
 		}
 
 		c, err := newEnforcementCriteria(opts, *artifact)
 		require.NoError(t, err)
-		require.Equal(t, "^https://github.com/foo/bar", c.Extensions.SANRegex)
+		require.Equal(t, "(?i)^https://github.com/foo/bar/", c.Extensions.SANRegex)
 		require.Zero(t, c.Extensions.SAN)
 	})
 
-	t.Run("sets SANRegex using SignerWorkflow", func(t *testing.T) {
+	t.Run("sets SANRegex using SignerWorkflow matching host regex", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath:   artifactPath,
 			Owner:          "foo",
-			Repo:           "bar",
+			Repo:           "foo/bar",
 			SignerWorkflow: "foo/bar/.github/workflows/attest.yml",
+			Hostname:       "github.com",
 		}
 
 		c, err := newEnforcementCriteria(opts, *artifact)
@@ -48,22 +49,22 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 			SAN:          "https://github/foo/bar/.github/workflows/attest.yml",
-			SANRegex:     "^https://github/foo",
+			SANRegex:     "(?i)^https://github/foo",
 		}
 
 		c, err := newEnforcementCriteria(opts, *artifact)
 		require.NoError(t, err)
-		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.Extensions.SANRegex)
-		require.Equal(t, "^https://github/foo", c.Extensions.SAN)
+		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.Extensions.SAN)
+		require.Equal(t, "(?i)^https://github/foo", c.Extensions.SANRegex)
 	})
 
 	t.Run("sets Extensions.RunnerEnvironment to GitHubRunner value if opts.DenySelfHostedRunner is true", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath:         artifactPath,
 			Owner:                "foo",
-			Repo:                 "bar",
+			Repo:                 "foo/bar",
 			DenySelfHostedRunner: true,
 		}
 
@@ -76,7 +77,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		opts := &Options{
 			ArtifactPath:         artifactPath,
 			Owner:                "foo",
-			Repo:                 "bar",
+			Repo:                 "foo/bar",
 			DenySelfHostedRunner: false,
 		}
 
@@ -85,36 +86,36 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		require.Equal(t, "*", c.Extensions.RunnerEnvironment)
 	})
 
-	t.Run("sets Extensions.BuildSourceRepoURI using opts.Repo and opts.Tenant", func(t *testing.T) {
+	t.Run("sets Extensions.SourceRepositoryURI using opts.Repo and opts.Tenant", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 			Tenant:       "baz",
 		}
 
 		c, err := newEnforcementCriteria(opts, *artifact)
 		require.NoError(t, err)
-		require.Equal(t, "https://baz.ghe.com/foo/bar", c.Extensions.BuildSourceRepoURI)
+		require.Equal(t, "https://baz.ghe.com/foo/bar", c.Extensions.SourceRepositoryURI)
 	})
 
-	t.Run("sets Extensions.BuildSourceRepoURI using opts.Repo", func(t *testing.T) {
+	t.Run("sets Extensions.SourceRepositoryURI using opts.Repo", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 		}
 
 		c, err := newEnforcementCriteria(opts, *artifact)
 		require.NoError(t, err)
-		require.Equal(t, "https://github.com/foo/bar", c.Extensions.BuildSourceRepoURI)
+		require.Equal(t, "https://github.com/foo/bar", c.Extensions.SourceRepositoryURI)
 	})
 
 	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner and opts.Tenant", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 			Tenant:       "baz",
 		}
 
@@ -127,7 +128,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 		}
 
 		c, err := newEnforcementCriteria(opts, *artifact)
@@ -139,7 +140,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 			Tenant:       "baz",
 			OIDCIssuer:   "https://foo.com",
 		}
@@ -153,7 +154,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
-			Repo:         "bar",
+			Repo:         "foo/bar",
 			OIDCIssuer:   "https://foo.com",
 		}
 

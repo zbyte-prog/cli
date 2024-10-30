@@ -23,7 +23,6 @@ type Extensions struct {
 	RunnerEnvironment        string
 	SANRegex                 string
 	SAN                      string
-	BuildSourceRepoURI       string
 	SignerWorkflow           string
 	SourceRepositoryOwnerURI string
 	SourceRepositoryURI      string

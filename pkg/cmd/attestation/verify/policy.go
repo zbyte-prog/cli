@@ -72,9 +72,10 @@ func newEnforcementCriteria(opts *Options, a artifact.DigestedArtifact) (verific
 
 	if opts.Repo != "" {
 		if opts.Tenant != "" {
-			c.Extensions.BuildSourceRepoURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
+			c.Extensions.SourceRepositoryURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
+		} else {
+			c.Extensions.SourceRepositoryURI = fmt.Sprintf("https://github.com/%s", opts.Repo)
 		}
-		c.Extensions.BuildSourceRepoURI = fmt.Sprintf("https://github.com/%s", opts.Repo)
 	}
 
 	if opts.Tenant != "" {

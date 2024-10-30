@@ -270,7 +270,7 @@ func runVerify(opts *Options) error {
 	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, sp)
 	if sigstoreRes.Error != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Sigstore verification failed"))
-		return err
+		return sigstoreRes.Error
 	}
 
 	// Verify extensions

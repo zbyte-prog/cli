@@ -167,55 +167,57 @@ func getLowestCertInChain(ca *root.CertificateAuthority) (*x509.Certificate, err
 	return nil, fmt.Errorf("certificate authority had no certificates")
 }
 
-func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
-	// initialize the processing apResults before attempting to verify
-	// with multiple verifiers
-	apResults := make([]*AttestationProcessingResult, len(attestations))
-	for i, att := range attestations {
-		apr := &AttestationProcessingResult{
-			Attestation: att,
-		}
-		apResults[i] = apr
+func (v *LiveSigstoreVerifier) verify(attestation *api.Attestation, policy verify.PolicyBuilder) (*AttestationProcessingResult, error) {
+	// determine which verifier should attempt verification against the bundle
+	verifier, issuer, err := v.chooseVerifier(attestation.Bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find recognized issuer from bundle content: %v", err)
 	}
 
-	var atLeastOneVerified bool
+	v.config.Logger.VerbosePrintf("Attempting verification against issuer \"%s\"\n", issuer)
+	// attempt to verify the attestation
+	result, err := verifier.Verify(attestation.Bundle, policy)
+	// if verification fails, create the error and exit verification early
+	if err != nil {
+		v.config.Logger.VerbosePrint(v.config.Logger.ColorScheme.Redf(
+			"Failed to verify against issuer \"%s\" \n\n", issuer,
+		))
+
+		return nil, fmt.Errorf("verifying with issuer \"%s\"", issuer)
+	}
+
+	// if verification is successful, add the result
+	// to the AttestationProcessingResult entry
+	v.config.Logger.VerbosePrint(v.config.Logger.ColorScheme.Greenf(
+		"SUCCESS - attestation signature verified with \"%s\"\n", issuer,
+	))
+
+	return &AttestationProcessingResult{
+		Attestation:        attestation,
+		VerificationResult: result,
+	}, nil
+}
+
+func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
+	results := make([]*AttestationProcessingResult, 0)
 
 	totalAttestations := len(attestations)
-	for i, apr := range apResults {
+	for i, a := range attestations {
 		v.config.Logger.VerbosePrintf("Verifying attestation %d/%d against the configured Sigstore trust roots\n", i+1, totalAttestations)
 
-		// determine which verifier should attempt verification against the bundle
-		verifier, issuer, err := v.chooseVerifier(apr.Attestation.Bundle)
+		apr, err := v.verify(a, policy)
 		if err != nil {
-			return nil, fmt.Errorf("failed to find recognized issuer from bundle content: %v", err)
+			// move onto the next attestation if verification fails
+			continue
 		}
-
-		v.config.Logger.VerbosePrintf("Attempting verification against issuer \"%s\"\n", issuer)
-		// attempt to verify the attestation
-		result, err := verifier.Verify(apr.Attestation.Bundle, policy)
-		// if verification fails, create the error and exit verification early
-		if err != nil {
-			v.config.Logger.VerbosePrint(v.config.Logger.ColorScheme.Redf(
-				"Failed to verify against issuer \"%s\" \n\n", issuer,
-			))
-
-			return nil, fmt.Errorf("verifying with issuer \"%s\"", issuer)
-		}
-
-		// if verification is successful, add the result
-		// to the AttestationProcessingResult entry
-		v.config.Logger.VerbosePrint(v.config.Logger.ColorScheme.Greenf(
-			"SUCCESS - attestation signature verified with \"%s\"\n", issuer,
-		))
-		apr.VerificationResult = result
-		atLeastOneVerified = true
+		results = append(results, apr)
 	}
 
-	if !atLeastOneVerified {
+	if len(results) == 0 {
 		return nil, ErrNoAttestationsVerified
 	}
 
-	return apResults, nil
+	return results, nil
 }
 
 func newCustomVerifier(trustedRoot *root.TrustedRoot) (*verify.SignedEntityVerifier, error) {

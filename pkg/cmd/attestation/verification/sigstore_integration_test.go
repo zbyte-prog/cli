@@ -72,11 +72,27 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 		invalidBundle := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0-bundle-v0.1.json")
 		attestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
 		attestations = append(attestations, invalidBundle[0])
+		require.Len(t, attestations, 3)
 
 		results, err := verifier.Verify(attestations, publicGoodPolicy(t))
 
-		require.Equal(t, len(attestations), len(results))
+		require.Len(t, results, 2)
 		require.NoError(t, err)
+	})
+
+	t.Run("fail with 0/2 verified attestations", func(t *testing.T) {
+		verifier := NewLiveSigstoreVerifier(SigstoreConfig{
+			Logger: io.NewTestHandler(),
+		})
+
+		invalidBundle := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0-bundle-v0.1.json")
+		attestations := getAttestationsFor(t, "../test/data/sigstoreBundle-invalid-signature.json")
+		attestations = append(attestations, invalidBundle[0])
+		require.Len(t, attestations, 2)
+
+		results, err := verifier.Verify(attestations, publicGoodPolicy(t))
+		require.Nil(t, results)
+		require.Error(t, err)
 	})
 
 	t.Run("with GitHub Sigstore artifact", func(t *testing.T) {

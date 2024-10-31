@@ -43,5 +43,8 @@ func (c EnforcementCriteria) Valid() error {
 	if c.PredicateType == "" {
 		return fmt.Errorf("PredicateType must be set")
 	}
+	if c.SANRegex == "" && c.SAN == "" {
+		return fmt.Errorf("SANRegex or SAN must be set")
+	}
 	return nil
 }

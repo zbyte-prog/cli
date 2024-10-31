@@ -8,25 +8,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVerifyCertExtensions(t *testing.T) {
-	results := []*AttestationProcessingResult{
-		{
-			VerificationResult: &verify.VerificationResult{
-				Signature: &verify.SignatureVerificationResult{
-					Certificate: &certificate.Summary{
-						Extensions: certificate.Extensions{
-							SourceRepositoryOwnerURI: "https://github.com/owner",
-							SourceRepositoryURI:      "https://github.com/owner/repo",
-							Issuer:                   "https://token.actions.githubusercontent.com",
-						},
+func createSampleResult() *AttestationProcessingResult {
+	return &AttestationProcessingResult{
+		VerificationResult: &verify.VerificationResult{
+			Signature: &verify.SignatureVerificationResult{
+				Certificate: &certificate.Summary{
+					Extensions: certificate.Extensions{
+						SourceRepositoryOwnerURI: "https://github.com/owner",
+						SourceRepositoryURI:      "https://github.com/owner/repo",
+						Issuer:                   "https://token.actions.githubusercontent.com",
 					},
 				},
 			},
 		},
 	}
+}
+
+func TestVerifyCertExtensions(t *testing.T) {
+	results := []*AttestationProcessingResult{createSampleResult()}
 
 	t.Run("VerifyCertExtensions with owner and repo", func(t *testing.T) {
 		err := VerifyCertExtensions(results, "", "owner", "owner/repo", GitHubOIDCIssuer)
+		require.NoError(t, err)
+	})
+
+	t.Run("VerifyCertExtensions passes with at least one successful verification", func(t *testing.T) {
+		twoResults := []*AttestationProcessingResult{createSampleResult(), createSampleResult()}
+		require.Len(t, twoResults, 2)
+		twoResults[1].VerificationResult.Signature.Certificate.Extensions.SourceRepositoryOwnerURI = "https://github.com/wrong"
+
+		err := VerifyCertExtensions(twoResults, "", "owner", "owner/repo", GitHubOIDCIssuer)
 		require.NoError(t, err)
 	})
 

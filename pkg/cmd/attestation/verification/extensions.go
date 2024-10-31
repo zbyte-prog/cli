@@ -24,11 +24,11 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, tenant, owner,
 		atLeastOneVerified = true
 	}
 
-	if atLeastOneVerified {
-		return nil
-	} else {
+	if !atLeastOneVerified {
 		return ErrNoAttestationsVerified
 	}
+
+	return nil
 }
 
 func verifyCertExtensions(attestation *AttestationProcessingResult, tenant, owner, repo, issuer string) error {

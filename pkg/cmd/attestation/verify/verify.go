@@ -264,7 +264,7 @@ func runVerify(opts *Options) error {
 		return err
 	}
 
-	sp, err := SigstorePolicy(ec, *artifact)
+	sp, err := buildSigstoreVerifyPolicy(ec, *artifact)
 	if err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build Sigstore verification policy"))
 		return err

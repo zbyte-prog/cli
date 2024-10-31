@@ -96,7 +96,7 @@ func buildCertificateIdentityOption(c verification.EnforcementCriteria) (verify.
 	return verify.WithCertificateIdentity(certId), nil
 }
 
-func SigstorePolicy(c verification.EnforcementCriteria, a artifact.DigestedArtifact) (verify.PolicyBuilder, error) {
+func buildSigstoreVerifyPolicy(c verification.EnforcementCriteria, a artifact.DigestedArtifact) (verify.PolicyBuilder, error) {
 	artifactDigestPolicyOption, err := verification.BuildDigestPolicyOption(a)
 	if err != nil {
 		return verify.PolicyBuilder{}, err

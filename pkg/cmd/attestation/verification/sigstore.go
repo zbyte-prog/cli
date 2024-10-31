@@ -199,22 +199,27 @@ func (v *LiveSigstoreVerifier) verify(attestation *api.Attestation, policy verif
 }
 
 func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
-	results := make([]*AttestationProcessingResult, 0)
+	if len(attestations) == 0 {
+		return nil, ErrNoAttestationsVerified
+	}
 
+	results := make([]*AttestationProcessingResult, 0)
+	var lastError error
 	totalAttestations := len(attestations)
 	for i, a := range attestations {
 		v.config.Logger.VerbosePrintf("Verifying attestation %d/%d against the configured Sigstore trust roots\n", i+1, totalAttestations)
 
 		apr, err := v.verify(a, policy)
 		if err != nil {
-			// move onto the next attestation if verification fails
+			lastError = err
+			// move onto the next attestation in the for loop if verification fails
 			continue
 		}
 		results = append(results, apr)
 	}
 
 	if len(results) == 0 {
-		return nil, ErrNoAttestationsVerified
+		return nil, lastError
 	}
 
 	return results, nil

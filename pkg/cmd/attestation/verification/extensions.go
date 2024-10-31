@@ -16,17 +16,20 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, tenant, owner,
 		return errors.New("no attestations proccessing results")
 	}
 
+	var lastErr error
 	for _, attestation := range results {
-		if err := verifyCertExtension(attestation, tenant, owner, repo, issuer); err == nil {
+		err := verifyCertExtension(attestation, tenant, owner, repo, issuer)
+		if err == nil {
 			// if at least one attestation is verified, we're good as verification
 			// is defined as successful if at least one attestation is verified
 			return nil
 		}
+		lastErr = err
 	}
 
 	// if we have exited the for loop without returning early due to successful
 	// verification, we need to return an error
-	return ErrNoAttestationsVerified
+	return lastErr
 }
 
 func verifyCertExtension(attestation *AttestationProcessingResult, tenant, owner, repo, issuer string) error {

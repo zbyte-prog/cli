@@ -45,6 +45,11 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 
 	if opts.DenySelfHostedRunner {
 		c.Extensions.RunnerEnvironment = GitHubRunner
+	} else {
+		// if Extensions.RunnerEnvironment value is set to the empty string
+		// through the second function argument,
+		// no certificate matching will happen on the RunnerEnvironment field
+		c.Extensions.RunnerEnvironment = ""
 	}
 
 	if opts.Repo != "" {

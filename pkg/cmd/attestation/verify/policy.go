@@ -14,8 +14,7 @@ import (
 
 const (
 	// represents the GitHub hosted runner in the certificate RunnerEnvironment extension
-	GitHubRunner = "github-hosted"
-	hostRegex    = `^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+.*$`
+	hostRegex = `^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+.*$`
 )
 
 func expandToGitHubURL(tenant, ownerOrRepo string) string {
@@ -44,7 +43,7 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 	}
 
 	if opts.DenySelfHostedRunner {
-		c.Certificate.RunnerEnvironment = GitHubRunner
+		c.Certificate.RunnerEnvironment = verification.GitHubRunner
 	} else {
 		// if Certificate.RunnerEnvironment value is set to the empty string
 		// through the second function argument,
@@ -73,6 +72,8 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 	} else {
 		c.Certificate.Issuer = opts.OIDCIssuer
 	}
+
+	c.PredicateType = opts.PredicateType
 
 	return c, nil
 }

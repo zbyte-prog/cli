@@ -3,6 +3,7 @@ package verify
 import (
 	"testing"
 
+	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
 	"github.com/cli/cli/v2/pkg/cmd/factory"
 
 	"github.com/stretchr/testify/require"
@@ -65,7 +66,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, GitHubRunner, c.Certificate.RunnerEnvironment)
+		require.Equal(t, verification.GitHubRunner, c.Certificate.RunnerEnvironment)
 	})
 
 	t.Run("sets Extensions.RunnerEnvironment to * value if opts.DenySelfHostedRunner is false", func(t *testing.T) {

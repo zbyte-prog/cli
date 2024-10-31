@@ -203,6 +203,17 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 }
 
 func runVerify(opts *Options) error {
+	ec, err := newEnforcementCriteria(opts)
+	if err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
+		return err
+	}
+
+	if err := ec.Valid(); err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Invalid verification policy"))
+		return err
+	}
+
 	artifact, err := artifact.NewDigestedArtifact(opts.OCIClient, opts.ArtifactPath, opts.DigestAlgorithm)
 	if err != nil {
 		opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ Loading digest for %s failed\n"), opts.ArtifactPath)
@@ -257,12 +268,6 @@ func runVerify(opts *Options) error {
 	attestations = filteredAttestations
 
 	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", opts.PredicateType)
-
-	ec, err := newEnforcementCriteria(opts)
-	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
-		return err
-	}
 
 	sp, err := buildSigstoreVerifyPolicy(ec, *artifact)
 	if err != nil {

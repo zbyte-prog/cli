@@ -27,6 +27,7 @@ func expandToGitHubURL(tenant, ownerOrRepo string) string {
 func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, error) {
 	c := verification.EnforcementCriteria{}
 
+	// Set SANRegex using either the opts.SignerRepo or opts.SignerWorkflow values
 	if opts.SignerRepo != "" {
 		signedRepoRegex := expandToGitHubURL(opts.Tenant, opts.SignerRepo)
 		c.SANRegex = signedRepoRegex
@@ -38,10 +39,13 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 
 		c.SANRegex = validatedWorkflowRegex
 	} else {
+		// If neither of those values were set, default to the provided SANRegex and SAN values
 		c.SANRegex = opts.SANRegex
 		c.SAN = opts.SAN
 	}
 
+	// if the DenySelfHostedRunner option is set to true, set the
+	// RunnerEnvironment extension to the GitHub hosted runner value
 	if opts.DenySelfHostedRunner {
 		c.Certificate.RunnerEnvironment = verification.GitHubRunner
 	} else {
@@ -51,7 +55,10 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		c.Certificate.RunnerEnvironment = ""
 	}
 
+	// If the Repo option is provided, set the SourceRepositoryURI extension
 	if opts.Repo != "" {
+		// If the Tenant options is also provided, set the SourceRepositoryURI extension
+		// using the specific URI format
 		if opts.Tenant != "" {
 			c.Certificate.SourceRepositoryURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
 		} else {
@@ -59,6 +66,8 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		}
 	}
 
+	// If the Tenant option is provided, set the SourceRepositoryOwnerURI extension
+	// using the specific URI format
 	if opts.Tenant != "" {
 		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Owner)
 	} else {
@@ -66,10 +75,10 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 	}
 
 	// if tenant is provided, select the appropriate default based on the tenant
-	// otherwise, use the provided OIDCIssuer
 	if opts.Tenant != "" {
 		c.Certificate.Issuer = fmt.Sprintf(verification.GitHubTenantOIDCIssuer, opts.Tenant)
 	} else {
+		// otherwise, use the provided OIDCIssuer
 		c.Certificate.Issuer = opts.OIDCIssuer
 	}
 

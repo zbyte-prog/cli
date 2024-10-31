@@ -52,15 +52,15 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 			Logger: io.NewTestHandler(),
 		})
 
-		results, err := verifier.Verify(tc.attestations, publicGoodPolicy(t))
+		res := verifier.Verify(tc.attestations, publicGoodPolicy(t))
 
 		if tc.expectErr {
-			require.Error(t, err, "test case: %s", tc.name)
-			require.ErrorContains(t, err, tc.errContains, "test case: %s", tc.name)
-			require.Nil(t, results, "test case: %s", tc.name)
+			require.Error(t, res.Error, "test case: %s", tc.name)
+			require.ErrorContains(t, res.Error, tc.errContains, "test case: %s", tc.name)
+			require.Nil(t, res.VerifyResults, "test case: %s", tc.name)
 		} else {
-			require.Equal(t, len(tc.attestations), len(results), "test case: %s", tc.name)
-			require.NoError(t, err, "test case: %s", tc.name)
+			require.Equal(t, len(tc.attestations), len(res.VerifyResults), "test case: %s", tc.name)
+			require.NoError(t, res.Error, "test case: %s", tc.name)
 		}
 	}
 
@@ -74,10 +74,10 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 		attestations = append(attestations, invalidBundle[0])
 		require.Len(t, attestations, 3)
 
-		results, err := verifier.Verify(attestations, publicGoodPolicy(t))
+		res := verifier.Verify(attestations, publicGoodPolicy(t))
 
-		require.Len(t, results, 2)
-		require.NoError(t, err)
+		require.Len(t, res.VerifyResults, 2)
+		require.NoError(t, res.Error)
 	})
 
 	t.Run("fail with 0/2 verified attestations", func(t *testing.T) {
@@ -90,9 +90,9 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 		attestations = append(attestations, invalidBundle[0])
 		require.Len(t, attestations, 2)
 
-		results, err := verifier.Verify(attestations, publicGoodPolicy(t))
-		require.Nil(t, results)
-		require.Error(t, err)
+		res := verifier.Verify(attestations, publicGoodPolicy(t))
+		require.Nil(t, res.VerifyResults)
+		require.Error(t, res.Error)
 	})
 
 	t.Run("with GitHub Sigstore artifact", func(t *testing.T) {
@@ -108,9 +108,9 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 			Logger: io.NewTestHandler(),
 		})
 
-		results, err := verifier.Verify(attestations, githubPolicy)
-		require.Len(t, results, 1)
-		require.NoError(t, err)
+		res := verifier.Verify(attestations, githubPolicy)
+		require.Len(t, res.VerifyResults, 1)
+		require.NoError(t, res.Error)
 	})
 
 	t.Run("with custom trusted root", func(t *testing.T) {
@@ -121,9 +121,9 @@ func TestLiveSigstoreVerifier(t *testing.T) {
 			TrustedRoot: test.NormalizeRelativePath("../test/data/trusted_root.json"),
 		})
 
-		results, err := verifier.Verify(attestations, publicGoodPolicy(t))
-		require.Len(t, results, 2)
-		require.NoError(t, err)
+		res := verifier.Verify(attestations, publicGoodPolicy(t))
+		require.Len(t, res.VerifyResults, 2)
+		require.NoError(t, res.Error)
 	})
 }
 

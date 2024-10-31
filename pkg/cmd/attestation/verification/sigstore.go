@@ -28,6 +28,11 @@ type AttestationProcessingResult struct {
 	VerificationResult *verify.VerificationResult `json:"verificationResult"`
 }
 
+type SigstoreResults struct {
+	VerifyResults []*AttestationProcessingResult
+	Error         error
+}
+
 type SigstoreConfig struct {
 	TrustedRoot  string
 	Logger       *io.Handler
@@ -37,7 +42,7 @@ type SigstoreConfig struct {
 }
 
 type SigstoreVerifier interface {
-	Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error)
+	Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults
 }
 
 type LiveSigstoreVerifier struct {
@@ -198,9 +203,9 @@ func (v *LiveSigstoreVerifier) verify(attestation *api.Attestation, policy verif
 	}, nil
 }
 
-func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
+func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults {
 	if len(attestations) == 0 {
-		return nil, ErrNoAttestationsVerified
+		return &SigstoreResults{Error: ErrNoAttestationsVerified}
 	}
 
 	results := make([]*AttestationProcessingResult, 0)
@@ -219,10 +224,10 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 	}
 
 	if len(results) == 0 {
-		return nil, lastError
+		return &SigstoreResults{Error: lastError}
 	}
 
-	return results, nil
+	return &SigstoreResults{VerifyResults: results}
 }
 
 func newCustomVerifier(trustedRoot *root.TrustedRoot) (*verify.SignedEntityVerifier, error) {

@@ -258,13 +258,13 @@ func runVerify(opts *Options) error {
 
 	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", opts.PredicateType)
 
-	ec, err := newEnforcementCriteria(opts, *artifact)
+	ec, err := newEnforcementCriteria(opts)
 	if err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
 		return err
 	}
 
-	sp, err := SigstorePolicy(ec)
+	sp, err := SigstorePolicy(ec, *artifact)
 	if err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build Sigstore verification policy"))
 		return err

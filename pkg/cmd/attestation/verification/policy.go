@@ -31,6 +31,5 @@ type Extensions struct {
 type EnforcementCriteria struct {
 	Extensions    Extensions
 	PredicateType string
-	Artifact      artifact.DigestedArtifact
 	OIDCIssuer    string
 }

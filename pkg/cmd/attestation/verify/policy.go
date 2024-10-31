@@ -25,10 +25,8 @@ func expandToGitHubURL(tenant, ownerOrRepo string) string {
 	return fmt.Sprintf("(?i)^https://%s.ghe.com/%s/", tenant, ownerOrRepo)
 }
 
-func newEnforcementCriteria(opts *Options, a artifact.DigestedArtifact) (verification.EnforcementCriteria, error) {
-	c := verification.EnforcementCriteria{
-		Artifact: a,
-	}
+func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, error) {
+	c := verification.EnforcementCriteria{}
 
 	if opts.SignerRepo != "" {
 		signedRepoRegex := expandToGitHubURL(opts.Tenant, opts.SignerRepo)
@@ -98,8 +96,8 @@ func buildCertificateIdentityOption(c verification.EnforcementCriteria) (verify.
 	return verify.WithCertificateIdentity(certId), nil
 }
 
-func SigstorePolicy(c verification.EnforcementCriteria) (verify.PolicyBuilder, error) {
-	artifactDigestPolicyOption, err := verification.BuildDigestPolicyOption(c.Artifact)
+func SigstorePolicy(c verification.EnforcementCriteria, a artifact.DigestedArtifact) (verify.PolicyBuilder, error) {
+	artifactDigestPolicyOption, err := verification.BuildDigestPolicyOption(a)
 	if err != nil {
 		return verify.PolicyBuilder{}, err
 	}

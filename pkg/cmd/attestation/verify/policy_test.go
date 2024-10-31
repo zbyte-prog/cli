@@ -3,8 +3,6 @@ package verify
 import (
 	"testing"
 
-	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
-	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact/oci"
 	"github.com/cli/cli/v2/pkg/cmd/factory"
 
 	"github.com/stretchr/testify/require"
@@ -12,9 +10,6 @@ import (
 
 func TestNewEnforcementCriteria(t *testing.T) {
 	artifactPath := "../test/data/sigstore-js-2.1.0.tgz"
-
-	artifact, err := artifact.NewDigestedArtifact(oci.MockClient{}, artifactPath, "sha256")
-	require.NoError(t, err)
 
 	t.Run("sets SANRegex using SignerRepo", func(t *testing.T) {
 		opts := &Options{
@@ -24,7 +19,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			SignerRepo:   "foo/bar",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "(?i)^https://github.com/foo/bar/", c.Extensions.SANRegex)
 		require.Zero(t, c.Extensions.SAN)
@@ -39,7 +34,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			Hostname:       "github.com",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "^https://github.com/foo/bar/.github/workflows/attest.yml", c.Extensions.SANRegex)
 		require.Zero(t, c.Extensions.SAN)
@@ -54,7 +49,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			SANRegex:     "(?i)^https://github/foo",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.Extensions.SAN)
 		require.Equal(t, "(?i)^https://github/foo", c.Extensions.SANRegex)
@@ -68,7 +63,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			DenySelfHostedRunner: true,
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, GitHubRunner, c.Extensions.RunnerEnvironment)
 	})
@@ -81,7 +76,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			DenySelfHostedRunner: false,
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Zero(t, c.Extensions.RunnerEnvironment)
 	})
@@ -94,7 +89,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			Tenant:       "baz",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "https://baz.ghe.com/foo/bar", c.Extensions.SourceRepositoryURI)
 	})
@@ -106,7 +101,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			Repo:         "foo/bar",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "https://github.com/foo/bar", c.Extensions.SourceRepositoryURI)
 	})
@@ -119,7 +114,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			Tenant:       "baz",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "https://baz.ghe.com/foo", c.Extensions.SourceRepositoryOwnerURI)
 	})
@@ -131,7 +126,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			Repo:         "foo/bar",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "https://github.com/foo", c.Extensions.SourceRepositoryOwnerURI)
 	})
@@ -145,7 +140,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			OIDCIssuer:   "https://foo.com",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "https://token.actions.baz.ghe.com", c.OIDCIssuer)
 	})
@@ -158,7 +153,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			OIDCIssuer:   "https://foo.com",
 		}
 
-		c, err := newEnforcementCriteria(opts, *artifact)
+		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
 		require.Equal(t, "https://foo.com", c.OIDCIssuer)
 	})

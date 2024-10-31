@@ -16,22 +16,20 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, tenant, owner,
 		return errors.New("no attestations proccessing results")
 	}
 
-	var atLeastOneVerified bool
 	for _, attestation := range results {
-		if err := verifyCertExtensions(attestation, tenant, owner, repo, issuer); err != nil {
-			return err
+		if err := verifyCertExtension(attestation, tenant, owner, repo, issuer); err == nil {
+			// if at least one attestation is verified, we're good as verification
+			// is defined as successful if at least one attestation is verified
+			return nil
 		}
-		atLeastOneVerified = true
 	}
 
-	if !atLeastOneVerified {
-		return ErrNoAttestationsVerified
-	}
-
-	return nil
+	// if we have exited the for loop without returning early due to successful
+	// verification, we need to return an error
+	return ErrNoAttestationsVerified
 }
 
-func verifyCertExtensions(attestation *AttestationProcessingResult, tenant, owner, repo, issuer string) error {
+func verifyCertExtension(attestation *AttestationProcessingResult, tenant, owner, repo, issuer string) error {
 	var want string
 
 	if tenant == "" {

@@ -48,7 +48,7 @@ func TestVerifyCertExtensions(t *testing.T) {
 		twoResults[1].VerificationResult.Signature.Certificate.Extensions.SourceRepositoryOwnerURI = "https://github.com/wrong"
 
 		err := VerifyCertExtensions(twoResults, "", "owner", "owner/repo", GitHubOIDCIssuer)
-		require.NoError(t, err)
+		require.Error(t, err)
 	})
 }
 

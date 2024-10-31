@@ -16,7 +16,7 @@ type MockSigstoreVerifier struct {
 	t *testing.T
 }
 
-func (v *MockSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults {
+func (v *MockSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
 	statement := &in_toto.Statement{}
 	statement.PredicateType = SLSAPredicateV1
 
@@ -41,9 +41,7 @@ func (v *MockSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 
 	results := []*AttestationProcessingResult{&result}
 
-	return &SigstoreResults{
-		VerifyResults: results,
-	}
+	return results, nil
 }
 
 func NewMockSigstoreVerifier(t *testing.T) *MockSigstoreVerifier {
@@ -52,8 +50,6 @@ func NewMockSigstoreVerifier(t *testing.T) *MockSigstoreVerifier {
 
 type FailSigstoreVerifier struct{}
 
-func (v *FailSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults {
-	return &SigstoreResults{
-		Error: fmt.Errorf("failed to verify attestations"),
-	}
+func (v *FailSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
+	return nil, fmt.Errorf("failed to verify attestations")
 }

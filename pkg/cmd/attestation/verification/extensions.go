@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 )
 
 var (
@@ -18,7 +20,7 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 
 	var atLeastOneVerified bool
 	for _, attestation := range results {
-		if err := verifyCertExtensions(attestation, ec); err != nil {
+		if err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec); err != nil {
 			return err
 		}
 		atLeastOneVerified = true
@@ -32,30 +34,30 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 }
 
 func verifyCertExtensions(verifiedCert certificate.Summary, criteria EnforcementCriteria) error {
-	if c.Extensions.SourceRepositoryOwnerURI != "" {
-		sourceRepositoryOwnerURI := attestation.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryOwnerURI
-		if !strings.EqualFold(c.Extensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI) {
-			return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", c.Extensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI)
+	if criteria.Extensions.SourceRepositoryOwnerURI != "" {
+		sourceRepositoryOwnerURI := verifiedCert.Extensions.SourceRepositoryOwnerURI
+		if !strings.EqualFold(criteria.Extensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI) {
+			return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", criteria.Extensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI)
 		}
 	}
 
 	// if repo is set, check the SourceRepositoryURI field
-	if c.Extensions.SourceRepositoryURI != "" {
-		sourceRepositoryURI := attestation.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryURI
-		if !strings.EqualFold(c.Extensions.SourceRepositoryURI, sourceRepositoryURI) {
-			return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", c.Extensions.SourceRepositoryURI, sourceRepositoryURI)
+	if criteria.Extensions.SourceRepositoryURI != "" {
+		sourceRepositoryURI := verifiedCert.Extensions.SourceRepositoryURI
+		if !strings.EqualFold(criteria.Extensions.SourceRepositoryURI, sourceRepositoryURI) {
+			return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", criteria.Extensions.SourceRepositoryURI, sourceRepositoryURI)
 		}
 	}
 
 	// if issuer is anything other than the default, use the user-provided value;
 	// otherwise, select the appropriate default based on the tenant
-	if c.OIDCIssuer != "" {
-		certIssuer := attestation.VerificationResult.Signature.Certificate.Extensions.Issuer
-		if !strings.EqualFold(c.OIDCIssuer, certIssuer) {
-			if strings.Index(certIssuer, c.OIDCIssuer+"/") == 0 {
-				return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", c.OIDCIssuer, certIssuer)
+	if criteria.OIDCIssuer != "" {
+		certIssuer := verifiedCert.Extensions.Issuer
+		if !strings.EqualFold(criteria.OIDCIssuer, certIssuer) {
+			if strings.Index(certIssuer, criteria.OIDCIssuer+"/") == 0 {
+				return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", criteria.OIDCIssuer, certIssuer)
 			}
-			return fmt.Errorf("expected Issuer to be %s, got %s", c.OIDCIssuer, certIssuer)
+			return fmt.Errorf("expected Issuer to be %s, got %s", criteria.OIDCIssuer, certIssuer)
 		}
 	}
 

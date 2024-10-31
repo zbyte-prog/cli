@@ -66,8 +66,6 @@ func newEnforcementCriteria(opts *Options, a artifact.DigestedArtifact) (verific
 
 	if opts.DenySelfHostedRunner {
 		c.Extensions.RunnerEnvironment = GitHubRunner
-	} else {
-		c.Extensions.RunnerEnvironment = "*"
 	}
 
 	if opts.Repo != "" {

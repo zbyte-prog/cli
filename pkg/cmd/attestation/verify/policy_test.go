@@ -83,7 +83,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts, *artifact)
 		require.NoError(t, err)
-		require.Equal(t, "*", c.Extensions.RunnerEnvironment)
+		require.Zero(t, c.Extensions.RunnerEnvironment)
 	})
 
 	t.Run("sets Extensions.SourceRepositoryURI using opts.Repo and opts.Tenant", func(t *testing.T) {

@@ -141,9 +141,9 @@ func runInspect(opts *Options) error {
 		return fmt.Errorf("failed to build policy: %v", err)
 	}
 
-	res := opts.SigstoreVerifier.Verify(attestations, policy)
-	if res.Error != nil {
-		return fmt.Errorf("at least one attestation failed to verify against Sigstore: %v", res.Error)
+	res, err := opts.SigstoreVerifier.Verify(attestations, policy)
+	if err != nil {
+		return fmt.Errorf("at least one attestation failed to verify against Sigstore: %v", err)
 	}
 
 	opts.Logger.VerbosePrint(opts.Logger.ColorScheme.Green(
@@ -152,7 +152,7 @@ func runInspect(opts *Options) error {
 
 	// If the user provides the --format=json flag, print the results in JSON format
 	if opts.exporter != nil {
-		details, err := getAttestationDetails(opts.Tenant, res.VerifyResults)
+		details, err := getAttestationDetails(opts.Tenant, res)
 		if err != nil {
 			return fmt.Errorf("failed to get attestation detail: %v", err)
 		}
@@ -165,7 +165,7 @@ func runInspect(opts *Options) error {
 	}
 
 	// otherwise, print results in a table
-	details, err := getDetailsAsSlice(opts.Tenant, res.VerifyResults)
+	details, err := getDetailsAsSlice(opts.Tenant, res)
 	if err != nil {
 		return fmt.Errorf("failed to parse attestation details: %v", err)
 	}

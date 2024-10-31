@@ -28,11 +28,6 @@ type AttestationProcessingResult struct {
 	VerificationResult *verify.VerificationResult `json:"verificationResult"`
 }
 
-type SigstoreResults struct {
-	VerifyResults []*AttestationProcessingResult
-	Error         error
-}
-
 type SigstoreConfig struct {
 	TrustedRoot  string
 	Logger       *io.Handler
@@ -42,7 +37,7 @@ type SigstoreConfig struct {
 }
 
 type SigstoreVerifier interface {
-	Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults
+	Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error)
 }
 
 type LiveSigstoreVerifier struct {
@@ -172,7 +167,7 @@ func getLowestCertInChain(ca *root.CertificateAuthority) (*x509.Certificate, err
 	return nil, fmt.Errorf("certificate authority had no certificates")
 }
 
-func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults {
+func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
 	// initialize the processing apResults before attempting to verify
 	// with multiple verifiers
 	apResults := make([]*AttestationProcessingResult, len(attestations))
@@ -192,9 +187,7 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 		// determine which verifier should attempt verification against the bundle
 		verifier, issuer, err := v.chooseVerifier(apr.Attestation.Bundle)
 		if err != nil {
-			return &SigstoreResults{
-				Error: fmt.Errorf("failed to find recognized issuer from bundle content: %v", err),
-			}
+			return nil, fmt.Errorf("failed to find recognized issuer from bundle content: %v", err)
 		}
 
 		v.config.Logger.VerbosePrintf("Attempting verification against issuer \"%s\"\n", issuer)
@@ -206,9 +199,7 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 				"Failed to verify against issuer \"%s\" \n\n", issuer,
 			))
 
-			return &SigstoreResults{
-				Error: fmt.Errorf("verifying with issuer \"%s\"", issuer),
-			}
+			return nil, fmt.Errorf("verifying with issuer \"%s\"", issuer)
 		}
 
 		// if verification is successful, add the result
@@ -220,13 +211,11 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 		atLeastOneVerified = true
 	}
 
-	if atLeastOneVerified {
-		return &SigstoreResults{
-			VerifyResults: apResults,
-		}
-	} else {
-		return &SigstoreResults{Error: ErrNoAttestationsVerified}
+	if !atLeastOneVerified {
+		return nil, ErrNoAttestationsVerified
 	}
+
+	return apResults, nil
 }
 
 func newCustomVerifier(trustedRoot *root.TrustedRoot) (*verify.SignedEntityVerifier, error) {

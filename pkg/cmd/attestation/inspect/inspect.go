@@ -3,9 +3,12 @@ package inspect
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cli/cli/v2/internal/ghinstance"
+	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/io"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
@@ -133,7 +136,7 @@ type BundleInspectResult struct {
 }
 
 type BundleInspection struct {
-	Verifiable             bool                  `json:"verifiable"`
+	Authentic              bool                  `json:"verifiable"`
 	Certificate            CertificateInspection `json:"certificate"`
 	TransparencyLogEntries []TlogEntryInspection `json:"transparencyLogEntries"`
 	SignedTimestamps       []time.Time           `json:"signedTimestamps"`
@@ -144,6 +147,7 @@ type CertificateInspection struct {
 	certificate.Summary
 	NotBefore time.Time `json:"notBefore"`
 	NotAfter  time.Time `json:"notAfter"`
+	// add raw cert
 }
 
 type TlogEntryInspection struct {
@@ -165,7 +169,7 @@ func runInspect(opts *Options) error {
 
 		sigstoreRes := opts.SigstoreVerifier.Verify([]*api.Attestation{a}, sigstorePolicy)
 		if sigstoreRes.Error == nil {
-			inspectedBundle.Verifiable = true
+			inspectedBundle.Authentic = true
 		}
 
 		entity := a.Bundle
@@ -181,14 +185,12 @@ func runInspect(opts *Options) error {
 				return fmt.Errorf("failed to summarize certificate: %w", err)
 			}
 
-			inspectedCert := CertificateInspection{
+			inspectedBundle.Certificate = CertificateInspection{
 				Summary:   certSummary,
 				NotBefore: leafCert.NotBefore,
 				NotAfter:  leafCert.NotAfter,
 			}
 
-			inspectedBundle.Certificate = inspectedCert
-			// PrettyPrint(inspectedCert)
 		}
 
 		sigContent, err := entity.SignatureContent()
@@ -203,7 +205,6 @@ func runInspect(opts *Options) error {
 			}
 
 			inspectedBundle.Statement = *stmt
-			// PrettyPrint(stmt)
 		}
 
 		tlogTimestamps, err := dumpTlogs(entity)
@@ -211,26 +212,18 @@ func runInspect(opts *Options) error {
 			return fmt.Errorf("failed to dump tlog: %w", err)
 		}
 		inspectedBundle.TransparencyLogEntries = tlogTimestamps
-		// PrettyPrint(tlogTimestamps)
 
 		signedTimestamps, err := dumpSignedTimestamps(entity)
 		if err != nil {
 			return fmt.Errorf("failed to dump tsa: %w", err)
 		}
 		inspectedBundle.SignedTimestamps = signedTimestamps
-		// PrettyPrint(signedTimestamps)
 
-		// collect timestamps
-
-		// fmt.Println(a.Bundle)
 		inspectedBundles = append(inspectedBundles, inspectedBundle)
 	}
 
-	result := BundleInspectResult{
-		InspectedBundles: inspectedBundles,
-	}
-
-	PrettyPrint(result)
+	// PrettyPrint(BundleInspectResult{InspectedBundles: inspectedBundles})
+	inspectionResult := BundleInspectResult{InspectedBundles: inspectedBundles}
 
 	// policy, err := buildPolicy(*artifact)
 	// if err != nil {
@@ -247,18 +240,18 @@ func runInspect(opts *Options) error {
 	// ))
 	//
 	// If the user provides the --format=json flag, print the results in JSON format
-	// if opts.exporter != nil {
-	// 	details, err := getAttestationDetails(opts.Tenant, res.VerifyResults)
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to get attestation detail: %v", err)
-	// 	}
-	//
-	// 	// print the results to the terminal as an array of JSON objects
-	// 	if err = opts.exporter.Write(opts.Logger.IO, details); err != nil {
-	// 		return fmt.Errorf("failed to write JSON output")
-	// 	}
-	// 	return nil
-	// }
+	if opts.exporter != nil {
+		// details, err := getAttestationDetails(opts.Tenant, res.VerifyResults)
+		// if err != nil {
+		// 	return fmt.Errorf("failed to get attestation detail: %v", err)
+		// }
+
+		// print the results to the terminal as an array of JSON objects
+		if err = opts.exporter.Write(opts.Logger.IO, inspectionResult); err != nil {
+			return fmt.Errorf("failed to write JSON output")
+		}
+		return nil
+	}
 	//
 	// // otherwise, print results in a table
 	// details, err := getDetailsAsSlice(opts.Tenant, res.VerifyResults)
@@ -266,22 +259,42 @@ func runInspect(opts *Options) error {
 	// 	return fmt.Errorf("failed to parse attestation details: %v", err)
 	// }
 	//
-	// headers := []string{"Repo Name", "Repo ID", "Org Name", "Org ID", "Workflow ID"}
-	// t := tableprinter.New(opts.Logger.IO, tableprinter.WithHeader(headers...))
-	//
-	// for _, row := range details {
-	// 	for _, field := range row {
-	// 		t.AddField(field, tableprinter.WithTruncate(nil))
-	// 	}
-	// 	t.EndRow()
-	// }
-	//
-	// if err = t.Render(); err != nil {
-	// 	return fmt.Errorf("failed to print output: %v", err)
-	// }
-	//
+	// []string{detail.RepositoryName, detail.RepositoryID, detail.OrgName, detail.OrgID, detail.WorkflowID}
+
+	headers := []string{"Authentic", "Issuer", "Predicate", "NWO", "Workflow"}
+	t := tableprinter.New(opts.Logger.IO, tableprinter.WithHeader(headers...))
+
+	details := make([][]string, len(inspectionResult.InspectedBundles))
+	for i, iB := range inspectionResult.InspectedBundles {
+
+		details[i] = []string{strconv.FormatBool(iB.Authentic), iB.Certificate.Issuer, iB.Statement.GetPredicateType(), popNwo(iB.Certificate.SourceRepositoryURI), removeRepoURI(iB.Certificate.SourceRepositoryURI, iB.Certificate.SubjectAlternativeName)}
+	}
+
+	for _, row := range details {
+		for _, field := range row {
+			t.AddField(field, tableprinter.WithTruncate(nil))
+		}
+		t.EndRow()
+	}
+
+	if err = t.Render(); err != nil {
+		return fmt.Errorf("failed to print output: %v", err)
+	}
 
 	return nil
+}
+
+func popNwo(url string) string {
+	parts := strings.Split(url, "/")
+	if len(parts) > 2 {
+		return parts[len(parts)-2] + "/" + parts[len(parts)-1]
+	} else {
+		return parts[0]
+	}
+}
+
+func removeRepoURI(repoURI, workflow string) string {
+	return strings.ReplaceAll(workflow, repoURI+"/", "")
 }
 
 func dumpTlogs(entity *bundle.Bundle) ([]TlogEntryInspection, error) {

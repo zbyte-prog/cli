@@ -25,12 +25,13 @@ func TestVerifyCertExtensions(t *testing.T) {
 		},
 	}
 
+	certSummary := certificate.Summary{}
+	certSummary.SourceRepositoryOwnerURI = "https://github.com/owner"
+	certSummary.SourceRepositoryURI = "https://github.com/owner/repo"
+	certSummary.Issuer = GitHubOIDCIssuer
+
 	c := EnforcementCriteria{
-		Extensions: Extensions{
-			SourceRepositoryOwnerURI: "https://github.com/owner",
-			SourceRepositoryURI:      "https://github.com/owner/repo",
-		},
-		OIDCIssuer: GitHubOIDCIssuer,
+		Certificate: certSummary,
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -40,21 +41,21 @@ func TestVerifyCertExtensions(t *testing.T) {
 
 	t.Run("with wrong SourceRepositoryOwnerURI", func(t *testing.T) {
 		expectedCriteria := c
-		expectedCriteria.Extensions.SourceRepositoryOwnerURI = "https://github.com/wrong"
+		expectedCriteria.Certificate.SourceRepositoryOwnerURI = "https://github.com/wrong"
 		err := VerifyCertExtensions(results, expectedCriteria)
 		require.ErrorContains(t, err, "expected SourceRepositoryOwnerURI to be https://github.com/wrong, got https://github.com/owner")
 	})
 
 	t.Run("with wrong SourceRepositoryURI", func(t *testing.T) {
 		expectedCriteria := c
-		expectedCriteria.Extensions.SourceRepositoryURI = "https://github.com/foo/wrong"
+		expectedCriteria.Certificate.SourceRepositoryURI = "https://github.com/foo/wrong"
 		err := VerifyCertExtensions(results, expectedCriteria)
 		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/foo/wrong, got https://github.com/owner/repo")
 	})
 
 	t.Run("with wrong OIDCIssuer", func(t *testing.T) {
 		expectedCriteria := c
-		expectedCriteria.OIDCIssuer = "wrong"
+		expectedCriteria.Certificate.Issuer = "wrong"
 		err := VerifyCertExtensions(results, expectedCriteria)
 		require.ErrorContains(t, err, "expected Issuer to be wrong, got https://token.actions.githubusercontent.com")
 	})

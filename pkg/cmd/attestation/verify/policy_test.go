@@ -21,8 +21,8 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "(?i)^https://github.com/foo/bar/", c.Extensions.SANRegex)
-		require.Zero(t, c.Extensions.SAN)
+		require.Equal(t, "(?i)^https://github.com/foo/bar/", c.SANRegex)
+		require.Zero(t, c.SAN)
 	})
 
 	t.Run("sets SANRegex using SignerWorkflow matching host regex", func(t *testing.T) {
@@ -36,8 +36,8 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "^https://github.com/foo/bar/.github/workflows/attest.yml", c.Extensions.SANRegex)
-		require.Zero(t, c.Extensions.SAN)
+		require.Equal(t, "^https://github.com/foo/bar/.github/workflows/attest.yml", c.SANRegex)
+		require.Zero(t, c.SAN)
 	})
 
 	t.Run("sets SANRegex and SAN using SANRegex and SAN", func(t *testing.T) {
@@ -51,8 +51,8 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.Extensions.SAN)
-		require.Equal(t, "(?i)^https://github/foo", c.Extensions.SANRegex)
+		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.SAN)
+		require.Equal(t, "(?i)^https://github/foo", c.SANRegex)
 	})
 
 	t.Run("sets Extensions.RunnerEnvironment to GitHubRunner value if opts.DenySelfHostedRunner is true", func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, GitHubRunner, c.Extensions.RunnerEnvironment)
+		require.Equal(t, GitHubRunner, c.Certificate.RunnerEnvironment)
 	})
 
 	t.Run("sets Extensions.RunnerEnvironment to * value if opts.DenySelfHostedRunner is false", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Zero(t, c.Extensions.RunnerEnvironment)
+		require.Zero(t, c.Certificate.RunnerEnvironment)
 	})
 
 	t.Run("sets Extensions.SourceRepositoryURI using opts.Repo and opts.Tenant", func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "https://baz.ghe.com/foo/bar", c.Extensions.SourceRepositoryURI)
+		require.Equal(t, "https://baz.ghe.com/foo/bar", c.Certificate.SourceRepositoryURI)
 	})
 
 	t.Run("sets Extensions.SourceRepositoryURI using opts.Repo", func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "https://github.com/foo/bar", c.Extensions.SourceRepositoryURI)
+		require.Equal(t, "https://github.com/foo/bar", c.Certificate.SourceRepositoryURI)
 	})
 
 	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner and opts.Tenant", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "https://baz.ghe.com/foo", c.Extensions.SourceRepositoryOwnerURI)
+		require.Equal(t, "https://baz.ghe.com/foo", c.Certificate.SourceRepositoryOwnerURI)
 	})
 
 	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "https://github.com/foo", c.Extensions.SourceRepositoryOwnerURI)
+		require.Equal(t, "https://github.com/foo", c.Certificate.SourceRepositoryOwnerURI)
 	})
 
 	t.Run("sets OIDCIssuer using opts.OIDCIssuer and opts.Tenant", func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "https://token.actions.baz.ghe.com", c.OIDCIssuer)
+		require.Equal(t, "https://token.actions.baz.ghe.com", c.Certificate.Issuer)
 	})
 
 	t.Run("sets OIDCIssuer using opts.OIDCIssuer", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 
 		c, err := newEnforcementCriteria(opts)
 		require.NoError(t, err)
-		require.Equal(t, "https://foo.com", c.OIDCIssuer)
+		require.Equal(t, "https://foo.com", c.Certificate.Issuer)
 	})
 }
 

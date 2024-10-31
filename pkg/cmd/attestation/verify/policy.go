@@ -30,55 +30,55 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 
 	if opts.SignerRepo != "" {
 		signedRepoRegex := expandToGitHubURL(opts.Tenant, opts.SignerRepo)
-		c.Extensions.SANRegex = signedRepoRegex
+		c.SANRegex = signedRepoRegex
 	} else if opts.SignerWorkflow != "" {
 		validatedWorkflowRegex, err := validateSignerWorkflow(opts)
 		if err != nil {
 			return verification.EnforcementCriteria{}, err
 		}
 
-		c.Extensions.SANRegex = validatedWorkflowRegex
+		c.SANRegex = validatedWorkflowRegex
 	} else {
-		c.Extensions.SANRegex = opts.SANRegex
-		c.Extensions.SAN = opts.SAN
+		c.SANRegex = opts.SANRegex
+		c.SAN = opts.SAN
 	}
 
 	if opts.DenySelfHostedRunner {
-		c.Extensions.RunnerEnvironment = GitHubRunner
+		c.Certificate.RunnerEnvironment = GitHubRunner
 	} else {
-		// if Extensions.RunnerEnvironment value is set to the empty string
+		// if Certificate.RunnerEnvironment value is set to the empty string
 		// through the second function argument,
 		// no certificate matching will happen on the RunnerEnvironment field
-		c.Extensions.RunnerEnvironment = ""
+		c.Certificate.RunnerEnvironment = ""
 	}
 
 	if opts.Repo != "" {
 		if opts.Tenant != "" {
-			c.Extensions.SourceRepositoryURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
+			c.Certificate.SourceRepositoryURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
 		} else {
-			c.Extensions.SourceRepositoryURI = fmt.Sprintf("https://github.com/%s", opts.Repo)
+			c.Certificate.SourceRepositoryURI = fmt.Sprintf("https://github.com/%s", opts.Repo)
 		}
 	}
 
 	if opts.Tenant != "" {
-		c.Extensions.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Owner)
+		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Owner)
 	} else {
-		c.Extensions.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
+		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
 	}
 
 	// if tenant is provided, select the appropriate default based on the tenant
 	// otherwise, use the provided OIDCIssuer
 	if opts.Tenant != "" {
-		c.OIDCIssuer = fmt.Sprintf(verification.GitHubTenantOIDCIssuer, opts.Tenant)
+		c.Certificate.Issuer = fmt.Sprintf(verification.GitHubTenantOIDCIssuer, opts.Tenant)
 	} else {
-		c.OIDCIssuer = opts.OIDCIssuer
+		c.Certificate.Issuer = opts.OIDCIssuer
 	}
 
 	return c, nil
 }
 
 func buildCertificateIdentityOption(c verification.EnforcementCriteria) (verify.PolicyOption, error) {
-	sanMatcher, err := verify.NewSANMatcher(c.Extensions.SAN, c.Extensions.SANRegex)
+	sanMatcher, err := verify.NewSANMatcher(c.SAN, c.SANRegex)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func buildCertificateIdentityOption(c verification.EnforcementCriteria) (verify.
 	}
 
 	extensions := certificate.Extensions{
-		RunnerEnvironment: c.Extensions.RunnerEnvironment,
+		RunnerEnvironment: c.Certificate.RunnerEnvironment,
 	}
 
 	certId, err := verify.NewCertificateIdentity(sanMatcher, issuerMatcher, extensions)

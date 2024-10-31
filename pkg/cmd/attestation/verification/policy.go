@@ -5,6 +5,7 @@ import (
 
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 
+	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
@@ -19,17 +20,9 @@ func BuildDigestPolicyOption(a artifact.DigestedArtifact) (verify.ArtifactPolicy
 	return verify.WithArtifactDigest(a.Algorithm(), decoded), nil
 }
 
-type Extensions struct {
-	RunnerEnvironment        string
-	SANRegex                 string
-	SAN                      string
-	SignerWorkflow           string
-	SourceRepositoryOwnerURI string
-	SourceRepositoryURI      string
-}
-
 type EnforcementCriteria struct {
-	Extensions    Extensions
+	Certificate   certificate.Summary
 	PredicateType string
-	OIDCIssuer    string
+	SANRegex      string
+	SAN           string
 }

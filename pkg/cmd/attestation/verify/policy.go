@@ -25,25 +25,6 @@ func expandToGitHubURL(tenant, ownerOrRepo string) string {
 	return fmt.Sprintf("(?i)^https://%s.ghe.com/%s/", tenant, ownerOrRepo)
 }
 
-func validateSignerWorkflow(opts *Options) (string, error) {
-	// we expect a provided workflow argument be in the format [HOST/]/<OWNER>/<REPO>/path/to/workflow.yml
-	// if the provided workflow does not contain a host, set the host
-	match, err := regexp.MatchString(hostRegex, opts.SignerWorkflow)
-	if err != nil {
-		return "", err
-	}
-
-	if match {
-		return fmt.Sprintf("^https://%s", opts.SignerWorkflow), nil
-	}
-
-	if opts.Hostname == "" {
-		return "", errors.New("unknown host")
-	}
-
-	return fmt.Sprintf("^https://%s/%s", opts.Hostname, opts.SignerWorkflow), nil
-}
-
 func newEnforcementCriteria(opts *Options, a artifact.DigestedArtifact) (verification.EnforcementCriteria, error) {
 	c := verification.EnforcementCriteria{
 		Artifact: a,
@@ -130,4 +111,23 @@ func SigstorePolicy(c verification.EnforcementCriteria) (verify.PolicyBuilder, e
 
 	policy := verify.NewPolicy(artifactDigestPolicyOption, certIdOption)
 	return policy, nil
+}
+
+func validateSignerWorkflow(opts *Options) (string, error) {
+	// we expect a provided workflow argument be in the format [HOST/]/<OWNER>/<REPO>/path/to/workflow.yml
+	// if the provided workflow does not contain a host, set the host
+	match, err := regexp.MatchString(hostRegex, opts.SignerWorkflow)
+	if err != nil {
+		return "", err
+	}
+
+	if match {
+		return fmt.Sprintf("^https://%s", opts.SignerWorkflow), nil
+	}
+
+	if opts.Hostname == "" {
+		return "", errors.New("unknown host")
+	}
+
+	return fmt.Sprintf("^https://%s/%s", opts.Hostname, opts.SignerWorkflow), nil
 }

@@ -33,38 +33,36 @@ sudo apt install gh
 > [!NOTE]
 > If errors regarding GPG signatures occur, see [cli/cli#9569](https://github.com/cli/cli/issues/9569) for steps to fix this.
 
-### Fedora, CentOS, Red Hat Enterprise Linux (dnf)
+### Fedora, CentOS, Red Hat Enterprise Linux (dnf5)
 
 Install from our package repository for immediate access to latest releases:
 
 ```bash
-sudo dnf install 'dnf-command(config-manager)'
-sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+sudo dnf install dnf5-plugins
+sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
 sudo dnf install gh --repo gh-cli
 ```
 
-<details>
-<summary>Show dnf5 commands</summary>
+These commands apply for `dnf5`. If you're using `dnf4`, commands will vary slightly.
 
-If you're using `dnf5`, commands will vary slightly:
+<details>
+<summary>Show dnf4 commands</summary>
 
 ```bash
-sudo dnf5 install dnf5-plugins
-sudo dnf5 config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
-sudo dnf5 install gh --repo gh-cli
+sudo dnf4 install 'dnf-command(config-manager)'
+sudo dnf4 config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+sudo dnf4 install gh --repo gh-cli
 ```
-
-For more details, check out the [`dnf5 config-manager` documentation](https://dnf5.readthedocs.io/en/latest/dnf5_plugins/config-manager.8.html).
 </details>
+
+> [!NOTE]
+> If errors regarding GPG signatures occur, see [cli/cli#9569](https://github.com/cli/cli/issues/9569) for steps to fix this.
 
 Alternatively, install from the [community repository](https://packages.fedoraproject.org/pkgs/gh/gh/):
 
 ```bash
 sudo dnf install gh
 ```
-
-> [!NOTE]
-> If errors regarding GPG signatures occur, see [cli/cli#9569](https://github.com/cli/cli/issues/9569) for steps to fix this.
 
 Upgrade:
 

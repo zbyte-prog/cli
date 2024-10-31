@@ -31,7 +31,7 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 	}
 }
 
-func verifyCertExtensions(attestation *AttestationProcessingResult, c EnforcementCriteria) error {
+func verifyCertExtensions(verifiedCert certificate.Summary, criteria EnforcementCriteria) error {
 	if c.Extensions.SourceRepositoryOwnerURI != "" {
 		sourceRepositoryOwnerURI := attestation.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryOwnerURI
 		if !strings.EqualFold(c.Extensions.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI) {

@@ -132,13 +132,13 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		require.Equal(t, "https://github.com/foo", c.Certificate.SourceRepositoryOwnerURI)
 	})
 
-	t.Run("sets OIDCIssuer using opts.OIDCIssuer and opts.Tenant", func(t *testing.T) {
+	t.Run("sets OIDCIssuer using opts.Tenant", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
 			Owner:        "foo",
 			Repo:         "foo/bar",
 			Tenant:       "baz",
-			OIDCIssuer:   "https://foo.com",
+			OIDCIssuer:   verification.GitHubOIDCIssuer,
 		}
 
 		c, err := newEnforcementCriteria(opts)
@@ -152,6 +152,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 			Owner:        "foo",
 			Repo:         "foo/bar",
 			OIDCIssuer:   "https://foo.com",
+			Tenant:       "baz",
 		}
 
 		c, err := newEnforcementCriteria(opts)

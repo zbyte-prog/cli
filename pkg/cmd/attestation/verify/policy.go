@@ -74,8 +74,8 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
 	}
 
-	// If the OIDCIssuer option has been set, use that custom value
-	// Otherwise check if tenant is provided, select the appropriate default based on that
+	// if issuer is anything other than the default, use the user-provided value;
+	// otherwise, select the appropriate default based on the tenant
 	if opts.OIDCIssuer != verification.GitHubOIDCIssuer {
 		c.Certificate.Issuer = opts.OIDCIssuer
 	} else {

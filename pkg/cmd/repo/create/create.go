@@ -93,7 +93,12 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			To create a remote repository from an existing local repository, specify the source directory with %[1]s--source%[1]s.
 			By default, the remote repository name will be the name of the source directory.
+
 			Pass %[1]s--push%[1]s to push any local commits to the new repository.
+
+			For language or platform .gitignore templates to use with %[1]s--gitignore%[1]s, <https://github.com/github/gitignore>.
+
+			For license keywords to use with %[1]s--license%[1]s, run %[1]sgh repo license list%[1]s or visit <https://choosealicense.com>.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# create a repository interactively
@@ -222,7 +227,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			return nil, cobra.ShellCompDirectiveError
 		}
 		hostname, _ := cfg.Authentication().DefaultHost()
-		results, err := listGitIgnoreTemplates(httpClient, hostname)
+		results, err := api.RepoGitIgnoreTemplates(httpClient, hostname)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -239,7 +244,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			return nil, cobra.ShellCompDirectiveError
 		}
 		hostname, _ := cfg.Authentication().DefaultHost()
-		licenses, err := listLicenseTemplates(httpClient, hostname)
+		licenses, err := api.RepoLicenses(httpClient, hostname)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -806,7 +811,7 @@ func interactiveGitIgnore(client *http.Client, hostname string, prompter iprompt
 		return "", nil
 	}
 
-	templates, err := listGitIgnoreTemplates(client, hostname)
+	templates, err := api.RepoGitIgnoreTemplates(client, hostname)
 	if err != nil {
 		return "", err
 	}
@@ -825,7 +830,7 @@ func interactiveLicense(client *http.Client, hostname string, prompter iprompter
 		return "", nil
 	}
 
-	licenses, err := listLicenseTemplates(client, hostname)
+	licenses, err := api.RepoLicenses(client, hostname)
 	if err != nil {
 		return "", err
 	}
@@ -855,13 +860,22 @@ func interactiveRepoInfo(client *http.Client, hostname string, prompter iprompte
 		return "", "", "", err
 	}
 
-	visibilityOptions := []string{"Public", "Private", "Internal"}
+	visibilityOptions := getRepoVisibilityOptions(owner)
 	selected, err := prompter.Select("Visibility", "Public", visibilityOptions)
 	if err != nil {
 		return "", "", "", err
 	}
 
 	return name, description, strings.ToUpper(visibilityOptions[selected]), nil
+}
+
+func getRepoVisibilityOptions(owner string) []string {
+	visibilityOptions := []string{"Public", "Private"}
+	// orgs can also create internal repos
+	if owner != "" {
+		visibilityOptions = append(visibilityOptions, "Internal")
+	}
+	return visibilityOptions
 }
 
 func interactiveRepoNameAndOwner(client *http.Client, hostname string, prompter iprompter, defaultName string) (string, string, error) {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"os"
 
@@ -36,6 +37,8 @@ type SigstoreConfig struct {
 	TrustedRoot  string
 	Logger       *io.Handler
 	NoPublicGood bool
+	// If tenancy mode is not used, trust domain is empty
+	TrustDomain string
 }
 
 type SigstoreVerifier interface {
@@ -46,6 +49,8 @@ type LiveSigstoreVerifier struct {
 	config SigstoreConfig
 }
 
+var ErrNoAttestationsVerified = errors.New("no attestations were verified")
+
 // NewLiveSigstoreVerifier creates a new LiveSigstoreVerifier struct
 // that is used to verify artifacts and attestations against the
 // Public Good, GitHub, or a custom trusted root.
@@ -55,7 +60,7 @@ func NewLiveSigstoreVerifier(config SigstoreConfig) *LiveSigstoreVerifier {
 	}
 }
 
-func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.ProtobufBundle) (*verify.SignedEntityVerifier, string, error) {
+func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.Bundle) (*verify.SignedEntityVerifier, string, error) {
 	if !b.MinVersion("0.2") {
 		return nil, "", fmt.Errorf("unsupported bundle version: %s", b.MediaType)
 	}
@@ -108,7 +113,7 @@ func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.ProtobufBundle) (*verify
 					// issuer. We *must* use the trusted root provided.
 					if issuer == PublicGoodIssuerOrg {
 						if v.config.NoPublicGood {
-							return nil, "", fmt.Errorf("Detected public good instance but requested verification without public good instance")
+							return nil, "", fmt.Errorf("detected public good instance but requested verification without public good instance")
 						}
 						verifier, err := newPublicGoodVerifierWithTrustedRoot(trustedRoot)
 						if err != nil {
@@ -144,7 +149,7 @@ func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.ProtobufBundle) (*verify
 
 		return publicGoodVerifier, issuer, nil
 	} else if leafCert.Issuer.Organization[0] == GitHubIssuerOrg || v.config.NoPublicGood {
-		ghVerifier, err := newGitHubVerifier()
+		ghVerifier, err := newGitHubVerifier(v.config.TrustDomain)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to create GitHub Sigstore verifier: %v", err)
 		}
@@ -168,18 +173,20 @@ func getLowestCertInChain(ca *root.CertificateAuthority) (*x509.Certificate, err
 }
 
 func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy verify.PolicyBuilder) *SigstoreResults {
-	// initialize the processing results before attempting to verify
+	// initialize the processing apResults before attempting to verify
 	// with multiple verifiers
-	results := make([]*AttestationProcessingResult, len(attestations))
+	apResults := make([]*AttestationProcessingResult, len(attestations))
 	for i, att := range attestations {
 		apr := &AttestationProcessingResult{
 			Attestation: att,
 		}
-		results[i] = apr
+		apResults[i] = apr
 	}
 
+	var atLeastOneVerified bool
+
 	totalAttestations := len(attestations)
-	for i, apr := range results {
+	for i, apr := range apResults {
 		v.config.Logger.VerbosePrintf("Verifying attestation %d/%d against the configured Sigstore trust roots\n", i+1, totalAttestations)
 
 		// determine which verifier should attempt verification against the bundle
@@ -200,7 +207,7 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 			))
 
 			return &SigstoreResults{
-				Error: fmt.Errorf("verifying with issuer \"%s\": %v", issuer, err),
+				Error: fmt.Errorf("verifying with issuer \"%s\"", issuer),
 			}
 		}
 
@@ -210,10 +217,15 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 			"SUCCESS - attestation signature verified with \"%s\"\n", issuer,
 		))
 		apr.VerificationResult = result
+		atLeastOneVerified = true
 	}
 
-	return &SigstoreResults{
-		VerifyResults: results,
+	if atLeastOneVerified {
+		return &SigstoreResults{
+			VerifyResults: apResults,
+		}
+	} else {
+		return &SigstoreResults{Error: ErrNoAttestationsVerified}
 	}
 }
 
@@ -240,13 +252,25 @@ func newCustomVerifier(trustedRoot *root.TrustedRoot) (*verify.SignedEntityVerif
 	return gv, nil
 }
 
-func newGitHubVerifier() (*verify.SignedEntityVerifier, error) {
+func newGitHubVerifier(trustDomain string) (*verify.SignedEntityVerifier, error) {
+	var tr string
+
 	opts := GitHubTUFOptions()
 	client, err := tuf.New(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TUF client: %v", err)
 	}
-	trustedRoot, err := root.GetTrustedRoot(client)
+
+	if trustDomain == "" {
+		tr = "trusted_root.json"
+	} else {
+		tr = fmt.Sprintf("%s.trusted_root.json", trustDomain)
+	}
+	jsonBytes, err := client.GetTarget(tr)
+	if err != nil {
+		return nil, err
+	}
+	trustedRoot, err := root.NewTrustedRootFromJSON(jsonBytes)
 	if err != nil {
 		return nil, err
 	}

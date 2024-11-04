@@ -25,7 +25,7 @@ func expandToGitHubURL(tenant, ownerOrRepo string) string {
 }
 
 func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, error) {
-	c := verification.EnforcementCriteria{}
+	var c verification.EnforcementCriteria
 
 	// Set SANRegex using either the opts.SignerRepo or opts.SignerWorkflow values
 	if opts.SignerRepo != "" {
@@ -66,7 +66,7 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		}
 	}
 
-	// If the Tenant option is provided, set the SourceRepositoryOwnerURI extension
+	// If the tenant option is provided, set the SourceRepositoryOwnerURI extension
 	// using the specific URI format
 	if opts.Tenant != "" {
 		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Owner)
@@ -74,16 +74,13 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
 	}
 
-	// if issuer is anything other than the default, use the user-provided value;
-	// otherwise, select the appropriate default based on the tenant
-	if opts.OIDCIssuer != verification.GitHubOIDCIssuer {
-		c.Certificate.Issuer = opts.OIDCIssuer
+	// if the tenant is provided and OIDC issuer provided matches the default
+	// use the tenant-specific issuer
+	if opts.Tenant != "" && opts.OIDCIssuer == verification.GitHubOIDCIssuer {
+		c.Certificate.Issuer = fmt.Sprintf(verification.GitHubTenantOIDCIssuer, opts.Tenant)
 	} else {
-		if opts.Tenant != "" {
-			c.Certificate.Issuer = fmt.Sprintf(verification.GitHubTenantOIDCIssuer, opts.Tenant)
-		} else {
-			c.Certificate.Issuer = verification.GitHubOIDCIssuer
-		}
+		// otherwise use the custom OIDC issuer provided as an option
+		c.Certificate.Issuer = opts.OIDCIssuer
 	}
 
 	c.PredicateType = opts.PredicateType
@@ -142,6 +139,8 @@ func validateSignerWorkflow(opts *Options) (string, error) {
 		return fmt.Sprintf("^https://%s", opts.SignerWorkflow), nil
 	}
 
+	// if the provided workflow did not match the expect format
+	// we move onto creating a signer workflow using the provided host name
 	if opts.Hostname == "" {
 		return "", errors.New("unknown host")
 	}

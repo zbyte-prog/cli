@@ -12,10 +12,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
 )
 
-const (
-	// represents the GitHub hosted runner in the certificate RunnerEnvironment extension
-	hostRegex = `^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+.*$`
-)
+const hostRegex = `^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+.*$`
 
 func expandToGitHubURL(tenant, ownerOrRepo string) string {
 	if tenant == "" {

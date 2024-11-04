@@ -10,6 +10,7 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
+// represents the GitHub hosted runner in the certificate RunnerEnvironment extension
 const GitHubRunner = "github-hosted"
 
 // BuildDigestPolicyOption builds a verify.ArtifactPolicyOption

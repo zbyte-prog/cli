@@ -40,7 +40,7 @@ exec gh run watch $RUN_ID --exit-status
 
 # Delete the workflow run
 exec gh run delete $RUN_ID
-stdout '✓ Request to delete workflow submitted.'
+stdout '✓ Request to delete workflow run submitted.'
 
 # It takes some time for a workflow run to be deleted
 sleep 5

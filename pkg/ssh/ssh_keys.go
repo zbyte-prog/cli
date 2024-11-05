@@ -26,7 +26,7 @@ type KeyPair struct {
 var ErrKeyAlreadyExists = errors.New("SSH key already exists")
 
 func (c *Context) LocalPublicKeys() ([]string, error) {
-	sshDir, err := c.sshDir()
+	sshDir, err := c.SshDir()
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (c *Context) GenerateSSHKey(keyName string, passphrase string) (*KeyPair, e
 		return nil, err
 	}
 
-	sshDir, err := c.sshDir()
+	sshDir, err := c.SshDir()
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *Context) GenerateSSHKey(keyName string, passphrase string) (*KeyPair, e
 	return &keyPair, nil
 }
 
-func (c *Context) sshDir() (string, error) {
+func (c *Context) SshDir() (string, error) {
 	if c.ConfigDir != "" {
 		return c.ConfigDir, nil
 	}

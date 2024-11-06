@@ -27,7 +27,7 @@ func WithPrAndIssueQueryParams(client *api.Client, baseRepo ghrepo.Interface, ba
 	if len(state.Assignees) > 0 {
 		q.Set("assignees", strings.Join(state.Assignees, ","))
 	}
-	// Embded a template only if the body is empty, which is useful for Web Mode, and avoid duplication in Editor Mode
+	// Set a template parameter if no body parameter is provided e.g. Web Mode
 	if len(state.Template) > 0 && len(state.Body) == 0 {
 		q.Set("template", state.Template)
 	}

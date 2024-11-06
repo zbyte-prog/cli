@@ -203,7 +203,8 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 		return nil, ErrNoAttestationsVerified
 	}
 
-	results := make([]*AttestationProcessingResult, 0)
+	results := make([]*AttestationProcessingResult, len(attestations))
+	var verifyCount int
 	var lastError error
 	totalAttestations := len(attestations)
 	for i, a := range attestations {
@@ -215,12 +216,16 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 			// move onto the next attestation in the for loop if verification fails
 			continue
 		}
-		results = append(results, apr)
+		results[verifyCount] = apr
+		verifyCount++
 	}
 
-	if len(results) == 0 {
+	if verifyCount == 0 {
 		return nil, lastError
 	}
+
+	// truncate the results slice to only include verified attestations
+	results = results[:verifyCount]
 
 	return results, nil
 }

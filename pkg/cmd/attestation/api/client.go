@@ -1,16 +1,21 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/cli/cli/v2/api"
 	ioconfig "github.com/cli/cli/v2/pkg/cmd/attestation/io"
+	"github.com/golang/snappy"
+	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
+	"github.com/sigstore/sigstore-go/pkg/bundle"
 )
 
 const (
@@ -25,6 +30,7 @@ type apiClient interface {
 }
 
 type Client interface {
+	FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error)
 	GetByRepoAndDigest(repo, digest string, limit int) ([]*Attestation, error)
 	GetByOwnerAndDigest(owner, digest string, limit int) ([]*Attestation, error)
 	GetTrustDomain() (string, error)
@@ -128,6 +134,49 @@ func (c *LiveClient) getAttestations(url, name, digest string, limit int) ([]*At
 	}
 
 	return attestations, nil
+}
+
+func (c *LiveClient) FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error) {
+	fetched := make([]*Attestation, len(attestations))
+	for i, a := range attestations {
+		b, err := c.fetchAttestationWithSASURL(a)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
+		}
+		fetched[i] = &Attestation{
+			Bundle: b,
+		}
+	}
+	return fetched, nil
+}
+
+func (c *LiveClient) fetchAttestationWithSASURL(a *Attestation) (*bundle.Bundle, error) {
+	if a.SASUrl == "" {
+		return a.Bundle, nil
+	}
+
+	parsed, err := url.Parse(a.SASUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp []byte
+	if err = c.api.REST(parsed.Host, http.MethodGet, parsed.Path, nil, &resp); err != nil {
+		return nil, err
+	}
+
+	var decompressedBytes []byte
+	_, err = snappy.Decode(decompressedBytes, resp)
+	if err != nil {
+		return nil, err
+	}
+
+	var pbBundle *v1.Bundle
+	if err = json.Unmarshal(decompressedBytes, pbBundle); err != nil {
+		return nil, err
+	}
+
+	return bundle.NewBundle(pbBundle)
 }
 
 func shouldRetry(err error) bool {

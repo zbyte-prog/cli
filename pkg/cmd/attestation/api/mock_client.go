@@ -12,6 +12,10 @@ type MockClient struct {
 	OnGetTrustDomain      func() (string, error)
 }
 
+func (m MockClient) FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error) {
+	return nil, nil
+}
+
 func (m MockClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Attestation, error) {
 	return m.OnGetByRepoAndDigest(repo, digest, limit)
 }

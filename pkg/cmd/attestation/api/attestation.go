@@ -26,6 +26,7 @@ func newErrNoAttestations(name, digest string) ErrNoAttestations {
 
 type Attestation struct {
 	Bundle *bundle.Bundle `json:"bundle"`
+	SASUrl string         `json:"signedAccessSignatureUrl"`
 }
 
 type AttestationsResponse struct {

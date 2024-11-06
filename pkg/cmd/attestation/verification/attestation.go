@@ -127,13 +127,25 @@ func GetRemoteAttestations(c FetchAttestationsConfig) ([]*api.Attestation, error
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch attestations from %s: %w", c.Repo, err)
 		}
-		return attestations, nil
+
+		fetched, err := c.APIClient.FetchAttestationsWithSASURL(attestations)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch bundles from SAS URL: %w", err)
+		}
+
+		return fetched, nil
 	} else if c.Owner != "" {
 		attestations, err := c.APIClient.GetByOwnerAndDigest(c.Owner, c.Digest, c.Limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch attestations from %s: %w", c.Owner, err)
 		}
-		return attestations, nil
+
+		fetched, err := c.APIClient.FetchAttestationsWithSASURL(attestations)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch bundles from SAS URL: %w", err)
+		}
+
+		return fetched, nil
 	}
 	return nil, fmt.Errorf("owner or repo must be provided")
 }

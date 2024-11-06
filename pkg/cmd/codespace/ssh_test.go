@@ -69,9 +69,7 @@ func TestGenerateAutomaticSSHKeys(t *testing.T) {
 	for _, tt := range tests {
 		dir := t.TempDir()
 
-		sshContext := ssh.Context{
-			ConfigDir: dir,
-		}
+		sshContext := ssh.NewContextForTests(dir, "")
 
 		for _, file := range tt.existingFiles {
 			f, err := os.Create(filepath.Join(dir, file))
@@ -207,7 +205,159 @@ func TestSelectSSHKeys(t *testing.T) {
 
 	for _, tt := range tests {
 		sshDir := t.TempDir()
-		sshContext := ssh.Context{ConfigDir: sshDir}
+		sshContext := ssh.NewContextForTests(sshDir, "")
+
+		for _, file := range tt.sshDirFiles {
+			f, err := os.Create(filepath.Join(sshDir, file))
+			if err != nil {
+				t.Errorf("Failed to create test ssh dir file %q: %v", file, err)
+			}
+			f.Close()
+		}
+
+		configPath := filepath.Join(sshDir, "test-config")
+
+		// Seed the config with a non-existent key so that the default config won't apply
+		configContent := "IdentityFile dummy\n"
+
+		for _, key := range tt.sshConfigKeys {
+			configContent += fmt.Sprintf("IdentityFile %s\n", filepath.Join(sshDir, key))
+		}
+
+		err := os.WriteFile(configPath, []byte(configContent), 0666)
+		if err != nil {
+			t.Fatalf("could not write test config %v", err)
+		}
+
+		var subbedSSHArgs []string
+		for _, arg := range tt.sshArgs {
+			subbedSSHArgs = append(subbedSSHArgs, strings.Replace(arg, substituteSSHDir, sshDir, -1))
+		}
+
+		tt.sshArgs = append([]string{"-F", configPath}, subbedSSHArgs...)
+
+		gotKeyPair, gotShouldAddArg, err := selectSSHKeys(context.Background(), sshContext, tt.sshArgs, sshOptions{profile: tt.profileOpt})
+
+		if tt.wantKeyPair == nil {
+			if err == nil {
+				t.Errorf("Expected error from selectSSHKeys but got nil")
+			}
+
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("Unexpected error from selectSSHKeys: %v", err)
+			continue
+		}
+
+		if gotKeyPair == nil {
+			t.Errorf("Expected non-nil result from selectSSHKeys but got nil")
+			continue
+		}
+
+		if gotShouldAddArg != tt.wantShouldAddArg {
+			t.Errorf("Got wrong shouldAddArg value from selectSSHKeys, wanted %v got %v", tt.wantShouldAddArg, gotShouldAddArg)
+			continue
+		}
+
+		// Strip the dir (sshDir) from the gotKeyPair paths so that they match wantKeyPair (which doesn't know the directory)
+		gotKeyPairJustFileNames := &ssh.KeyPair{
+			PrivateKeyPath: filepath.Base(gotKeyPair.PrivateKeyPath),
+			PublicKeyPath:  filepath.Base(gotKeyPair.PublicKeyPath),
+		}
+
+		if fmt.Sprintf("%v", gotKeyPairJustFileNames) != fmt.Sprintf("%v", tt.wantKeyPair) {
+			t.Errorf("Want selectSSHKeys result to be %v, got %v", tt.wantKeyPair, gotKeyPairJustFileNames)
+		}
+
+		// If the automatic key pair is selected, it needs to exist no matter what
+		if strings.Contains(tt.wantKeyPair.PrivateKeyPath, automaticPrivateKeyName) {
+			if _, err := os.Stat(gotKeyPair.PrivateKeyPath); err != nil {
+				t.Errorf("Expected automatic key pair private key to exist, but it did not")
+			}
+
+			if _, err := os.Stat(gotKeyPair.PublicKeyPath); err != nil {
+				t.Errorf("Expected automatic key pair public key to exist, but it did not")
+			}
+		}
+	}
+}
+
+func TestConfigGeneration(t *testing.T) {
+	tests := []struct {
+		selector *CodespaceSelector
+	}{
+		// -i tests
+		{
+			sshArgs:     []string{"-i", "custom-private-key"},
+			wantKeyPair: &ssh.KeyPair{PrivateKeyPath: "custom-private-key", PublicKeyPath: "custom-private-key.pub"},
+		},
+		{
+			sshArgs:     []string{"-i", path.Join(substituteSSHDir, automaticPrivateKeyName)},
+			wantKeyPair: &ssh.KeyPair{PrivateKeyPath: automaticPrivateKeyName, PublicKeyPath: automaticPrivateKeyName + ".pub"},
+		},
+		{
+			// Edge case check for missing arg value
+			sshArgs: []string{"-i"},
+		},
+
+		// Auto key exists tests
+		{
+			sshDirFiles:      []string{automaticPrivateKeyName, automaticPrivateKeyName + ".pub"},
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: automaticPrivateKeyName, PublicKeyPath: automaticPrivateKeyName + ".pub"},
+			wantShouldAddArg: true,
+		},
+		{
+			sshDirFiles:      []string{automaticPrivateKeyName, automaticPrivateKeyName + ".pub", "custom-private-key", "custom-private-key.pub"},
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: automaticPrivateKeyName, PublicKeyPath: automaticPrivateKeyName + ".pub"},
+			wantShouldAddArg: true,
+		},
+
+		// SSH config tests
+		{
+			sshDirFiles:      []string{"custom-private-key", "custom-private-key.pub"},
+			sshConfigKeys:    []string{"custom-private-key"},
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: "custom-private-key", PublicKeyPath: "custom-private-key.pub"},
+			wantShouldAddArg: true,
+		},
+		{
+			// 2 pairs, but only 1 is configured
+			sshDirFiles:      []string{"custom-private-key", "custom-private-key.pub", "custom-private-key-2", "custom-private-key-2.pub"},
+			sshConfigKeys:    []string{"custom-private-key-2"},
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: "custom-private-key-2", PublicKeyPath: "custom-private-key-2.pub"},
+			wantShouldAddArg: true,
+		},
+		{
+			// 2 pairs, but only 1 has both public and private
+			sshDirFiles:      []string{"custom-private-key", "custom-private-key-2", "custom-private-key-2.pub"},
+			sshConfigKeys:    []string{"custom-private-key", "custom-private-key-2"},
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: "custom-private-key-2", PublicKeyPath: "custom-private-key-2.pub"},
+			wantShouldAddArg: true,
+		},
+
+		// Automatic key tests
+		{
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: automaticPrivateKeyName, PublicKeyPath: automaticPrivateKeyName + ".pub"},
+			wantShouldAddArg: true,
+		},
+		{
+			// Renames old key pair to new
+			sshDirFiles:      []string{automaticPrivateKeyNameOld, automaticPrivateKeyNameOld + ".pub"},
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: automaticPrivateKeyName, PublicKeyPath: automaticPrivateKeyName + ".pub"},
+			wantShouldAddArg: true,
+		},
+		{
+			// Other key is configured, but doesn't exist
+			sshConfigKeys:    []string{"custom-private-key"},
+			wantKeyPair:      &ssh.KeyPair{PrivateKeyPath: automaticPrivateKeyName, PublicKeyPath: automaticPrivateKeyName + ".pub"},
+			wantShouldAddArg: true,
+		},
+	}
+
+	for _, tt := range tests {
+		sshDir := t.TempDir()
+		sshContext := ssh.NewContextForTests(sshDir, "")
 
 		for _, file := range tt.sshDirFiles {
 			f, err := os.Create(filepath.Join(sshDir, file))

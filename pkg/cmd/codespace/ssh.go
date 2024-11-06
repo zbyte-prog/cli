@@ -694,7 +694,12 @@ func (a *App) printOpenSSHConfig(ctx context.Context, opts sshOptions) (err erro
 }
 
 func automaticPrivateKeyPath(sshContext ssh.Context) (string, error) {
-	return path.Join(sshContext.ConfigDir, automaticPrivateKeyName), nil
+	sshDir, err := sshContext.SshDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(sshDir, automaticPrivateKeyName), nil
 }
 
 type cpOptions struct {

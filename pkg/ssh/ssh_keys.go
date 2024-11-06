@@ -19,7 +19,7 @@ type Context struct {
 }
 
 // NewContextForTests creates a new `ssh.Context` with internal properties set to the
-// specified values. It should only be used to testing to inject test-specific setup.
+// specified values. It should only be used to inject test-specific setup.
 func NewContextForTests(configDir, keygenExe string) Context {
 	return Context{
 		configDir,

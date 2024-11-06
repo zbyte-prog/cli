@@ -278,6 +278,9 @@ func createRun(opts *CreateOptions) (err error) {
 			state.Title = opts.Title
 			state.Body = opts.Body
 		}
+		if opts.Template != "" {
+			state.Template = opts.Template
+		}
 		err = handlePush(*opts, *ctx)
 		if err != nil {
 			return

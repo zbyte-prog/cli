@@ -203,6 +203,17 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 }
 
 func runVerify(opts *Options) error {
+	ec, err := newEnforcementCriteria(opts)
+	if err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
+		return err
+	}
+
+	if err := ec.Valid(); err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Invalid verification policy"))
+		return err
+	}
+
 	artifact, err := artifact.NewDigestedArtifact(opts.OCIClient, opts.ArtifactPath, opts.DigestAlgorithm)
 	if err != nil {
 		opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ Loading digest for %s failed\n"), opts.ArtifactPath)
@@ -249,30 +260,30 @@ func runVerify(opts *Options) error {
 	}
 
 	// Apply predicate type filter to returned attestations
-	filteredAttestations := verification.FilterAttestations(opts.PredicateType, attestations)
+	filteredAttestations := verification.FilterAttestations(ec.PredicateType, attestations)
 	if len(filteredAttestations) == 0 {
 		opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found with predicate type: %s\n"), opts.PredicateType)
 		return err
 	}
 	attestations = filteredAttestations
 
-	policy, err := buildVerifyPolicy(opts, *artifact)
+	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", ec.PredicateType)
+
+	sp, err := buildSigstoreVerifyPolicy(ec, *artifact)
 	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build Sigstore verification policy"))
 		return err
 	}
 
-	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", opts.PredicateType)
-
-	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, policy)
+	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, sp)
 	if sigstoreRes.Error != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Sigstore verification failed"))
 		return sigstoreRes.Error
 	}
 
 	// Verify extensions
-	if err := verification.VerifyCertExtensions(sigstoreRes.VerifyResults, opts.Tenant, opts.Owner, opts.Repo, opts.OIDCIssuer); err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
+	if err := verification.VerifyCertExtensions(sigstoreRes.VerifyResults, ec); err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Policy verification failed"))
 		return err
 	}
 

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 )
 
 var (
@@ -11,14 +13,14 @@ var (
 	GitHubTenantOIDCIssuer = "https://token.actions.%s.ghe.com"
 )
 
-func VerifyCertExtensions(results []*AttestationProcessingResult, tenant, owner, repo, issuer string) error {
+func VerifyCertExtensions(results []*AttestationProcessingResult, ec EnforcementCriteria) error {
 	if len(results) == 0 {
 		return errors.New("no attestations proccessing results")
 	}
 
 	var lastErr error
 	for _, attestation := range results {
-		err := verifyCertExtension(attestation, tenant, owner, repo, issuer)
+		err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec)
 		if err == nil {
 			// if at least one attestation is verified, we're good as verification
 			// is defined as successful if at least one attestation is verified
@@ -32,52 +34,28 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, tenant, owner,
 	return lastErr
 }
 
-func verifyCertExtension(attestation *AttestationProcessingResult, tenant, owner, repo, issuer string) error {
-	var want string
-
-	if tenant == "" {
-		want = fmt.Sprintf("https://github.com/%s", owner)
-	} else {
-		want = fmt.Sprintf("https://%s.ghe.com/%s", tenant, owner)
-	}
-	sourceRepositoryOwnerURI := attestation.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryOwnerURI
-	if !strings.EqualFold(want, sourceRepositoryOwnerURI) {
-		return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", want, sourceRepositoryOwnerURI)
+func verifyCertExtensions(verifiedCert certificate.Summary, criteria EnforcementCriteria) error {
+	sourceRepositoryOwnerURI := verifiedCert.Extensions.SourceRepositoryOwnerURI
+	if !strings.EqualFold(criteria.Certificate.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI) {
+		return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", criteria.Certificate.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI)
 	}
 
 	// if repo is set, check the SourceRepositoryURI field
-	if repo != "" {
-		if tenant == "" {
-			want = fmt.Sprintf("https://github.com/%s", repo)
-		} else {
-			want = fmt.Sprintf("https://%s.ghe.com/%s", tenant, repo)
-		}
-
-		sourceRepositoryURI := attestation.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryURI
-		if !strings.EqualFold(want, sourceRepositoryURI) {
-			return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", want, sourceRepositoryURI)
+	if criteria.Certificate.SourceRepositoryURI != "" {
+		sourceRepositoryURI := verifiedCert.Extensions.SourceRepositoryURI
+		if !strings.EqualFold(criteria.Certificate.SourceRepositoryURI, sourceRepositoryURI) {
+			return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", criteria.Certificate.SourceRepositoryURI, sourceRepositoryURI)
 		}
 	}
 
 	// if issuer is anything other than the default, use the user-provided value;
 	// otherwise, select the appropriate default based on the tenant
-	if issuer != GitHubOIDCIssuer {
-		want = issuer
-	} else {
-		if tenant != "" {
-			want = fmt.Sprintf(GitHubTenantOIDCIssuer, tenant)
-		} else {
-			want = GitHubOIDCIssuer
+	certIssuer := verifiedCert.Extensions.Issuer
+	if !strings.EqualFold(criteria.Certificate.Issuer, certIssuer) {
+		if strings.Index(certIssuer, criteria.Certificate.Issuer+"/") == 0 {
+			return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", criteria.Certificate.Issuer, certIssuer)
 		}
-	}
-
-	certIssuer := attestation.VerificationResult.Signature.Certificate.Extensions.Issuer
-	if !strings.EqualFold(want, certIssuer) {
-		if strings.Index(certIssuer, want+"/") == 0 {
-			return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", want, certIssuer)
-		} else {
-			return fmt.Errorf("expected Issuer to be %s, got %s", want, certIssuer)
-		}
+		return fmt.Errorf("expected Issuer to be %s, got %s", criteria.Certificate.Issuer, certIssuer)
 	}
 
 	return nil

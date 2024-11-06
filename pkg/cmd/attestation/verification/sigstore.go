@@ -216,6 +216,7 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 			// move onto the next attestation in the for loop if verification fails
 			continue
 		}
+		// otherwise, add the result to the results slice and increment verifyCount
 		results[verifyCount] = apr
 		verifyCount++
 	}

@@ -18,19 +18,20 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 		return errors.New("no attestations proccessing results")
 	}
 
-	var atLeastOneVerified bool
+	var lastErr error
 	for _, attestation := range results {
-		if err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec); err != nil {
-			return err
+		err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec)
+		if err == nil {
+			// if at least one attestation is verified, we're good as verification
+			// is defined as successful if at least one attestation is verified
+			return nil
 		}
-		atLeastOneVerified = true
+		lastErr = err
 	}
 
-	if atLeastOneVerified {
-		return nil
-	} else {
-		return ErrNoAttestationsVerified
-	}
+	// if we have exited the for loop without returning early due to successful
+	// verification, we need to return an error
+	return lastErr
 }
 
 func verifyCertExtensions(verifiedCert certificate.Summary, criteria EnforcementCriteria) error {

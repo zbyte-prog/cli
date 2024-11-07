@@ -29,6 +29,7 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			extUpdateAvailable: false,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.0",
+			extURL:             "https//github.com/dne/no-update",
 		},
 		{
 			name:               "major update",
@@ -36,9 +37,11 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "2.0.0",
+			extURL:             "https//github.com/dne/major-update",
 			wantStderr: heredoc.Doc(`
 				A new release of major-update is available: 1.0.0 → 2.0.0
 				To upgrade, run: gh extension upgrade major-update
+				https//github.com/dne/major-update
 			`),
 		},
 		{
@@ -48,9 +51,11 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "2.0.0",
 			extIsPinned:        true,
+			extURL:             "https//github.com/dne/major-update",
 			wantStderr: heredoc.Doc(`
 				A new release of major-update is available: 1.0.0 → 2.0.0
 				To upgrade, run: gh extension upgrade major-update --force
+				https//github.com/dne/major-update
 			`),
 		},
 		{
@@ -59,9 +64,11 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.1.0",
+			extURL:             "https//github.com/dne/minor-update",
 			wantStderr: heredoc.Doc(`
 				A new release of minor-update is available: 1.0.0 → 1.1.0
 				To upgrade, run: gh extension upgrade minor-update
+				https//github.com/dne/minor-update
 			`),
 		},
 		{
@@ -70,10 +77,12 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.1.0",
+			extURL:             "https//github.com/dne/minor-update",
 			extIsPinned:        true,
 			wantStderr: heredoc.Doc(`
 				A new release of minor-update is available: 1.0.0 → 1.1.0
 				To upgrade, run: gh extension upgrade minor-update --force
+				https//github.com/dne/minor-update
 			`),
 		},
 		{
@@ -82,9 +91,11 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.1",
+			extURL:             "https//github.com/dne/patch-update",
 			wantStderr: heredoc.Doc(`
 				A new release of patch-update is available: 1.0.0 → 1.0.1
 				To upgrade, run: gh extension upgrade patch-update
+				https//github.com/dne/patch-update
 			`),
 		},
 		{
@@ -93,10 +104,12 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.1",
+			extURL:             "https//github.com/dne/patch-update",
 			extIsPinned:        true,
 			wantStderr: heredoc.Doc(`
 				A new release of patch-update is available: 1.0.0 → 1.0.1
 				To upgrade, run: gh extension upgrade patch-update --force
+				https//github.com/dne/patch-update
 			`),
 		},
 	}

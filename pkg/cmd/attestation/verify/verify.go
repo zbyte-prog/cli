@@ -6,7 +6,6 @@ import (
 	"regexp"
 
 	"github.com/cli/cli/v2/internal/ghinstance"
-	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact/oci"
@@ -222,42 +221,18 @@ func runVerify(opts *Options) error {
 
 	opts.Logger.Printf("Loaded digest %s for %s\n", artifact.DigestWithAlg(), artifact.URL)
 
-	c := verification.FetchAttestationsConfig{
-		APIClient:             opts.APIClient,
-		BundlePath:            opts.BundlePath,
-		Digest:                artifact.DigestWithAlg(),
-		Limit:                 opts.Limit,
-		Owner:                 opts.Owner,
-		Repo:                  opts.Repo,
-		OCIClient:             opts.OCIClient,
-		UseBundleFromRegistry: opts.UseBundleFromRegistry,
-		NameRef:               artifact.NameRef(),
-	}
-	attestations, err := verification.GetAttestations(c)
+	attestations, logMsg, err := getAttestations(opts, *artifact)
 	if err != nil {
 		if ok := errors.Is(err, api.ErrNoAttestations{}); ok {
 			opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found for subject %s\n"), artifact.DigestWithAlg())
 			return err
 		}
 
-		if c.IsBundleProvided() {
-			opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ Loading attestations from %s failed\n"), artifact.URL)
-		} else if c.UseBundleFromRegistry {
-			opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Loading attestations from OCI registry failed"))
-		} else {
-			opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Loading attestations from GitHub API failed"))
-		}
+		opts.Logger.Printf(opts.Logger.ColorScheme.Red(logMsg))
 		return err
 	}
-
-	pluralAttestation := text.Pluralize(len(attestations), "attestation")
-	if c.IsBundleProvided() {
-		opts.Logger.Printf("Loaded %s from %s\n", pluralAttestation, opts.BundlePath)
-	} else if c.UseBundleFromRegistry {
-		opts.Logger.Printf("Loaded %s from %s\n", pluralAttestation, opts.ArtifactPath)
-	} else {
-		opts.Logger.Printf("Loaded %s from GitHub API\n", pluralAttestation)
-	}
+	// Print the message signifying success fetching attestations
+	opts.Logger.Printf(logMsg)
 
 	// Apply predicate type filter to returned attestations
 	filteredAttestations := verification.FilterAttestations(ec.PredicateType, attestations)

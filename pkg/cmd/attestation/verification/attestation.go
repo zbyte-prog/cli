@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
+	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact/oci"
-	"github.com/google/go-containerregistry/pkg/name"
 	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 )
@@ -21,31 +21,11 @@ var ErrUnrecognisedBundleExtension = errors.New("bundle file extension not suppo
 var ErrEmptyBundleFile = errors.New("provided bundle file is empty")
 
 type FetchAttestationsConfig struct {
-	APIClient             api.Client
-	BundlePath            string
-	Digest                string
-	Limit                 int
-	Owner                 string
-	Repo                  string
-	OCIClient             oci.Client
-	UseBundleFromRegistry bool
-	NameRef               name.Reference
-}
-
-func (c *FetchAttestationsConfig) IsBundleProvided() bool {
-	return c.BundlePath != ""
-}
-
-func GetAttestations(c FetchAttestationsConfig) ([]*api.Attestation, error) {
-	if c.IsBundleProvided() {
-		return GetLocalAttestations(c.BundlePath)
-	}
-
-	if c.UseBundleFromRegistry {
-		return GetOCIAttestations(c)
-	}
-
-	return GetRemoteAttestations(c)
+	APIClient api.Client
+	Digest    string
+	Limit     int
+	Owner     string
+	Repo      string
 }
 
 // GetLocalAttestations returns a slice of attestations read from a local bundle file.
@@ -138,8 +118,8 @@ func GetRemoteAttestations(c FetchAttestationsConfig) ([]*api.Attestation, error
 	return nil, fmt.Errorf("owner or repo must be provided")
 }
 
-func GetOCIAttestations(c FetchAttestationsConfig) ([]*api.Attestation, error) {
-	attestations, err := c.OCIClient.GetAttestations(c.NameRef, c.Digest)
+func GetOCIAttestations(client oci.Client, artifact artifact.DigestedArtifact) ([]*api.Attestation, error) {
+	attestations, err := client.GetAttestations(artifact.NameRef(), artifact.Digest())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch OCI attestations: %w", err)
 	}

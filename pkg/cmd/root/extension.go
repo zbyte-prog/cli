@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/cli/cli/v2/pkg/iostreams"
-	"github.com/mgutz/ansi"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +24,8 @@ type extensionReleaseInfo struct {
 }
 
 func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ext extensions.Extension) *cobra.Command {
-	// Setup channel containing information about potential latest release info
 	updateMessageChan := make(chan *extensionReleaseInfo)
+	cs := io.ColorScheme()
 
 	return &cobra.Command{
 		Use:   ext.Name(),
@@ -56,20 +56,24 @@ func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ex
 		},
 		// PostRun handles communicating extension release information if found
 		PostRun: func(c *cobra.Command, args []string) {
-			releaseInfo := <-updateMessageChan
-			if releaseInfo != nil {
-				stderr := io.ErrOut
-				fmt.Fprintf(stderr, "\n\n%s %s → %s\n",
-					ansi.Color(fmt.Sprintf("A new release of %s is available:", ext.Name()), "yellow"),
-					ansi.Color(strings.TrimPrefix(releaseInfo.CurrentVersion, "v"), "cyan"),
-					ansi.Color(strings.TrimPrefix(releaseInfo.LatestVersion, "v"), "cyan"))
-				if releaseInfo.Pinned {
-					fmt.Fprintf(stderr, "To upgrade, run: gh extension upgrade %s --force\n", ext.Name())
-				} else {
-					fmt.Fprintf(stderr, "To upgrade, run: gh extension upgrade %s\n", ext.Name())
+			select {
+			case releaseInfo := <-updateMessageChan:
+				if releaseInfo != nil {
+					stderr := io.ErrOut
+					fmt.Fprintf(stderr, "\n\n%s %s → %s\n",
+						cs.Yellowf("A new release of %s is available:", ext.Name()),
+						cs.Cyan(strings.TrimPrefix(releaseInfo.CurrentVersion, "v")),
+						cs.Cyan(strings.TrimPrefix(releaseInfo.LatestVersion, "v")))
+					if releaseInfo.Pinned {
+						fmt.Fprintf(stderr, "To upgrade, run: gh extension upgrade %s --force\n", ext.Name())
+					} else {
+						fmt.Fprintf(stderr, "To upgrade, run: gh extension upgrade %s\n", ext.Name())
+					}
+					fmt.Fprintf(stderr, "%s\n\n",
+						cs.Yellow(releaseInfo.URL))
 				}
-				fmt.Fprintf(stderr, "%s\n\n",
-					ansi.Color(releaseInfo.URL, "yellow"))
+			case <-time.After(3 * time.Second):
+				// Bail on checking for new extension update as its taking too long
 			}
 		},
 		GroupID: "extension",

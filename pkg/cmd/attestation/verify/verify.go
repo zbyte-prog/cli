@@ -267,7 +267,8 @@ func runVerify(opts *Options) error {
 	}
 	attestations = filteredAttestations
 
-	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", ec.PredicateType)
+	// print information about the policy that will be enforced against attestations
+	opts.Logger.Printf(ec.BuildPolicyInformation())
 
 	sp, err := buildSigstoreVerifyPolicy(ec, *artifact)
 	if err != nil {

@@ -50,7 +50,7 @@ func (c EnforcementCriteria) Valid() error {
 	return nil
 }
 
-func (c EnforcementCriteria) PrintPolicyInformation() string {
+func (c EnforcementCriteria) BuildPolicyInformation() string {
 	info := fmt.Sprintf(`
 		The following policy enforcement criteria will be checked against all attestations:
 		- Attestation predicate type must match %s

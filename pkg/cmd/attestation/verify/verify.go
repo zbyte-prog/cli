@@ -228,11 +228,11 @@ func runVerify(opts *Options) error {
 			return err
 		}
 		// Print the message signifying failure fetching attestations
-		opts.Logger.Printf(opts.Logger.ColorScheme.Red(logMsg))
+		opts.Logger.Println(opts.Logger.ColorScheme.Red(logMsg))
 		return err
 	}
 	// Print the message signifying success fetching attestations
-	opts.Logger.Printf(logMsg)
+	opts.Logger.Println(logMsg)
 
 	// Apply predicate type filter to returned attestations
 	filteredAttestations := verification.FilterAttestations(ec.PredicateType, attestations)

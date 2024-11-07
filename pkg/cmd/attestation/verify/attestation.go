@@ -13,22 +13,22 @@ func getAttestations(o *Options, a artifact.DigestedArtifact) ([]*api.Attestatio
 	if o.BundlePath != "" {
 		attestations, err := verification.GetLocalAttestations(o.BundlePath)
 		if err != nil {
-			msg := fmt.Sprintf("✗ Loading attestations from %s failed\n", a.URL)
+			msg := fmt.Sprintf("✗ Loading attestations from %s failed", a.URL)
 			return nil, msg, err
 		}
 		pluralAttestation := text.Pluralize(len(attestations), "attestation")
-		msg := fmt.Sprintf("Loaded %s from %s\n", pluralAttestation, o.BundlePath)
+		msg := fmt.Sprintf("Loaded %s from %s", pluralAttestation, o.BundlePath)
 		return attestations, msg, nil
 	}
 
 	if o.UseBundleFromRegistry {
 		attestations, err := verification.GetOCIAttestations(o.OCIClient, a)
 		if err != nil {
-			msg := "✗ Loading attestations from OCI registry failed\n"
+			msg := "✗ Loading attestations from OCI registry failed"
 			return nil, msg, err
 		}
 		pluralAttestation := text.Pluralize(len(attestations), "attestation")
-		msg := fmt.Sprintf("Loaded %s from %s\n", pluralAttestation, o.ArtifactPath)
+		msg := fmt.Sprintf("Loaded %s from %s", pluralAttestation, o.ArtifactPath)
 		return attestations, msg, nil
 	}
 
@@ -42,10 +42,10 @@ func getAttestations(o *Options, a artifact.DigestedArtifact) ([]*api.Attestatio
 
 	attestations, err := verification.GetRemoteAttestations(c)
 	if err != nil {
-		msg := "✗ Loading attestations from GitHub API failed\n"
+		msg := "✗ Loading attestations from GitHub API failed"
 		return nil, msg, err
 	}
 	pluralAttestation := text.Pluralize(len(attestations), "attestation")
-	msg := fmt.Sprintf("Loaded %s from GitHub API\n", pluralAttestation)
+	msg := fmt.Sprintf("Loaded %s from GitHub API", pluralAttestation)
 	return attestations, msg, nil
 }

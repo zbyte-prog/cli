@@ -122,7 +122,7 @@ func runDownload(opts *Options) error {
 
 	opts.Logger.VerbosePrintf("Downloading trusted metadata for artifact %s\n\n", opts.ArtifactPath)
 
-	c := verification.FetchAttestationsConfig{
+	c := verification.FetchRemoteAttestations{
 		APIClient: opts.APIClient,
 		Digest:    artifact.DigestWithAlg(),
 		Limit:     opts.Limit,

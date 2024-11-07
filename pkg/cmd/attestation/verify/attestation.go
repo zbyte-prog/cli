@@ -32,7 +32,7 @@ func getAttestations(o *Options, a artifact.DigestedArtifact) ([]*api.Attestatio
 		return attestations, msg, nil
 	}
 
-	c := verification.FetchAttestationsConfig{
+	c := verification.FetchRemoteAttestations{
 		APIClient: o.APIClient,
 		Digest:    a.DigestWithAlg(),
 		Limit:     o.Limit,

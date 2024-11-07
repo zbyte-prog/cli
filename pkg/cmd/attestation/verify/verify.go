@@ -227,7 +227,7 @@ func runVerify(opts *Options) error {
 			opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found for subject %s\n"), artifact.DigestWithAlg())
 			return err
 		}
-
+		// Print the message signifying failure fetching attestations
 		opts.Logger.Printf(opts.Logger.ColorScheme.Red(logMsg))
 		return err
 	}

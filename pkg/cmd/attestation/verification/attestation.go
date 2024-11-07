@@ -20,7 +20,7 @@ const SLSAPredicateV1 = "https://slsa.dev/provenance/v1"
 var ErrUnrecognisedBundleExtension = errors.New("bundle file extension not supported, must be json or jsonl")
 var ErrEmptyBundleFile = errors.New("provided bundle file is empty")
 
-type FetchAttestationsConfig struct {
+type FetchRemoteAttestations struct {
 	APIClient api.Client
 	Digest    string
 	Limit     int
@@ -96,7 +96,7 @@ func loadBundlesFromJSONLinesFile(path string) ([]*api.Attestation, error) {
 	return attestations, nil
 }
 
-func GetRemoteAttestations(c FetchAttestationsConfig) ([]*api.Attestation, error) {
+func GetRemoteAttestations(c FetchRemoteAttestations) ([]*api.Attestation, error) {
 	if c.APIClient == nil {
 		return nil, fmt.Errorf("api client must be provided")
 	}

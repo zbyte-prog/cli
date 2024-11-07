@@ -20,7 +20,7 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 
 	var lastErr error
 	for _, attestation := range results {
-		err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec)
+		err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec.Certificate)
 		if err == nil {
 			// if at least one attestation is verified, we're good as verification
 			// is defined as successful if at least one attestation is verified
@@ -34,28 +34,23 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 	return lastErr
 }
 
-func verifyCertExtensions(verifiedCert certificate.Summary, criteria EnforcementCriteria) error {
-	sourceRepositoryOwnerURI := verifiedCert.Extensions.SourceRepositoryOwnerURI
-	if !strings.EqualFold(criteria.Certificate.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI) {
-		return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", criteria.Certificate.SourceRepositoryOwnerURI, sourceRepositoryOwnerURI)
+func verifyCertExtensions(verified, expected certificate.Summary) error {
+	if !strings.EqualFold(expected.SourceRepositoryOwnerURI, verified.SourceRepositoryOwnerURI) {
+		return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", expected.SourceRepositoryOwnerURI, verified.SourceRepositoryOwnerURI)
 	}
 
-	// if repo is set, check the SourceRepositoryURI field
-	if criteria.Certificate.SourceRepositoryURI != "" {
-		sourceRepositoryURI := verifiedCert.Extensions.SourceRepositoryURI
-		if !strings.EqualFold(criteria.Certificate.SourceRepositoryURI, sourceRepositoryURI) {
-			return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", criteria.Certificate.SourceRepositoryURI, sourceRepositoryURI)
-		}
+	// if repo is set, compare the SourceRepositoryURI fields
+	if expected.SourceRepositoryURI != "" && !strings.EqualFold(expected.SourceRepositoryURI, verified.SourceRepositoryURI) {
+		return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", expected.SourceRepositoryURI, verified.SourceRepositoryURI)
 	}
 
-	// if issuer is anything other than the default, use the user-provided value;
-	// otherwise, select the appropriate default based on the tenant
-	certIssuer := verifiedCert.Extensions.Issuer
-	if !strings.EqualFold(criteria.Certificate.Issuer, certIssuer) {
-		if strings.Index(certIssuer, criteria.Certificate.Issuer+"/") == 0 {
-			return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", criteria.Certificate.Issuer, certIssuer)
+	// compare the OIDC issuers. If not equal, return an error depending
+	// on if there is a partial match
+	if !strings.EqualFold(expected.Issuer, verified.Issuer) {
+		if strings.Index(verified.Issuer, expected.Issuer+"/") == 0 {
+			return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", expected.Issuer, verified.Issuer)
 		}
-		return fmt.Errorf("expected Issuer to be %s, got %s", criteria.Certificate.Issuer, certIssuer)
+		return fmt.Errorf("expected Issuer to be %s, got %s", expected.Issuer, verified.Issuer)
 	}
 
 	return nil

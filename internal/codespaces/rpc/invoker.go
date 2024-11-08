@@ -307,7 +307,7 @@ func (i *invoker) notifyCodespaceOfClientActivity(ctx context.Context, activity 
 
 func isUsernameValid(username string) bool {
 	// assuming valid usernames are alphanumeric, with these special characters allowed: . _ -
-	var validUsernamePattern = `^[a-zA-Z0-9._-]+$`
+	var validUsernamePattern = `^[a-zA-Z0-9_][-.a-zA-Z0-9_]*$`
 	re := regexp.MustCompile(validUsernamePattern)
 	return re.MatchString(username)
 }

@@ -792,6 +792,36 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "https://github.com/OWNER/REPO\n",
 		},
 		{
+			name: "noninteractive create from cwd that isn't a git repo",
+			opts: &CreateOptions{
+				Interactive: false,
+				Source:      ".",
+				Name:        "REPO",
+				Visibility:  "PRIVATE",
+			},
+			tty: false,
+			execStubs: func(cs *run.CommandStubber) {
+				cs.Register(`git -C . rev-parse --git-dir`, 128, "")
+			},
+			wantErr: true,
+			errMsg:  "current directory is not a git repository. Run `git init` to initialize it",
+		},
+		{
+			name: "noninteractive create from cwd that isn't a git repo",
+			opts: &CreateOptions{
+				Interactive: false,
+				Source:      "some-dir",
+				Name:        "REPO",
+				Visibility:  "PRIVATE",
+			},
+			tty: false,
+			execStubs: func(cs *run.CommandStubber) {
+				cs.Register(`git -C some-dir rev-parse --git-dir`, 128, "")
+			},
+			wantErr: true,
+			errMsg:  "some-dir is not a git repository. Run `git -C \"some-dir\" init` to initialize it",
+		},
+		{
 			name: "noninteractive clone from scratch",
 			opts: &CreateOptions{
 				Interactive: false,
@@ -951,11 +981,11 @@ func Test_createRun(t *testing.T) {
 			defer reg.Verify(t)
 			err := createRun(tt.opts)
 			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Equal(t, tt.errMsg, err.Error())
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.wantStdout, stdout.String())
 			assert.Equal(t, "", stderr.String())
 		})

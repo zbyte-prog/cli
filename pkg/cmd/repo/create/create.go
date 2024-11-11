@@ -748,10 +748,12 @@ func isLocalRepo(gitClient *git.Client) (bool, error) {
 			return false, projectDirErr
 		}
 	}
-	if projectDir != ".git" {
-		return false, nil
+
+	if projectDir == ".git" || projectDir == "." {
+		return true, nil
 	}
-	return true, nil
+
+	return false, nil
 }
 
 // clone the checkout branch to specified path

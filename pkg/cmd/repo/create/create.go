@@ -736,7 +736,11 @@ func hasCommits(gitClient *git.Client) (bool, error) {
 	return false, nil
 }
 
-// check if path is the top level directory of a git repo
+// Check if path is the top level directory of a git repo
+// This is subtly different from the git.Client IsLocalRepo method,
+// which returns true if we are _anywhere_ inside of a git repository.
+// I'm not sure whether this distinction really matters for repo create,
+// but I'm not confident enough right now to make that change.
 func isLocalRepo(gitClient *git.Client) (bool, error) {
 	projectDir, projectDirErr := gitClient.GitDir(context.Background())
 	if projectDirErr != nil {

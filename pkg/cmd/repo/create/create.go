@@ -740,7 +740,7 @@ func hasCommits(gitClient *git.Client) (bool, error) {
 func isLocalRepo(gitClient *git.Client) (bool, error) {
 	projectDir, projectDirErr := gitClient.GitDir(context.Background())
 	if projectDirErr != nil {
-		var execError *exec.ExitError
+		var execError errWithExitCode
 		if errors.As(projectDirErr, &execError) {
 			if exitCode := int(execError.ExitCode()); exitCode == 128 {
 				return false, nil

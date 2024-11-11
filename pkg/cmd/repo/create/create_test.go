@@ -444,14 +444,16 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "✓ Created repository OWNER/REPO on GitHub\n  https://github.com/OWNER/REPO\n",
 		},
 		{
-			name: "interactive with existing bare repository public",
+			name: "interactive with existing bare repository public and push",
 			opts: &CreateOptions{Interactive: true},
 			tty:  true,
 			promptStubs: func(p *prompter.PrompterMock) {
 				p.ConfirmFunc = func(message string, defaultValue bool) (bool, error) {
 					switch message {
 					case "Add a remote?":
-						return false, nil
+						return true, nil
+					case `Would you like to push commits from the current branch to "origin"?`:
+						return true, nil
 					default:
 						return false, fmt.Errorf("unexpected confirm prompt: %s", message)
 					}
@@ -464,6 +466,8 @@ func Test_createRun(t *testing.T) {
 						return "REPO", nil
 					case "Description":
 						return "my new repo", nil
+					case "What should the new remote be called?":
+						return defaultValue, nil
 					default:
 						return "", fmt.Errorf("unexpected input prompt: %s", message)
 					}
@@ -502,8 +506,10 @@ func Test_createRun(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git -C . rev-parse --git-dir`, 0, ".")
 				cs.Register(`git -C . rev-parse HEAD`, 0, "commithash")
+				cs.Register(`git -C . remote add origin https://github.com/OWNER/REPO`, 0, "")
+				cs.Register(`git -C . push origin --mirror`, 0, "")
 			},
-			wantStdout: "✓ Created repository OWNER/REPO on GitHub\n  https://github.com/OWNER/REPO\n",
+			wantStdout: "✓ Created repository OWNER/REPO on GitHub\n  https://github.com/OWNER/REPO\n✓ Added remote https://github.com/OWNER/REPO.git\n✓ Mirrored all refs to https://github.com/OWNER/REPO.git\n",
 		},
 		{
 			name: "interactive with existing repository public add remote and push",
@@ -759,10 +765,11 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "https://github.com/OWNER/REPO\n",
 		},
 		{
-			name: "noninteractive create bare from source",
+			name: "noninteractive create bare from source and push",
 			opts: &CreateOptions{
 				Interactive: false,
 				Source:      ".",
+				Push:        true,
 				Name:        "REPO",
 				Visibility:  "PRIVATE",
 			},
@@ -771,23 +778,24 @@ func Test_createRun(t *testing.T) {
 				reg.Register(
 					httpmock.GraphQL(`mutation RepositoryCreate\b`),
 					httpmock.StringResponse(`
-					{
-						"data": {
-							"createRepository": {
-								"repository": {
-									"id": "REPOID",
-									"name": "REPO",
-									"owner": {"login":"OWNER"},
-									"url": "https://github.com/OWNER/REPO"
+						{
+							"data": {
+								"createRepository": {
+									"repository": {
+										"id": "REPOID",
+										"name": "REPO",
+										"owner": {"login":"OWNER"},
+										"url": "https://github.com/OWNER/REPO"
+									}
 								}
 							}
-						}
-					}`))
+						}`))
 			},
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git -C . rev-parse --git-dir`, 0, ".")
 				cs.Register(`git -C . rev-parse HEAD`, 0, "commithash")
 				cs.Register(`git -C . remote add origin https://github.com/OWNER/REPO`, 0, "")
+				cs.Register(`git -C . push origin --mirror`, 0, "")
 			},
 			wantStdout: "https://github.com/OWNER/REPO\n",
 		},

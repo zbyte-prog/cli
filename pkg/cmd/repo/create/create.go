@@ -556,11 +556,11 @@ func createFromLocal(opts *CreateOptions) error {
 		return err
 	}
 
-	isRepo, err := isLocalRepo(opts.GitClient)
+	repoType, err := localRepoType(opts.GitClient)
 	if err != nil {
 		return err
 	}
-	if !isRepo {
+	if repoType == unknown {
 		if repoPath == "." {
 			return fmt.Errorf("current directory is not a git repository. Run `git init` to initialize it")
 		}
@@ -659,15 +659,31 @@ func createFromLocal(opts *CreateOptions) error {
 		}
 	}
 
-	if opts.Push {
+	if opts.Push && repoType == working {
 		err := opts.GitClient.Push(context.Background(), baseRemote, "HEAD")
 		if err != nil {
 			return err
 		}
+
 		if isTTY {
 			fmt.Fprintf(stdout, "%s Pushed commits to %s\n", cs.SuccessIcon(), remoteURL)
 		}
 	}
+
+	if opts.Push && repoType == bare {
+		cmd, err := opts.GitClient.AuthenticatedCommand(context.Background(), "push", baseRemote, "--mirror")
+		if err != nil {
+			return err
+		}
+		if err = cmd.Run(); err != nil {
+			return err
+		}
+
+		if isTTY {
+			fmt.Fprintf(stdout, "%s Mirrored all refs to %s\n", cs.SuccessIcon(), remoteURL)
+		}
+	}
+
 	return nil
 }
 
@@ -736,28 +752,34 @@ func hasCommits(gitClient *git.Client) (bool, error) {
 	return false, nil
 }
 
-// Check if path is the top level directory of a git repo
-// This is subtly different from the git.Client IsLocalRepo method,
-// which returns true if we are _anywhere_ inside of a git repository.
-// I'm not sure whether this distinction really matters for repo create,
-// but I'm not confident enough right now to make that change.
-func isLocalRepo(gitClient *git.Client) (bool, error) {
+type repoType int
+
+const (
+	unknown repoType = iota
+	working
+	bare
+)
+
+func localRepoType(gitClient *git.Client) (repoType, error) {
 	projectDir, projectDirErr := gitClient.GitDir(context.Background())
 	if projectDirErr != nil {
 		var execError errWithExitCode
 		if errors.As(projectDirErr, &execError) {
 			if exitCode := int(execError.ExitCode()); exitCode == 128 {
-				return false, nil
+				return unknown, nil
 			}
-			return false, projectDirErr
+			return unknown, projectDirErr
 		}
 	}
 
-	if projectDir == ".git" || projectDir == "." {
-		return true, nil
+	switch projectDir {
+	case ".":
+		return bare, nil
+	case ".git":
+		return working, nil
+	default:
+		return unknown, nil
 	}
-
-	return false, nil
 }
 
 // clone the checkout branch to specified path

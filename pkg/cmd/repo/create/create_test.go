@@ -452,7 +452,7 @@ func Test_createRun(t *testing.T) {
 					switch message {
 					case "Add a remote?":
 						return true, nil
-					case `Would you like to push commits from the current branch to "origin"?`:
+					case `Would you like to mirror all refs to "origin"?`:
 						return true, nil
 					default:
 						return false, fmt.Errorf("unexpected confirm prompt: %s", message)

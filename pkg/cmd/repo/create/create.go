@@ -652,8 +652,13 @@ func createFromLocal(opts *CreateOptions) error {
 
 	// don't prompt for push if there are no commits
 	if opts.Interactive && committed {
+		msg := fmt.Sprintf("Would you like to push commits from the current branch to %q?", baseRemote)
+		if repoType == bare {
+			msg = fmt.Sprintf("Would you like to mirror all refs to %q?", baseRemote)
+		}
+
 		var err error
-		opts.Push, err = opts.Prompter.Confirm(fmt.Sprintf("Would you like to push commits from the current branch to %q?", baseRemote), true)
+		opts.Push, err = opts.Prompter.Confirm(msg, true)
 		if err != nil {
 			return err
 		}

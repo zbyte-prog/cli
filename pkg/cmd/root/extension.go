@@ -72,7 +72,7 @@ func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ex
 					fmt.Fprintf(stderr, "%s\n\n",
 						cs.Yellow(releaseInfo.URL))
 				}
-			case <-time.After(3 * time.Second):
+			case <-time.After(1 * time.Second):
 				// Bail on checking for new extension update as its taking too long
 			}
 		},

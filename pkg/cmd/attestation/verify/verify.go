@@ -268,7 +268,7 @@ func runVerify(opts *Options) error {
 	attestations = filteredAttestations
 
 	// print information about the policy that will be enforced against attestations
-	opts.Logger.Printf(ec.BuildPolicyInformation())
+	opts.Logger.Println(ec.BuildPolicyInformation())
 
 	sp, err := buildSigstoreVerifyPolicy(ec, *artifact)
 	if err != nil {
@@ -288,7 +288,7 @@ func runVerify(opts *Options) error {
 		return err
 	}
 
-	opts.Logger.Println(opts.Logger.ColorScheme.Green("✓ Verification succeeded!\n"))
+	opts.Logger.Println(opts.Logger.ColorScheme.Green("\n✓ Verification succeeded!\n"))
 
 	// If an exporter is provided with the --json flag, write the results to the terminal in JSON format
 	if opts.exporter != nil {

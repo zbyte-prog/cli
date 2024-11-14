@@ -51,12 +51,15 @@ func (c EnforcementCriteria) Valid() error {
 }
 
 func (c EnforcementCriteria) BuildPolicyInformation() string {
-	info := fmt.Sprintf(`
-		The following policy enforcement criteria will be checked against all attestations:
-		- Attestation predicate type must match %s
-		- Attestation must be signed by a certificate whose OIDC issuer matches %s
-		- Attestation must be associated with an artifact built in an organization whose URI is %s
-	`, c.PredicateType, c.Certificate.Issuer, c.Certificate.SourceRepositoryOwnerURI)
+	template :=
+		`
+The following policy enforcement criteria will be checked against all attestations:
+- Attestation predicate type must match %s
+- Attestation must be signed by a certificate whose OIDC issuer matches %s
+- Attestation must be associated with an artifact built in an organization whose URI is %s
+`
+
+	info := fmt.Sprintf(template, c.PredicateType, c.Certificate.Issuer, c.Certificate.SourceRepositoryOwnerURI)
 
 	if c.Certificate.SourceRepositoryURI != "" {
 		info += fmt.Sprintf("- Attestation must be associated with an artifact built in a repository whose URI is %s", c.Certificate.SourceRepositoryURI)
@@ -69,6 +72,7 @@ func (c EnforcementCriteria) BuildPolicyInformation() string {
 	if c.SANRegex != "" {
 		info += fmt.Sprintf("- Attestation must be signed by a certificate with a Subject Alternative Name matching the regex %s", c.SANRegex)
 	}
+
 	if c.SAN != "" {
 		info += fmt.Sprintf("- Attestation must be signed by a certificate with a Subject Alternative Name matching the exact value %s", c.SAN)
 	}

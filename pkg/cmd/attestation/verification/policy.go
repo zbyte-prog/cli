@@ -53,7 +53,7 @@ func (c EnforcementCriteria) Valid() error {
 func (c EnforcementCriteria) BuildPolicyInformation() string {
 	template :=
 		`
-The following policy enforcement criteria will be checked against all attestations:
+The following policy criteria will be enforced against all attestations:
 - Attestation predicate type must match %s
 - Attestation must be signed by a certificate whose OIDC issuer matches %s
 - Attestation must be associated with an artifact built in an organization whose URI is %s

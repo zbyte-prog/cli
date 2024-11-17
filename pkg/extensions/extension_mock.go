@@ -20,6 +20,9 @@ var _ Extension = &ExtensionMock{}
 //			CurrentVersionFunc: func() string {
 //				panic("mock out the CurrentVersion method")
 //			},
+//			FullNameFunc: func() string {
+//				panic("mock out the FullName method")
+//			},
 //			IsBinaryFunc: func() bool {
 //				panic("mock out the IsBinary method")
 //			},
@@ -57,6 +60,9 @@ type ExtensionMock struct {
 	// CurrentVersionFunc mocks the CurrentVersion method.
 	CurrentVersionFunc func() string
 
+	// FullNameFunc mocks the FullName method.
+	FullNameFunc func() string
+
 	// IsBinaryFunc mocks the IsBinary method.
 	IsBinaryFunc func() bool
 
@@ -89,6 +95,9 @@ type ExtensionMock struct {
 		// CurrentVersion holds details about calls to the CurrentVersion method.
 		CurrentVersion []struct {
 		}
+		// FullName holds details about calls to the FullName method.
+		FullName []struct {
+		}
 		// IsBinary holds details about calls to the IsBinary method.
 		IsBinary []struct {
 		}
@@ -118,6 +127,7 @@ type ExtensionMock struct {
 		}
 	}
 	lockCurrentVersion  sync.RWMutex
+	lockFullName        sync.RWMutex
 	lockIsBinary        sync.RWMutex
 	lockIsLocal         sync.RWMutex
 	lockIsPinned        sync.RWMutex
@@ -153,6 +163,33 @@ func (mock *ExtensionMock) CurrentVersionCalls() []struct {
 	mock.lockCurrentVersion.RLock()
 	calls = mock.calls.CurrentVersion
 	mock.lockCurrentVersion.RUnlock()
+	return calls
+}
+
+// FullName calls FullNameFunc.
+func (mock *ExtensionMock) FullName() string {
+	if mock.FullNameFunc == nil {
+		panic("ExtensionMock.FullNameFunc: method is nil but Extension.FullName was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockFullName.Lock()
+	mock.calls.FullName = append(mock.calls.FullName, callInfo)
+	mock.lockFullName.Unlock()
+	return mock.FullNameFunc()
+}
+
+// FullNameCalls gets all the calls that were made to FullName.
+// Check the length with:
+//
+//	len(mockedExtension.FullNameCalls())
+func (mock *ExtensionMock) FullNameCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockFullName.RLock()
+	calls = mock.calls.FullName
+	mock.lockFullName.RUnlock()
 	return calls
 }
 

@@ -13,7 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/hashicorp/go-version"
+	"github.com/mattn/go-isatty"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,6 +31,49 @@ type ReleaseInfo struct {
 type StateEntry struct {
 	CheckedForUpdateAt time.Time   `yaml:"checked_for_update_at"`
 	LatestRelease      ReleaseInfo `yaml:"latest_release"`
+}
+
+func ShouldCheckForExtensionUpdate() bool {
+	if os.Getenv("GH_NO_UPDATE_NOTIFIER") != "" {
+		return false
+	}
+	if os.Getenv("CODESPACES") != "" {
+		return false
+	}
+	return !IsCI() && IsTerminal(os.Stdout) && IsTerminal(os.Stderr)
+}
+
+func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension, stateFilePath string) (*ReleaseInfo, error) {
+	stateEntry, _ := getStateEntry(stateFilePath)
+	if stateEntry != nil && time.Since(stateEntry.CheckedForUpdateAt).Hours() < 24 {
+		return nil, nil
+	}
+
+	releaseInfo := &ReleaseInfo{
+		Version: ext.LatestVersion(),
+		URL:     ext.URL(),
+	}
+
+	err := setStateEntry(stateFilePath, time.Now(), *releaseInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	if ext.UpdateAvailable() {
+		return releaseInfo, nil
+	}
+
+	return nil, nil
+}
+
+func ShouldCheckForUpdate(updaterEnabled string) bool {
+	if os.Getenv("GH_NO_UPDATE_NOTIFIER") != "" {
+		return false
+	}
+	if os.Getenv("CODESPACES") != "" {
+		return false
+	}
+	return updaterEnabled != "" && !IsCI() && IsTerminal(os.Stdout) && IsTerminal(os.Stderr)
 }
 
 // CheckForUpdate checks whether this software has had a newer release on GitHub
@@ -121,4 +166,15 @@ func versionGreaterThan(v, w string) bool {
 	vw, we := version.NewVersion(w)
 
 	return ve == nil && we == nil && vv.GreaterThan(vw)
+}
+
+func IsTerminal(f *os.File) bool {
+	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+}
+
+// based on https://github.com/watson/ci-info/blob/HEAD/index.js
+func IsCI() bool {
+	return os.Getenv("CI") != "" || // GitHub Actions, Travis CI, CircleCI, Cirrus CI, GitLab CI, AppVeyor, CodeShip, dsari
+		os.Getenv("BUILD_NUMBER") != "" || // Jenkins, TeamCity
+		os.Getenv("RUN_ID") != "" // TaskCluster, dsari
 }

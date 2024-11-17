@@ -28,6 +28,7 @@ import (
 
 // ErrInitialCommitFailed indicates the initial commit when making a new extension failed.
 var ErrInitialCommitFailed = errors.New("initial commit failed")
+var ErrExtensionExecutableNotFound = errors.New("an extension has been installed but there is no executable")
 
 const darwinAmd64 = "darwin-amd64"
 
@@ -194,10 +195,24 @@ func (m *Manager) populateLatestVersions(exts []*Extension) {
 func (m *Manager) InstallLocal(dir string) error {
 	name := filepath.Base(dir)
 	targetLink := filepath.Join(m.installDir(), name)
+	cs := m.io.ColorScheme()
+
 	if err := os.MkdirAll(filepath.Dir(targetLink), 0755); err != nil {
 		return err
 	}
-	return makeSymlink(dir, targetLink)
+	if err := makeSymlink(dir, targetLink); err != nil {
+		return err
+	}
+
+	// Check if an executable of the same name exists in the target directory.
+	// An error here doesn't indicate a failed extension installation, but
+	// it does indicate that the user will not be able to run the extension until
+	// the executable file is built or created manually somehow.
+	if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+		errMsg := fmt.Errorf("%v %w: expected executable file named \"%s\" in %s, perhaps you need to build it?", cs.WarningIcon(), ErrExtensionExecutableNotFound, name, dir)
+		return errMsg
+	}
+	return nil
 }
 
 type binManifest struct {

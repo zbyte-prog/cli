@@ -35,22 +35,22 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 }
 
 func verifyCertExtensions(given, expected certificate.Summary) error {
-	if !strings.EqualFold(expected.SourceRepositoryOwnerURI, verified.SourceRepositoryOwnerURI) {
-		return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", expected.SourceRepositoryOwnerURI, verified.SourceRepositoryOwnerURI)
+	if !strings.EqualFold(expected.SourceRepositoryOwnerURI, given.SourceRepositoryOwnerURI) {
+		return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", expected.SourceRepositoryOwnerURI, given.SourceRepositoryOwnerURI)
 	}
 
 	// if repo is set, compare the SourceRepositoryURI fields
-	if expected.SourceRepositoryURI != "" && !strings.EqualFold(expected.SourceRepositoryURI, verified.SourceRepositoryURI) {
-		return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", expected.SourceRepositoryURI, verified.SourceRepositoryURI)
+	if expected.SourceRepositoryURI != "" && !strings.EqualFold(expected.SourceRepositoryURI, given.SourceRepositoryURI) {
+		return fmt.Errorf("expected SourceRepositoryURI to be %s, got %s", expected.SourceRepositoryURI, given.SourceRepositoryURI)
 	}
 
 	// compare the OIDC issuers. If not equal, return an error depending
 	// on if there is a partial match
-	if !strings.EqualFold(expected.Issuer, verified.Issuer) {
-		if strings.Index(verified.Issuer, expected.Issuer+"/") == 0 {
-			return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", expected.Issuer, verified.Issuer)
+	if !strings.EqualFold(expected.Issuer, given.Issuer) {
+		if strings.Index(given.Issuer, expected.Issuer+"/") == 0 {
+			return fmt.Errorf("expected Issuer to be %s, got %s -- if you have a custom OIDC issuer policy for your enterprise, use the --cert-oidc-issuer flag with your expected issuer", expected.Issuer, given.Issuer)
 		}
-		return fmt.Errorf("expected Issuer to be %s, got %s", expected.Issuer, verified.Issuer)
+		return fmt.Errorf("expected Issuer to be %s, got %s", expected.Issuer, given.Issuer)
 	}
 
 	return nil

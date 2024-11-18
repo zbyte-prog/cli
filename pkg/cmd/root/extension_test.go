@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/cli/v2/internal/update"
 	"github.com/cli/cli/v2/pkg/cmd/root"
 	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -16,6 +17,7 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 	tests := []struct {
 		name               string
 		extCurrentVersion  string
+		extFullName        string
 		extIsPinned        bool
 		extLatestVersion   string
 		extName            string
@@ -26,6 +28,7 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "no update available",
 			extName:            "no-update",
+			extFullName:        "gh-no-update",
 			extUpdateAvailable: false,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.0",
@@ -34,6 +37,7 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "major update",
 			extName:            "major-update",
+			extFullName:        "gh-major-update",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "2.0.0",
@@ -46,21 +50,23 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		},
 		{
 			name:               "major update, pinned",
-			extName:            "major-update",
+			extName:            "major-update-pin",
+			extFullName:        "gh-major-update-pin",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "2.0.0",
 			extIsPinned:        true,
 			extURL:             "https//github.com/dne/major-update",
 			wantStderr: heredoc.Doc(`
-				A new release of major-update is available: 1.0.0 → 2.0.0
-				To upgrade, run: gh extension upgrade major-update --force
+				A new release of major-update-pin is available: 1.0.0 → 2.0.0
+				To upgrade, run: gh extension upgrade major-update-pin --force
 				https//github.com/dne/major-update
 			`),
 		},
 		{
 			name:               "minor update",
 			extName:            "minor-update",
+			extFullName:        "gh-minor-update",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.1.0",
@@ -73,21 +79,23 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		},
 		{
 			name:               "minor update, pinned",
-			extName:            "minor-update",
+			extName:            "minor-update-pin",
+			extFullName:        "gh-minor-update-pin",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.1.0",
 			extURL:             "https//github.com/dne/minor-update",
 			extIsPinned:        true,
 			wantStderr: heredoc.Doc(`
-				A new release of minor-update is available: 1.0.0 → 1.1.0
-				To upgrade, run: gh extension upgrade minor-update --force
+				A new release of minor-update-pin is available: 1.0.0 → 1.1.0
+				To upgrade, run: gh extension upgrade minor-update-pin --force
 				https//github.com/dne/minor-update
 			`),
 		},
 		{
 			name:               "patch update",
 			extName:            "patch-update",
+			extFullName:        "gh-patch-update",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.1",
@@ -100,15 +108,16 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		},
 		{
 			name:               "patch update, pinned",
-			extName:            "patch-update",
+			extName:            "patch-update-pin",
+			extFullName:        "gh-patch-update-pin",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.1",
 			extURL:             "https//github.com/dne/patch-update",
 			extIsPinned:        true,
 			wantStderr: heredoc.Doc(`
-				A new release of patch-update is available: 1.0.0 → 1.0.1
-				To upgrade, run: gh extension upgrade patch-update --force
+				A new release of patch-update-pin is available: 1.0.0 → 1.0.1
+				To upgrade, run: gh extension upgrade patch-update-pin --force
 				https//github.com/dne/patch-update
 			`),
 		},
@@ -128,6 +137,9 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			CurrentVersionFunc: func() string {
 				return tt.extCurrentVersion
 			},
+			FullNameFunc: func() string {
+				return tt.extFullName
+			},
 			IsPinnedFunc: func() bool {
 				return tt.extIsPinned
 			},
@@ -145,7 +157,18 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			},
 		}
 
-		cmd := root.NewCmdExtension(ios, em, ext)
+		checkFunc := func(em extensions.ExtensionManager, ext extensions.Extension) (*update.ReleaseInfo, error) {
+			if !tt.extUpdateAvailable {
+				return nil, nil
+			}
+
+			return &update.ReleaseInfo{
+				Version: tt.extLatestVersion,
+				URL:     tt.extURL,
+			}, nil
+		}
+
+		cmd := root.NewCmdExtension(ios, em, ext, checkFunc)
 
 		_, err := cmd.ExecuteC()
 		require.NoError(t, err)

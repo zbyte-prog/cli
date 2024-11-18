@@ -131,6 +131,8 @@ Since version 2.50.0 `gh` has been producing [Build Provenance Attestation](http
 
 There are two common ways to verify a downloaded release, depending if `gh` is aready installed or not. If `gh` is installed, it's trivial to verify a new release:
 
+- **Option 1: Using `gh` if already installed:
+
 ```shell
 $ % gh at verify -R cli/cli gh_2.62.0_macOS_arm64.zip
 Loaded digest sha256:fdb77f31b8a6dd23c3fd858758d692a45f7fc76383e37d475bdcae038df92afc for file://gh_2.62.0_macOS_arm64.zip
@@ -142,7 +144,9 @@ REPO     PREDICATE_TYPE                  WORKFLOW
 cli/cli  https://slsa.dev/provenance/v1  .github/workflows/deployment.yml@refs/heads/trunk
 ```
 
-If `gh` is not installed, you can use the `cosign` [binary](https://github.com/sigstore/cosign) from Sigstore to verify a release. To perform this, you must first download the [attestation](https://github.com/cli/cli/attestations) for the downloaded release, then you can invoke cosign to verify the authenticity of the downloaded file:
+- **Option 2: Using Sigstore [`cosign`](https://github.com/sigstore/cosign):
+
+To perform this, download the [attestation](https://github.com/cli/cli/attestations) for the downloaded release and use cosign to verify the authenticity of the downloaded release:
 
 ```shell
 $ cosign verify-blob-attestation --bundle cli-cli-attestation-3120304.sigstore.json \
@@ -152,8 +156,6 @@ $ cosign verify-blob-attestation --bundle cli-cli-attestation-3120304.sigstore.j
       gh_2.62.0_macOS_arm64.zip
 Verified OK
 ```
-
-This will verify that the downloaded zip file is authentic, and it can be extracted to get the `gh` binary.
 
 ### Build from source
 

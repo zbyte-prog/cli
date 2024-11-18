@@ -742,8 +742,8 @@ func TestManager_Install_local(t *testing.T) {
 	extensionLinkFile := filepath.Join(extManagerDir, "extensions", fakeExtensionName)
 
 	if runtime.GOOS == "windows" {
-		// We don't create symlinks on Windows, so check if we made a file
-		// with the correct contents
+		// We don't create true symlinks on Windows, so check if we made a
+		// file with the correct contents to produce the symlink-like behavior
 		b, err := os.ReadFile(extensionLinkFile)
 		require.NoError(t, err)
 		assert.Equal(t, extensionLocalPath, string(b))

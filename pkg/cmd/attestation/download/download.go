@@ -122,14 +122,13 @@ func runDownload(opts *Options) error {
 
 	opts.Logger.VerbosePrintf("Downloading trusted metadata for artifact %s\n\n", opts.ArtifactPath)
 
-	c := verification.FetchAttestationsConfig{
-		APIClient: opts.APIClient,
-		Digest:    artifact.DigestWithAlg(),
-		Limit:     opts.Limit,
-		Owner:     opts.Owner,
-		Repo:      opts.Repo,
+	params := verification.FetchRemoteAttestationsParams{
+		Digest: artifact.DigestWithAlg(),
+		Limit:  opts.Limit,
+		Owner:  opts.Owner,
+		Repo:   opts.Repo,
 	}
-	attestations, err := verification.GetRemoteAttestations(c)
+	attestations, err := verification.GetRemoteAttestations(opts.APIClient, params)
 	if err != nil {
 		if errors.Is(err, api.ErrNoAttestations{}) {
 			fmt.Fprintf(opts.Logger.IO.Out, "No attestations found for %s\n", opts.ArtifactPath)

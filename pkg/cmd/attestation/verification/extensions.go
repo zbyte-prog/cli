@@ -34,7 +34,7 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 	return lastErr
 }
 
-func verifyCertExtensions(verified, expected certificate.Summary) error {
+func verifyCertExtensions(given, expected certificate.Summary) error {
 	if !strings.EqualFold(expected.SourceRepositoryOwnerURI, verified.SourceRepositoryOwnerURI) {
 		return fmt.Errorf("expected SourceRepositoryOwnerURI to be %s, got %s", expected.SourceRepositoryOwnerURI, verified.SourceRepositoryOwnerURI)
 	}

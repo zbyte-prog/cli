@@ -55,7 +55,7 @@ func (c EnforcementCriteria) BuildPolicyInformation() string {
 		`
 The following policy criteria will be enforced against all attestations:
 - Attestation predicate type must match %s
-- Attestation must be signed by a certificate whose OIDC issuer matches %s
+- Attestation's signing certificate must have an OIDC issuer matching %s
 - Attestation must be associated with an artifact built in an organization whose URI is %s`
 
 	info := fmt.Sprintf(template, c.PredicateType, c.Certificate.Issuer, c.Certificate.SourceRepositoryOwnerURI)

@@ -293,12 +293,12 @@ func NewCmdExtension(f *cmdutil.Factory) *cobra.Command {
 				Use:   "install <repository>",
 				Short: "Install a gh extension from a repository",
 				Long: heredoc.Docf(`
-					Install a GitHub CLI extension from a GitHub repository.
+					Install a GitHub CLI extension from a GitHub or local repository.
 
-					The repository argument can be specified in %[1]sOWNER/REPO%[1]s format or as a full repository URL.
+					For GitHub repositories, the repository argument can be specified in %[1]sOWNER/REPO%[1]s format or as a full repository URL.
 					The URL format is useful when the repository is not hosted on github.com.
 
-					To install an in-development extension from a locally cloned repository, use %[1]s.%[1]s as the
+					For local repositories, often used while developing extensions, use %[1]s.%[1]s as the
 					value of the repository argument. Note the following:
 
 					- After installing an extension from a locally cloned repository, the GitHub CLI will

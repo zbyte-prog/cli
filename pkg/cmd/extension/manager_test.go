@@ -759,7 +759,7 @@ func TestManager_Install_local(t *testing.T) {
 
 func TestManager_Install_local_no_executable_found(t *testing.T) {
 	tempDir := t.TempDir()
-	ios, _, stdout, _ := iostreams.Test()
+	ios, _, stdout, stderr := iostreams.Test()
 	m := newTestManager(tempDir, nil, nil, ios)
 	fakeExtensionName := "local-ext"
 
@@ -773,6 +773,7 @@ func TestManager_Install_local_no_executable_found(t *testing.T) {
 	err := m.InstallLocal(localDir)
 	require.ErrorIs(t, err, ErrExtensionExecutableNotFound)
 	assert.Equal(t, "", stdout.String())
+	assert.Equal(t, "", stderr.String())
 }
 
 func TestManager_Install_git(t *testing.T) {

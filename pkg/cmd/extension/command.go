@@ -338,7 +338,15 @@ func NewCmdExtension(f *cmdutil.Factory) *cobra.Command {
 						if err != nil {
 							return err
 						}
-						return m.InstallLocal(wd)
+
+						err = m.InstallLocal(wd)
+						if errors.Is(err, ErrExtensionExecutableNotFound) {
+							if io.IsStdoutTTY() {
+								fmt.Fprintln(io.ErrOut, err.Error())
+							}
+							return nil
+						}
+						return err
 					}
 
 					repo, err := ghrepo.FromFullName(args[0])

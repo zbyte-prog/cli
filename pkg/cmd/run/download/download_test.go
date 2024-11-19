@@ -289,6 +289,108 @@ func Test_runDownload(t *testing.T) {
 					})
 			},
 		},
+		{
+			name: "given artifact name contains `..`, verify an error about path traversal is returned",
+			opts: DownloadOptions{
+				RunID:          "2345",
+				DestinationDir: ".",
+			},
+			mockAPI: func(p *mockPlatform) {
+				p.On("List", "2345").Return([]shared.Artifact{
+					{
+						Name:        "..",
+						DownloadURL: "http://download.com/artifact1.zip",
+						Expired:     false,
+					},
+				}, nil)
+			},
+			wantErr: "error downloading ..: would result in path traversal",
+		},
+		{
+			name: "given artifact name contains `..`, verify an error about path traversal is returned",
+			opts: DownloadOptions{
+				RunID:          "2345",
+				DestinationDir: "imaginary-dir",
+			},
+			mockAPI: func(p *mockPlatform) {
+				p.On("List", "2345").Return([]shared.Artifact{
+					{
+						Name:        "..",
+						DownloadURL: "http://download.com/artifact1.zip",
+						Expired:     false,
+					},
+				}, nil)
+			},
+			wantErr: "error downloading ..: would result in path traversal",
+		},
+		{
+			name: "given artifact name contains `../etc/passwd`, verify an error about path traversal is returned",
+			opts: DownloadOptions{
+				RunID:          "2345",
+				DestinationDir: ".",
+			},
+			mockAPI: func(p *mockPlatform) {
+				p.On("List", "2345").Return([]shared.Artifact{
+					{
+						Name:        "../etc/passwd",
+						DownloadURL: "http://download.com/artifact1.zip",
+						Expired:     false,
+					},
+				}, nil)
+			},
+			wantErr: "error downloading ../etc/passwd: would result in path traversal",
+		},
+		{
+			name: "given artifact name contains `../etc/passwd`, verify an error about path traversal is returned",
+			opts: DownloadOptions{
+				RunID:          "2345",
+				DestinationDir: "imaginary-dir",
+			},
+			mockAPI: func(p *mockPlatform) {
+				p.On("List", "2345").Return([]shared.Artifact{
+					{
+						Name:        "../etc/passwd",
+						DownloadURL: "http://download.com/artifact1.zip",
+						Expired:     false,
+					},
+				}, nil)
+			},
+			wantErr: "error downloading ../etc/passwd: would result in path traversal",
+		},
+		{
+			name: "given artifact name contains `../../etc/passwd`, verify an error about path traversal is returned",
+			opts: DownloadOptions{
+				RunID:          "2345",
+				DestinationDir: ".",
+			},
+			mockAPI: func(p *mockPlatform) {
+				p.On("List", "2345").Return([]shared.Artifact{
+					{
+						Name:        "../../etc/passwd",
+						DownloadURL: "http://download.com/artifact1.zip",
+						Expired:     false,
+					},
+				}, nil)
+			},
+			wantErr: "error downloading ../../etc/passwd: would result in path traversal",
+		},
+		{
+			name: "given artifact name contains `../../etc/passwd`, verify an error about path traversal is returned",
+			opts: DownloadOptions{
+				RunID:          "2345",
+				DestinationDir: "imaginary-dir",
+			},
+			mockAPI: func(p *mockPlatform) {
+				p.On("List", "2345").Return([]shared.Artifact{
+					{
+						Name:        "../../etc/passwd",
+						DownloadURL: "http://download.com/artifact1.zip",
+						Expired:     false,
+					},
+				}, nil)
+			},
+			wantErr: "error downloading ../../etc/passwd: would result in path traversal",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

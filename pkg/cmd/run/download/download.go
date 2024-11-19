@@ -169,6 +169,11 @@ func runDownload(opts *DownloadOptions) error {
 		if len(wantPatterns) != 0 || len(wantNames) != 1 {
 			destDir = filepath.Join(destDir, a.Name)
 		}
+
+		if !filepathDescendsFrom(destDir, opts.DestinationDir) {
+			return fmt.Errorf("error downloading %s: would result in path traversal", a.Name)
+		}
+
 		err := opts.Platform.Download(a.DownloadURL, destDir)
 		if err != nil {
 			return fmt.Errorf("error downloading %s: %w", a.Name, err)

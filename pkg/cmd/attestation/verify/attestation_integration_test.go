@@ -24,10 +24,10 @@ func getAttestationsFor(t *testing.T, bundlePath string) []*api.Attestation {
 }
 
 func TestVerifyAttestations(t *testing.T) {
-	sigstoreConfig := verification.SigstoreConfig{
+	config := verification.SigstoreConfig{
 		Logger: io.NewTestHandler(),
 	}
-	sgVerifier := verification.NewLiveSigstoreVerifier(sigstoreConfig)
+	sgVerifier := verification.NewLiveSigstoreVerifier(config)
 
 	certSummary := certificate.Summary{}
 	certSummary.SourceRepositoryOwnerURI = "https://github.com/sigstore"
@@ -48,6 +48,7 @@ func TestVerifyAttestations(t *testing.T) {
 
 	t.Run("all attestations pass verification", func(t *testing.T) {
 		attestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
+		require.Len(t, attestations, 2)
 		results, errMsg, err := verifyAttestations(attestations, sgVerifier, sp, ec)
 		require.NoError(t, err)
 		require.Zero(t, errMsg)

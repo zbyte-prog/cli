@@ -76,3 +76,30 @@ The following policy criteria will be enforced against all attestations:
 
 	return info
 }
+
+func (c EnforcementCriteria) BuildPolicyInformationForTable() [][]string {
+	predicateInfo := []string{"Predicate type", c.PredicateType}
+	issuerInfo := []string{"Issuer", c.Certificate.Issuer}
+	ownerURIInfo := []string{"SourceRepositoryOwnerURI", c.Certificate.SourceRepositoryOwnerURI}
+	info := [][]string{predicateInfo, issuerInfo, ownerURIInfo}
+
+	if c.Certificate.SourceRepositoryURI != "" {
+		sourceRepoURIInfo := []string{"SourceRepositoryURI", c.Certificate.SourceRepositoryURI}
+		info = append(info, sourceRepoURIInfo)
+	}
+
+	if c.Certificate.RunnerEnvironment == GitHubRunner {
+		runnerInfo := []string{"RunnerEnvironment", c.Certificate.RunnerEnvironment}
+		info = append(info, runnerInfo)
+	}
+
+	if c.SAN != "" {
+		sanInfo := []string{"SAN", c.SAN}
+		info = append(info, sanInfo)
+	} else if c.SANRegex != "" {
+		sanRegexInfo := []string{"SANRegex", c.SANRegex}
+		info = append(info, sanRegexInfo)
+	}
+
+	return info
+}

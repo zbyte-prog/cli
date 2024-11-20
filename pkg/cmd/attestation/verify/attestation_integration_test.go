@@ -80,21 +80,32 @@ func TestVerifyAttestations(t *testing.T) {
 	})
 
 	t.Run("passes verification with 2/3 attestations passing cert extension verification", func(t *testing.T) {
-		rwAttestations := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
-		sgjAttestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
-		attestations := []*api.Attestation{sgjAttestations[0], rwAttestations[0], sgjAttestations[1]}
+		customArtifactPath := test.NormalizeRelativePath("../test/data/reusable-workflow-artifact")
+		customArtifact, err := artifact.NewDigestedArtifact(nil, customArtifactPath, "sha256")
+		require.NoError(t, err)
+
+		mlDemoAttestAttestation := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
+		aareusableAttestation := getAttestationsFor(t, "../test/data/gh-artifact-attestations-workflow-bundle.json")
+		attestations := []*api.Attestation{mlDemoAttestAttestation[0], aareusableAttestation[0], mlDemoAttestAttestation[0]}
 		require.Len(t, attestations, 3)
 
-		expectedCriteria := ec
-		expectedCriteria.SANRegex = "^https://github.com/"
-		esp, err := buildSigstoreVerifyPolicy(ec, *a)
+		certSummary := certificate.Summary{}
+		certSummary.SourceRepositoryOwnerURI = "https://github.com/malancas"
+		certSummary.Issuer = verification.GitHubOIDCIssuer
 
-		results, errMsg, err := verifyAttestations(attestations, sgVerifier, esp, expectedCriteria)
+		customEc := verification.EnforcementCriteria{
+			Certificate:   certSummary,
+			PredicateType: verification.SLSAPredicateV1,
+			SANRegex:      "^https://github.com/github/artifact-attestations-workflows/",
+		}
+		esp, err := buildSigstoreVerifyPolicy(customEc, *customArtifact)
+
+		results, errMsg, err := verifyAttestations(attestations, sgVerifier, esp, customEc)
 		require.NoError(t, err)
 		require.Zero(t, errMsg)
 		require.Len(t, results, 2)
 		for _, r := range results {
-			require.NotEqual(t, r.Attestation.Bundle.String(), rwAttestations[0].Bundle.String())
+			require.NotEqual(t, r.Attestation.Bundle.String(), aareusableAttestation[0].Bundle.String())
 		}
 	})
 

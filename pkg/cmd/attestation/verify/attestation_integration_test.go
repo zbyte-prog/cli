@@ -80,15 +80,18 @@ func TestVerifyAttestations(t *testing.T) {
 	})
 
 	t.Run("passes verification with 2/3 attestations passing cert extension verification", func(t *testing.T) {
-		ghAttestation := getAttestationsFor(t, "../test/data/github_provenance_demo-0.0.12-py3-none-any-bundle.jsonl")
-		attestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
-		attestations = append(attestations, ghAttestation[0])
+		ghAttestations := getAttestationsFor(t, "../test/data/github_provenance_demo-0.0.12-py3-none-any-bundle.jsonl")
+		sgjAttestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
+		attestations := []*api.Attestation{sgjAttestations[0], ghAttestations[0], sgjAttestations[1]}
 		require.Len(t, attestations, 3)
 
 		results, errMsg, err := verifyAttestations(attestations, sgVerifier, sp, ec)
 		require.NoError(t, err)
 		require.Zero(t, errMsg)
 		require.Len(t, results, 2)
+		for _, r := range results {
+			require.NotEqual(t, r.Attestation.Bundle.String(), ghAttestations[0].Bundle.String())
+		}
 	})
 
 	t.Run("fails verification when cert extension verification fails", func(t *testing.T) {

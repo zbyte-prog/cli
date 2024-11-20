@@ -80,12 +80,16 @@ func TestVerifyAttestations(t *testing.T) {
 	})
 
 	t.Run("passes verification with 2/3 attestations passing cert extension verification", func(t *testing.T) {
-		ghAttestations := getAttestationsFor(t, "../test/data/github_provenance_demo-0.0.12-py3-none-any-bundle.jsonl")
+		ghAttestations := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
 		sgjAttestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
 		attestations := []*api.Attestation{sgjAttestations[0], ghAttestations[0], sgjAttestations[1]}
 		require.Len(t, attestations, 3)
 
-		results, errMsg, err := verifyAttestations(attestations, sgVerifier, sp, ec)
+		expectedCriteria := ec
+		expectedCriteria.SANRegex = "^https://github.com/"
+		esp, err := buildSigstoreVerifyPolicy(ec, *a)
+
+		results, errMsg, err := verifyAttestations(attestations, sgVerifier, esp, expectedCriteria)
 		require.NoError(t, err)
 		require.Zero(t, errMsg)
 		require.Len(t, results, 2)

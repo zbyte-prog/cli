@@ -80,9 +80,9 @@ func TestVerifyAttestations(t *testing.T) {
 	})
 
 	t.Run("passes verification with 2/3 attestations passing cert extension verification", func(t *testing.T) {
-		ghAttestations := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
+		rwAttestations := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
 		sgjAttestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
-		attestations := []*api.Attestation{sgjAttestations[0], ghAttestations[0], sgjAttestations[1]}
+		attestations := []*api.Attestation{sgjAttestations[0], rwAttestations[0], sgjAttestations[1]}
 		require.Len(t, attestations, 3)
 
 		expectedCriteria := ec
@@ -94,7 +94,7 @@ func TestVerifyAttestations(t *testing.T) {
 		require.Zero(t, errMsg)
 		require.Len(t, results, 2)
 		for _, r := range results {
-			require.NotEqual(t, r.Attestation.Bundle.String(), ghAttestations[0].Bundle.String())
+			require.NotEqual(t, r.Attestation.Bundle.String(), rwAttestations[0].Bundle.String())
 		}
 	})
 

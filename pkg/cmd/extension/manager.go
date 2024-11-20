@@ -208,7 +208,7 @@ func (m *Manager) InstallLocal(dir string) error {
 	// An error here doesn't indicate a failed extension installation, but
 	// it does indicate that the user will not be able to run the extension until
 	// the executable file is built or created manually somehow.
-	if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, name)); os.IsNotExist(err) {
 		errMsg := fmt.Errorf("%v %w: executable file named \"%s\" in %s is required to run the extension after install. Perhaps you need to build it?", cs.WarningIcon(), ErrExtensionExecutableNotFound, name, dir)
 		return errMsg
 	}

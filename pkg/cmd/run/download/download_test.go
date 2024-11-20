@@ -290,7 +290,7 @@ func Test_runDownload(t *testing.T) {
 			},
 		},
 		{
-			name: "given artifact name contains `..`, verify an error about path traversal is returned",
+			name: "given artifact name contains `..` and the DestinationDir is `.`, verify an error about path traversal is returned",
 			opts: DownloadOptions{
 				RunID:          "2345",
 				DestinationDir: ".",
@@ -307,7 +307,7 @@ func Test_runDownload(t *testing.T) {
 			wantErr: "error downloading ..: would result in path traversal",
 		},
 		{
-			name: "given artifact name contains `..`, verify an error about path traversal is returned",
+			name: "given artifact name contains `..` and the DestinationDir is `imaginary-dir`, verify an error about path traversal is returned",
 			opts: DownloadOptions{
 				RunID:          "2345",
 				DestinationDir: "imaginary-dir",
@@ -324,7 +324,7 @@ func Test_runDownload(t *testing.T) {
 			wantErr: "error downloading ..: would result in path traversal",
 		},
 		{
-			name: "given artifact name contains `../etc/passwd`, verify an error about path traversal is returned",
+			name: "given artifact name contains `../etc/passwd` and the DestinationDir is `.`, verify an error about path traversal is returned",
 			opts: DownloadOptions{
 				RunID:          "2345",
 				DestinationDir: ".",
@@ -341,7 +341,7 @@ func Test_runDownload(t *testing.T) {
 			wantErr: "error downloading ../etc/passwd: would result in path traversal",
 		},
 		{
-			name: "given artifact name contains `../etc/passwd`, verify an error about path traversal is returned",
+			name: "given artifact name contains `../etc/passwd` and the DestinationDir is `imaginary-dir`, verify an error about path traversal is returned",
 			opts: DownloadOptions{
 				RunID:          "2345",
 				DestinationDir: "imaginary-dir",
@@ -358,7 +358,7 @@ func Test_runDownload(t *testing.T) {
 			wantErr: "error downloading ../etc/passwd: would result in path traversal",
 		},
 		{
-			name: "given artifact name contains `../../etc/passwd`, verify an error about path traversal is returned",
+			name: "given artifact name contains `../../etc/passwd` and the DestinationDir is `.`, verify an error about path traversal is returned",
 			opts: DownloadOptions{
 				RunID:          "2345",
 				DestinationDir: ".",
@@ -375,7 +375,7 @@ func Test_runDownload(t *testing.T) {
 			wantErr: "error downloading ../../etc/passwd: would result in path traversal",
 		},
 		{
-			name: "given artifact name contains `../../etc/passwd`, verify an error about path traversal is returned",
+			name: "given artifact name contains `../../etc/passwd` and the DestinationDir is `imaginary-dir`, verify an error about path traversal is returned",
 			opts: DownloadOptions{
 				RunID:          "2345",
 				DestinationDir: "imaginary-dir",

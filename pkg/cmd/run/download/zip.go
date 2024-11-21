@@ -71,16 +71,6 @@ func getPerm(m os.FileMode) os.FileMode {
 }
 
 func filepathDescendsFrom(p, dir string) bool {
-	p = filepath.Clean(p)
-	dir = filepath.Clean(dir)
-	if dir == "." && p == ".." {
-		return false
-	}
-	if dir == "." && !filepath.IsAbs(p) {
-		return !strings.HasPrefix(p, ".."+string(filepath.Separator))
-	}
-	if !strings.HasSuffix(dir, string(filepath.Separator)) {
-		dir += string(filepath.Separator)
-	}
-	return strings.HasPrefix(p, dir)
+	relativePath, _ := filepath.Rel(dir, p)
+	return !strings.HasPrefix(relativePath, "..")
 }

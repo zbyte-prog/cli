@@ -166,6 +166,7 @@ func runDownload(opts *DownloadOptions) error {
 			}
 		}
 		destDir := opts.DestinationDir
+		// Why do we only include the artifact name in the destination directory if there are multiple?
 		if len(wantPatterns) != 0 || len(wantNames) != 1 {
 			destDir = filepath.Join(destDir, a.Name)
 		}

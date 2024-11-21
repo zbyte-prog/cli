@@ -24,10 +24,9 @@ func getAttestationsFor(t *testing.T, bundlePath string) []*api.Attestation {
 }
 
 func TestVerifyAttestations(t *testing.T) {
-	config := verification.SigstoreConfig{
+	sgVerifier := verification.NewLiveSigstoreVerifier(verification.SigstoreConfig{
 		Logger: io.NewTestHandler(),
-	}
-	sgVerifier := verification.NewLiveSigstoreVerifier(config)
+	})
 
 	certSummary := certificate.Summary{}
 	certSummary.SourceRepositoryOwnerURI = "https://github.com/sigstore"
@@ -39,17 +38,16 @@ func TestVerifyAttestations(t *testing.T) {
 		PredicateType: verification.SLSAPredicateV1,
 		SANRegex:      "^https://github.com/sigstore/",
 	}
+	require.NoError(t, ec.Valid())
 
 	artifactPath := test.NormalizeRelativePath("../test/data/sigstore-js-2.1.0.tgz")
 	a, err := artifact.NewDigestedArtifact(nil, artifactPath, "sha512")
 	require.NoError(t, err)
 
-	sp, err := buildSigstoreVerifyPolicy(ec, *a)
-
 	t.Run("all attestations pass verification", func(t *testing.T) {
 		attestations := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
 		require.Len(t, attestations, 2)
-		results, errMsg, err := verifyAttestations(attestations, sgVerifier, sp, ec)
+		results, errMsg, err := verifyAttestations(*a, attestations, sgVerifier, ec)
 		require.NoError(t, err)
 		require.Zero(t, errMsg)
 		require.Len(t, results, 2)
@@ -61,7 +59,7 @@ func TestVerifyAttestations(t *testing.T) {
 		attestations = append(attestations, invalidBundle[0])
 		require.Len(t, attestations, 3)
 
-		results, errMsg, err := verifyAttestations(attestations, sgVerifier, sp, ec)
+		results, errMsg, err := verifyAttestations(*a, attestations, sgVerifier, ec)
 		require.NoError(t, err)
 		require.Zero(t, errMsg)
 		require.Len(t, results, 2)
@@ -73,40 +71,27 @@ func TestVerifyAttestations(t *testing.T) {
 		attestations := append(invalidBundle, invalidBundle2...)
 		require.Len(t, attestations, 2)
 
-		results, errMsg, err := verifyAttestations(attestations, sgVerifier, sp, ec)
+		results, errMsg, err := verifyAttestations(*a, attestations, sgVerifier, ec)
 		require.Error(t, err)
 		require.Contains(t, errMsg, "✗ Sigstore verification failed")
 		require.Nil(t, results)
 	})
 
 	t.Run("passes verification with 2/3 attestations passing cert extension verification", func(t *testing.T) {
-		customArtifactPath := test.NormalizeRelativePath("../test/data/reusable-workflow-artifact")
-		customArtifact, err := artifact.NewDigestedArtifact(nil, customArtifactPath, "sha256")
-		require.NoError(t, err)
-
-		mlDemoAttestAttestation := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
-		aareusableAttestation := getAttestationsFor(t, "../test/data/gh-artifact-attestations-workflow-bundle.json")
-		attestations := []*api.Attestation{mlDemoAttestAttestation[0], aareusableAttestation[0], mlDemoAttestAttestation[0]}
+		sgjAttestation := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
+		reusableWorkflowAttestations := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
+		attestations := []*api.Attestation{sgjAttestation[0], reusableWorkflowAttestations[0], sgjAttestation[1]}
 		require.Len(t, attestations, 3)
 
-		certSummary := certificate.Summary{}
-		certSummary.SourceRepositoryOwnerURI = "https://github.com/malancas"
-		certSummary.Issuer = verification.GitHubOIDCIssuer
+		rwfResult := verification.BuildMockResult(reusableWorkflowAttestations[0].Bundle, "", "https://github.com/malancas", "", verification.GitHubOIDCIssuer)
+		sgjResult := verification.BuildDefaultMockResult(t)
+		mockResults := []*verification.AttestationProcessingResult{&sgjResult, &rwfResult, &sgjResult}
 
-		customEc := verification.EnforcementCriteria{
-			Certificate:   certSummary,
-			PredicateType: verification.SLSAPredicateV1,
-			SANRegex:      "^https://github.com/github/artifact-attestations-workflows/",
-		}
-		esp, err := buildSigstoreVerifyPolicy(customEc, *customArtifact)
-
-		results, errMsg, err := verifyAttestations(attestations, sgVerifier, esp, customEc)
+		mockSgVerifier := verification.NewMockSigstoreVerifier(t, mockResults)
+		results, errMsg, err := verifyAttestations(*a, attestations, mockSgVerifier, ec)
 		require.NoError(t, err)
 		require.Zero(t, errMsg)
 		require.Len(t, results, 2)
-		for _, r := range results {
-			require.NotEqual(t, r.Attestation.Bundle.String(), aareusableAttestation[0].Bundle.String())
-		}
 	})
 
 	t.Run("fails verification when cert extension verification fails", func(t *testing.T) {
@@ -116,7 +101,7 @@ func TestVerifyAttestations(t *testing.T) {
 		expectedCriteria := ec
 		expectedCriteria.Certificate.SourceRepositoryOwnerURI = "https://github.com/wrong"
 
-		results, errMsg, err := verifyAttestations(attestations, sgVerifier, sp, expectedCriteria)
+		results, errMsg, err := verifyAttestations(*a, attestations, sgVerifier, expectedCriteria)
 		require.Error(t, err)
 		require.Contains(t, errMsg, "✗ Policy verification failed")
 		require.Nil(t, results)

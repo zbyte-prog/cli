@@ -180,7 +180,7 @@ func (v *LiveSigstoreVerifier) verify(attestation *api.Attestation, policy verif
 	// if verification fails, create the error and exit verification early
 	if err != nil {
 		v.config.Logger.VerbosePrint(v.config.Logger.ColorScheme.Redf(
-			"Failed to verify against issuer \"%s\" \n\n", issuer,
+			"Failed to verify against issuer \"%s\": %v\n\n", issuer, err,
 		))
 
 		return nil, fmt.Errorf("verifying with issuer \"%s\"", issuer)

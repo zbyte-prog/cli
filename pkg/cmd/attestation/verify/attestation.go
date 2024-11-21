@@ -7,7 +7,6 @@ import (
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
-	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
 func getAttestations(o *Options, a artifact.DigestedArtifact) ([]*api.Attestation, string, error) {
@@ -50,18 +49,24 @@ func getAttestations(o *Options, a artifact.DigestedArtifact) ([]*api.Attestatio
 	return attestations, msg, nil
 }
 
-func verifyAttestations(attestations []*api.Attestation, sgVerifier verification.SigstoreVerifier, sgPolicy verify.PolicyBuilder, ec verification.EnforcementCriteria) ([]*verification.AttestationProcessingResult, string, error) {
-	sigstoreVerified, err := sgVerifier.Verify(attestations, sgPolicy)
+func verifyAttestations(art artifact.DigestedArtifact, att []*api.Attestation, sgVerifier verification.SigstoreVerifier, ec verification.EnforcementCriteria) ([]*verification.AttestationProcessingResult, string, error) {
+	sgPolicy, err := buildSigstoreVerifyPolicy(ec, art)
 	if err != nil {
-		errMsg := "✗ Sigstore verification failed"
-		return nil, errMsg, err
+		logMsg := "✗ Failed to build Sigstore verification policy"
+		return nil, logMsg, err
+	}
+
+	sigstoreVerified, err := sgVerifier.Verify(att, sgPolicy)
+	if err != nil {
+		logMsg := "✗ Sigstore verification failed"
+		return nil, logMsg, err
 	}
 
 	// Verify extensions
 	certExtVerified, err := verification.VerifyCertExtensions(sigstoreVerified, ec)
 	if err != nil {
-		errMsg := "✗ Policy verification failed"
-		return nil, errMsg, err
+		logMsg := "✗ Policy verification failed"
+		return nil, logMsg, err
 	}
 
 	return certExtVerified, "", nil

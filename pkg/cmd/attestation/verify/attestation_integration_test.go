@@ -84,9 +84,9 @@ func TestVerifyAttestations(t *testing.T) {
 		require.Len(t, attestations, 3)
 
 		rwfResult := verification.BuildMockResult(reusableWorkflowAttestations[0].Bundle, "", "https://github.com/malancas", "", verification.GitHubOIDCIssuer)
-		sgjResult := verification.BuildDefaultMockResult(t)
+		sgjResult := verification.BuildSigstoreJsMockResult(t)
 		mockResults := []*verification.AttestationProcessingResult{&sgjResult, &rwfResult, &sgjResult}
-		mockSgVerifier := verification.NewMockSigstoreVerifier(t, mockResults)
+		mockSgVerifier := verification.NewMockSigstoreVerifierWithMockResults(t, mockResults)
 
 		// we want to test that attestations that pass Sigstore verification but fail
 		// cert extension verification are filtered out properly in the second step

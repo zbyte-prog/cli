@@ -50,14 +50,15 @@ func (v *MockSigstoreVerifier) Verify([]*api.Attestation, verify.PolicyBuilder) 
 	return results, nil
 }
 
-func NewMockSigstoreVerifier(t *testing.T, mockResults []*AttestationProcessingResult) *MockSigstoreVerifier {
-	return &MockSigstoreVerifier{t, mockResults}
+func NewMockSigstoreVerifier(t *testing.T) *MockSigstoreVerifier {
+	result := BuildSigstoreJsMockResult(t)
+	results := []*AttestationProcessingResult{&result}
+
+	return &MockSigstoreVerifier{t, results}
 }
 
-func NewDefaultMockSigstoreVerifier(t *testing.T) *MockSigstoreVerifier {
-	result := BuildDefaultMockResult(t)
-	results := []*AttestationProcessingResult{&result}
-	return &MockSigstoreVerifier{t, results}
+func NewMockSigstoreVerifierWithMockResults(t *testing.T, mockResults []*AttestationProcessingResult) *MockSigstoreVerifier {
+	return &MockSigstoreVerifier{t, mockResults}
 }
 
 type FailSigstoreVerifier struct{}
@@ -90,7 +91,7 @@ func BuildMockResult(b *bundle.Bundle, buildSignerURI, sourceRepoOwnerURI, sourc
 	}
 }
 
-func BuildDefaultMockResult(t *testing.T) AttestationProcessingResult {
+func BuildSigstoreJsMockResult(t *testing.T) AttestationProcessingResult {
 	bundle := data.SigstoreBundle(t)
 	buildSignerURI := "https://github.com/github/example/.github/workflows/release.yml@refs/heads/main"
 	sourceRepoOwnerURI := "https://github.com/sigstore"

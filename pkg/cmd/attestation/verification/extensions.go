@@ -18,8 +18,7 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 		return nil, errors.New("no attestations processing results")
 	}
 
-	verified := make([]*AttestationProcessingResult, len(results))
-	var verifyCount int
+	verified := make([]*AttestationProcessingResult, 0, len(results))
 	var lastErr error
 	for _, attestation := range results {
 		if err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec.Certificate); err != nil {
@@ -28,20 +27,16 @@ func VerifyCertExtensions(results []*AttestationProcessingResult, ec Enforcement
 			continue
 		}
 		// otherwise, add the result to the results slice and increment verifyCount
-		verified[verifyCount] = attestation
-		verifyCount++
+		verified = append(verified, attestation)
 	}
 
 	// if we have exited the for loop without verifying any attestations,
 	// return the last error found
-	if verifyCount == 0 {
+	if len(verified) == 0 {
 		return nil, lastErr
 	}
 
-	// truncate the verified slice to only include verified attestations
-	verified = verified[:verifyCount]
 	return verified, nil
-
 }
 
 func verifyCertExtensions(given, expected certificate.Summary) error {

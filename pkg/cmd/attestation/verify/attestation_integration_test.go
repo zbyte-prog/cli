@@ -77,7 +77,7 @@ func TestVerifyAttestations(t *testing.T) {
 		require.Nil(t, results)
 	})
 
-	t.Run("passes verification with 2/3 attestations passing cert extension verification", func(t *testing.T) {
+	t.Run("attestations fail to verify when cert extensions don't match enforcement criteria", func(t *testing.T) {
 		sgjAttestation := getAttestationsFor(t, "../test/data/sigstore-js-2.1.0_with_2_bundles.jsonl")
 		reusableWorkflowAttestations := getAttestationsFor(t, "../test/data/reusable-workflow-attestation.sigstore.json")
 		attestations := []*api.Attestation{sgjAttestation[0], reusableWorkflowAttestations[0], sgjAttestation[1]}

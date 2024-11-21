@@ -13,6 +13,7 @@ var (
 	GitHubTenantOIDCIssuer = "https://token.actions.%s.ghe.com"
 )
 
+// VerifyCertExtensions allows us to perform case insensitive comparisons of certificate extensions
 func VerifyCertExtensions(results []*AttestationProcessingResult, ec EnforcementCriteria) ([]*AttestationProcessingResult, error) {
 	if len(results) == 0 {
 		return nil, errors.New("no attestations processing results")

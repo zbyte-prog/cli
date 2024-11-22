@@ -13,25 +13,31 @@ var (
 	GitHubTenantOIDCIssuer = "https://token.actions.%s.ghe.com"
 )
 
-func VerifyCertExtensions(results []*AttestationProcessingResult, ec EnforcementCriteria) error {
+// VerifyCertExtensions allows us to perform case insensitive comparisons of certificate extensions
+func VerifyCertExtensions(results []*AttestationProcessingResult, ec EnforcementCriteria) ([]*AttestationProcessingResult, error) {
 	if len(results) == 0 {
-		return errors.New("no attestations proccessing results")
+		return nil, errors.New("no attestations processing results")
 	}
 
+	verified := make([]*AttestationProcessingResult, 0, len(results))
 	var lastErr error
 	for _, attestation := range results {
-		err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec.Certificate)
-		if err == nil {
-			// if at least one attestation is verified, we're good as verification
-			// is defined as successful if at least one attestation is verified
-			return nil
+		if err := verifyCertExtensions(*attestation.VerificationResult.Signature.Certificate, ec.Certificate); err != nil {
+			lastErr = err
+			// move onto the next attestation in the for loop if verification fails
+			continue
 		}
-		lastErr = err
+		// otherwise, add the result to the results slice and increment verifyCount
+		verified = append(verified, attestation)
 	}
 
-	// if we have exited the for loop without returning early due to successful
-	// verification, we need to return an error
-	return lastErr
+	// if we have exited the for loop without verifying any attestations,
+	// return the last error found
+	if len(verified) == 0 {
+		return nil, lastErr
+	}
+
+	return verified, nil
 }
 
 func verifyCertExtensions(given, expected certificate.Summary) error {

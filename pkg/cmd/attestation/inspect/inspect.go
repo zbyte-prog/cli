@@ -167,8 +167,8 @@ func runInspect(opts *Options) error {
 	for _, a := range attestations {
 		inspectedBundle := BundleInspection{}
 
-		sigstoreRes := opts.SigstoreVerifier.Verify([]*api.Attestation{a}, sigstorePolicy)
-		if sigstoreRes.Error == nil {
+		_, err := opts.SigstoreVerifier.Verify([]*api.Attestation{a}, sigstorePolicy)
+		if err == nil {
 			inspectedBundle.Authentic = true
 		}
 

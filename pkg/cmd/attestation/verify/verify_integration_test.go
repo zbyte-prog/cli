@@ -40,6 +40,7 @@ func TestVerifyIntegration(t *testing.T) {
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
 		Owner:            "sigstore",
+		PredicateType:    verification.SLSAPredicateV1,
 		SANRegex:         "^https://github.com/sigstore/",
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}
@@ -83,6 +84,33 @@ func TestVerifyIntegration(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/fakeowner/fakerepo, got https://github.com/sigstore/sigstore-js")
 	})
+
+	t.Run("with no matching OIDC issuer", func(t *testing.T) {
+		opts := publicGoodOpts
+		opts.OIDCIssuer = "some-other-issuer"
+
+		err := runVerify(&opts)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "expected Issuer to be some-other-issuer, got https://token.actions.githubusercontent.com")
+	})
+
+	t.Run("with invalid SAN", func(t *testing.T) {
+		opts := publicGoodOpts
+		opts.SAN = "fake san"
+
+		err := runVerify(&opts)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "verifying with issuer \"sigstore.dev\"")
+	})
+
+	t.Run("with invalid SAN regex", func(t *testing.T) {
+		opts := publicGoodOpts
+		opts.SANRegex = "^https://github.com/sigstore/not-real/"
+
+		err := runVerify(&opts)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "verifying with issuer \"sigstore.dev\"")
+	})
 }
 
 func TestVerifyIntegrationCustomIssuer(t *testing.T) {
@@ -112,6 +140,7 @@ func TestVerifyIntegrationCustomIssuer(t *testing.T) {
 		Logger:           logger,
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       "https://token.actions.githubusercontent.com/hammer-time",
+		PredicateType:    verification.SLSAPredicateV1,
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}
 
@@ -181,6 +210,7 @@ func TestVerifyIntegrationReusableWorkflow(t *testing.T) {
 		Logger:           logger,
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
+		PredicateType:    verification.SLSAPredicateV1,
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}
 
@@ -271,6 +301,7 @@ func TestVerifyIntegrationReusableWorkflowSignerWorkflow(t *testing.T) {
 		OCIClient:        oci.NewLiveClient(),
 		OIDCIssuer:       verification.GitHubOIDCIssuer,
 		Owner:            "malancas",
+		PredicateType:    verification.SLSAPredicateV1,
 		Repo:             "malancas/attest-demo",
 		SigstoreVerifier: verification.NewLiveSigstoreVerifier(sigstoreConfig),
 	}

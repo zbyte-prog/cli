@@ -3,31 +3,162 @@ package verify
 import (
 	"testing"
 
-	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
-	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact/oci"
+	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
 	"github.com/cli/cli/v2/pkg/cmd/factory"
 
 	"github.com/stretchr/testify/require"
 )
 
-// This tests that a policy can be built from a valid artifact
-// Note that policy use is tested in verify_test.go in this package
-func TestBuildPolicy(t *testing.T) {
-	ociClient := oci.MockClient{}
+func TestNewEnforcementCriteria(t *testing.T) {
 	artifactPath := "../test/data/sigstore-js-2.1.0.tgz"
-	digestAlg := "sha256"
 
-	artifact, err := artifact.NewDigestedArtifact(ociClient, artifactPath, digestAlg)
-	require.NoError(t, err)
+	t.Run("sets SANRegex using SignerRepo", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+			SignerRepo:   "foo/bar",
+		}
 
-	opts := &Options{
-		ArtifactPath: artifactPath,
-		Owner:        "sigstore",
-		SANRegex:     "^https://github.com/sigstore/",
-	}
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "(?i)^https://github.com/foo/bar/", c.SANRegex)
+		require.Zero(t, c.SAN)
+	})
 
-	_, err = buildVerifyPolicy(opts, *artifact)
-	require.NoError(t, err)
+	t.Run("sets SANRegex using SignerWorkflow matching host regex", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:   artifactPath,
+			Owner:          "foo",
+			Repo:           "foo/bar",
+			SignerWorkflow: "foo/bar/.github/workflows/attest.yml",
+			Hostname:       "github.com",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "^https://github.com/foo/bar/.github/workflows/attest.yml", c.SANRegex)
+		require.Zero(t, c.SAN)
+	})
+
+	t.Run("sets SANRegex and SAN using SANRegex and SAN", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+			SAN:          "https://github/foo/bar/.github/workflows/attest.yml",
+			SANRegex:     "(?i)^https://github/foo",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.SAN)
+		require.Equal(t, "(?i)^https://github/foo", c.SANRegex)
+	})
+
+	t.Run("sets Extensions.RunnerEnvironment to GitHubRunner value if opts.DenySelfHostedRunner is true", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:         artifactPath,
+			Owner:                "foo",
+			Repo:                 "foo/bar",
+			DenySelfHostedRunner: true,
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, verification.GitHubRunner, c.Certificate.RunnerEnvironment)
+	})
+
+	t.Run("sets Extensions.RunnerEnvironment to * value if opts.DenySelfHostedRunner is false", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:         artifactPath,
+			Owner:                "foo",
+			Repo:                 "foo/bar",
+			DenySelfHostedRunner: false,
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Zero(t, c.Certificate.RunnerEnvironment)
+	})
+
+	t.Run("sets Extensions.SourceRepositoryURI using opts.Repo and opts.Tenant", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+			Tenant:       "baz",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://baz.ghe.com/foo/bar", c.Certificate.SourceRepositoryURI)
+	})
+
+	t.Run("sets Extensions.SourceRepositoryURI using opts.Repo", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://github.com/foo/bar", c.Certificate.SourceRepositoryURI)
+	})
+
+	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner and opts.Tenant", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+			Tenant:       "baz",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://baz.ghe.com/foo", c.Certificate.SourceRepositoryOwnerURI)
+	})
+
+	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://github.com/foo", c.Certificate.SourceRepositoryOwnerURI)
+	})
+
+	t.Run("sets OIDCIssuer using opts.Tenant", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+			Tenant:       "baz",
+			OIDCIssuer:   verification.GitHubOIDCIssuer,
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://token.actions.baz.ghe.com", c.Certificate.Issuer)
+	})
+
+	t.Run("sets OIDCIssuer using opts.OIDCIssuer", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+			OIDCIssuer:   "https://foo.com",
+			Tenant:       "baz",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://foo.com", c.Certificate.Issuer)
+	})
 }
 
 func TestValidateSignerWorkflow(t *testing.T) {
@@ -36,18 +167,28 @@ func TestValidateSignerWorkflow(t *testing.T) {
 		providedSignerWorkflow string
 		expectedWorkflowRegex  string
 		host                   string
+		expectErr              bool
+		errContains            string
 	}
 
 	testcases := []testcase{
 		{
 			name:                   "workflow with no host specified",
 			providedSignerWorkflow: "github/artifact-attestations-workflows/.github/workflows/attest.yml",
-			expectedWorkflowRegex:  "^https://github.com/github/artifact-attestations-workflows/.github/workflows/attest.yml",
+			expectErr:              true,
+			errContains:            "unknown host",
 		},
 		{
-			name:                   "workflow with host specified",
+			name:                   "workflow with default host",
+			providedSignerWorkflow: "github/artifact-attestations-workflows/.github/workflows/attest.yml",
+			expectedWorkflowRegex:  "^https://github.com/github/artifact-attestations-workflows/.github/workflows/attest.yml",
+			host:                   "github.com",
+		},
+		{
+			name:                   "workflow with workflow URL included",
 			providedSignerWorkflow: "github.com/github/artifact-attestations-workflows/.github/workflows/attest.yml",
 			expectedWorkflowRegex:  "^https://github.com/github/artifact-attestations-workflows/.github/workflows/attest.yml",
+			host:                   "github.com",
 		},
 		{
 			name:                   "workflow with GH_HOST set",
@@ -61,45 +202,25 @@ func TestValidateSignerWorkflow(t *testing.T) {
 			expectedWorkflowRegex:  "^https://authedhost.github.com/github/artifact-attestations-workflows/.github/workflows/attest.yml",
 			host:                   "authedhost.github.com",
 		},
-		{
-			name:                   "workflow with authenticated host",
-			providedSignerWorkflow: "github/artifact-attestations-workflows/.github/workflows/attest.yml",
-			expectedWorkflowRegex:  "^https://authedhost.github.com/github/artifact-attestations-workflows/.github/workflows/attest.yml",
-			host:                   "authedhost.github.com",
-		},
 	}
 
 	for _, tc := range testcases {
-		cmdFactory := factory.New("test")
-
 		opts := &Options{
-			Config:         cmdFactory.Config,
+			Config:         factory.New("test").Config,
 			SignerWorkflow: tc.providedSignerWorkflow,
 		}
 
 		// All host resolution is done verify.go:RunE
-		if tc.host == "" {
-			// Set to default host
-			tc.host = "github.com"
-		}
 		opts.Hostname = tc.host
-
 		workflowRegex, err := validateSignerWorkflow(opts)
-		require.NoError(t, err)
 		require.Equal(t, tc.expectedWorkflowRegex, workflowRegex)
 
+		if tc.expectErr {
+			require.Error(t, err)
+			require.ErrorContains(t, err, tc.errContains)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedWorkflowRegex, workflowRegex)
+		}
 	}
-}
-
-func TestValidateSignerWorkflowNoHost(t *testing.T) {
-	cmdFactory := factory.New("test")
-	opts := &Options{
-		Config:         cmdFactory.Config,
-		SignerWorkflow: "github/artifact-attestations-workflows/.github/workflows/attest.yml",
-	}
-
-	workflowRegex, err := validateSignerWorkflow(opts)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "unknown host")
-	require.Equal(t, "", workflowRegex)
 }

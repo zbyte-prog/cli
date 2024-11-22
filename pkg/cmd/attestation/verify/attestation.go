@@ -48,3 +48,26 @@ func getAttestations(o *Options, a artifact.DigestedArtifact) ([]*api.Attestatio
 	msg := fmt.Sprintf("Loaded %s from GitHub API", pluralAttestation)
 	return attestations, msg, nil
 }
+
+func verifyAttestations(art artifact.DigestedArtifact, att []*api.Attestation, sgVerifier verification.SigstoreVerifier, ec verification.EnforcementCriteria) ([]*verification.AttestationProcessingResult, string, error) {
+	sgPolicy, err := buildSigstoreVerifyPolicy(ec, art)
+	if err != nil {
+		logMsg := "✗ Failed to build Sigstore verification policy"
+		return nil, logMsg, err
+	}
+
+	sigstoreVerified, err := sgVerifier.Verify(att, sgPolicy)
+	if err != nil {
+		logMsg := "✗ Sigstore verification failed"
+		return nil, logMsg, err
+	}
+
+	// Verify extensions
+	certExtVerified, err := verification.VerifyCertExtensions(sigstoreVerified, ec)
+	if err != nil {
+		logMsg := "✗ Policy verification failed"
+		return nil, logMsg, err
+	}
+
+	return certExtVerified, "", nil
+}

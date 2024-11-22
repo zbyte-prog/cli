@@ -244,21 +244,9 @@ func runVerify(opts *Options) error {
 
 	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", ec.PredicateType)
 
-	sp, err := buildSigstoreVerifyPolicy(ec, *artifact)
+	verified, errMsg, err := verifyAttestations(*artifact, attestations, opts.SigstoreVerifier, ec)
 	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build Sigstore verification policy"))
-		return err
-	}
-
-	verifyResults, err := opts.SigstoreVerifier.Verify(attestations, sp)
-	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Sigstore verification failed"))
-		return err
-	}
-
-	// Verify extensions
-	if err := verification.VerifyCertExtensions(verifyResults, ec); err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Policy verification failed"))
+		opts.Logger.Println(opts.Logger.ColorScheme.Red(errMsg))
 		return err
 	}
 
@@ -267,7 +255,7 @@ func runVerify(opts *Options) error {
 	// If an exporter is provided with the --json flag, write the results to the terminal in JSON format
 	if opts.exporter != nil {
 		// print the results to the terminal as an array of JSON objects
-		if err = opts.exporter.Write(opts.Logger.IO, verifyResults); err != nil {
+		if err = opts.exporter.Write(opts.Logger.IO, verified); err != nil {
 			opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to write JSON output"))
 			return err
 		}
@@ -277,7 +265,7 @@ func runVerify(opts *Options) error {
 	opts.Logger.Printf("%s was attested by:\n", artifact.DigestWithAlg())
 
 	// Otherwise print the results to the terminal in a table
-	tableContent, err := buildTableVerifyContent(opts.Tenant, verifyResults)
+	tableContent, err := buildTableVerifyContent(opts.Tenant, verified)
 	if err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse results"))
 		return err

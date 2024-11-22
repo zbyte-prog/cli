@@ -1,14 +1,14 @@
 package inspect
 
 import (
-	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cli/cli/v2/internal/ghinstance"
-	"github.com/cli/cli/v2/internal/tableprinter"
+	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/io"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
@@ -136,7 +136,7 @@ type BundleInspectResult struct {
 }
 
 type BundleInspection struct {
-	Authentic              bool                  `json:"verifiable"`
+	Authentic              bool                  `json:"authentic"`
 	Certificate            CertificateInspection `json:"certificate"`
 	TransparencyLogEntries []TlogEntryInspection `json:"transparencyLogEntries"`
 	SignedTimestamps       []time.Time           `json:"signedTimestamps"`
@@ -147,7 +147,6 @@ type CertificateInspection struct {
 	certificate.Summary
 	NotBefore time.Time `json:"notBefore"`
 	NotAfter  time.Time `json:"notAfter"`
-	// add raw cert
 }
 
 type TlogEntryInspection struct {
@@ -222,83 +221,89 @@ func runInspect(opts *Options) error {
 		inspectedBundles = append(inspectedBundles, inspectedBundle)
 	}
 
-	// PrettyPrint(BundleInspectResult{InspectedBundles: inspectedBundles})
 	inspectionResult := BundleInspectResult{InspectedBundles: inspectedBundles}
 
-	// policy, err := buildPolicy(*artifact)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to build policy: %v", err)
-	// }
-	//
-	// res := opts.SigstoreVerifier.Verify(attestations, policy)
-	// if res.Error != nil {
-	// 	return fmt.Errorf("at least one attestation failed to verify against Sigstore: %v", res.Error)
-	// }
-	//
-	// opts.Logger.VerbosePrint(opts.Logger.ColorScheme.Green(
-	// 	"Successfully verified all attestations against Sigstore!\n\n",
-	// ))
-	//
 	// If the user provides the --format=json flag, print the results in JSON format
 	if opts.exporter != nil {
-		// details, err := getAttestationDetails(opts.Tenant, res.VerifyResults)
-		// if err != nil {
-		// 	return fmt.Errorf("failed to get attestation detail: %v", err)
-		// }
-
 		// print the results to the terminal as an array of JSON objects
 		if err = opts.exporter.Write(opts.Logger.IO, inspectionResult); err != nil {
 			return fmt.Errorf("failed to write JSON output")
 		}
 		return nil
 	}
-	//
-	// // otherwise, print results in a table
-	// details, err := getDetailsAsSlice(opts.Tenant, res.VerifyResults)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to parse attestation details: %v", err)
-	// }
-	//
-	// []string{detail.RepositoryName, detail.RepositoryID, detail.OrgName, detail.OrgID, detail.WorkflowID}
 
-	headers := []string{"Authentic", "Issuer", "Predicate", "NWO", "Workflow"}
-	t := tableprinter.New(opts.Logger.IO, tableprinter.WithHeader(headers...))
-
-	details := make([][]string, len(inspectionResult.InspectedBundles))
-	for i, iB := range inspectionResult.InspectedBundles {
-
-		details[i] = []string{strconv.FormatBool(iB.Authentic), iB.Certificate.Issuer, iB.Statement.GetPredicateType(), popNwo(iB.Certificate.SourceRepositoryURI), removeRepoURI(iB.Certificate.SourceRepositoryURI, iB.Certificate.SubjectAlternativeName)}
-	}
-
-	for _, row := range details {
-		for _, field := range row {
-			t.AddField(field, tableprinter.WithTruncate(nil))
-		}
-		t.EndRow()
-	}
-
-	if err = t.Render(); err != nil {
-		return fmt.Errorf("failed to print output: %v", err)
-	}
+	printInspectionSummary(opts.Logger, inspectionResult.InspectedBundles)
 
 	return nil
 }
 
-func popNwo(url string) string {
-	parts := strings.Split(url, "/")
+var logo = `
+   _                       __ 
+  (_)__  ___ ___  ___ ____/ /_
+ / / _ \(_-</ _ \/ -_) __/ __/
+/_/_//_/___/ .__/\__/\__/\__/ 
+          /_/                 
+`
+
+func printInspectionSummary(logger *io.Handler, bundles []BundleInspection) {
+	fmt.Printf("%s\n", logo)
+
+	fmt.Printf("Found %s:\n---\n", text.Pluralize(len(bundles), "attestation"))
+
+	bundleSummaries := make([][][]string, len(bundles))
+	for i, iB := range bundles {
+		bundleSummaries[i] = [][]string{
+			[]string{"Authentic", formatAuthentic(iB.Authentic, iB.Certificate.CertificateIssuer)},
+			[]string{"Source NWO", formatNwo(iB.Certificate.SourceRepositoryURI)},
+			[]string{"PredicateType", iB.Statement.GetPredicateType()},
+			[]string{"SubjectAlternativeName", iB.Certificate.SubjectAlternativeName},
+			[]string{"RunInvocationURI", iB.Certificate.RunInvocationURI},
+			[]string{"CertificateNotBefore", iB.Certificate.NotBefore.Format(time.RFC3339)},
+		}
+	}
+
+	scheme := logger.ColorScheme
+	for i, bundle := range bundleSummaries {
+		for _, pair := range bundle {
+			attr := fmt.Sprintf("%22s:", pair[0])
+			fmt.Printf("%s %s\n", scheme.Bold(attr), pair[1])
+		}
+		if i < len(bundleSummaries)-1 {
+			fmt.Println("---")
+		}
+	}
+}
+
+// formatNwo checks that longUrl is a valid URL and, if it is, extracts name/owner
+// from "https://githubinstance.com/name/owner/file/path@refs/heads/foo"
+func formatNwo(longUrl string) string {
+	parsedUrl, err := url.Parse(longUrl)
+
+	if err != nil {
+		return longUrl
+	}
+
+	parts := strings.Split(parsedUrl.Path, "/")
 	if len(parts) > 2 {
-		return parts[len(parts)-2] + "/" + parts[len(parts)-1]
+		return parts[1] + "/" + parts[2]
 	} else {
 		return parts[0]
 	}
 }
 
-func removeRepoURI(repoURI, workflow string) string {
-	return strings.ReplaceAll(workflow, repoURI+"/", "")
+func formatAuthentic(authentic bool, certIssuer string) string {
+	printIssuer := certIssuer
+
+	if strings.HasSuffix(certIssuer, "O=GitHub\\, Inc.") {
+		printIssuer = "(GH)"
+	} else if strings.HasSuffix(certIssuer, "O=sigstore.dev") {
+		printIssuer = "(PGI)"
+	}
+
+	return strconv.FormatBool(authentic) + " " + printIssuer
 }
 
 func dumpTlogs(entity *bundle.Bundle) ([]TlogEntryInspection, error) {
-
 	inspectedTlogEntries := []TlogEntryInspection{}
 
 	entries, err := entity.TlogEntries()
@@ -337,14 +342,4 @@ func dumpSignedTimestamps(entity *bundle.Bundle) ([]time.Time, error) {
 	}
 
 	return timestamps, nil
-}
-
-func PrettyPrint(v interface{}) (err error) {
-	b, err := json.MarshalIndent(v, "", "  ")
-
-	if err == nil {
-		fmt.Println(string(b))
-		return nil
-	}
-	return err
 }

@@ -207,10 +207,57 @@ func Test_runDownload(t *testing.T) {
 		wantErr       string
 	}{
 		{
-			name: "download non-expired",
+			name: "download non-expired to relative directory",
 			opts: DownloadOptions{
 				RunID:          "2345",
 				DestinationDir: "./tmp",
+			},
+			platform: &fakePlatform{
+				runArtifacts: map[string][]testArtifact{
+					"2345": {
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-1",
+								DownloadURL: "http://download.com/artifact1.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-1-file",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "expired-artifact",
+								DownloadURL: "http://download.com/expired.zip",
+								Expired:     true,
+							},
+							files: []string{
+								"expired",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-2",
+								DownloadURL: "http://download.com/artifact2.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-2-file",
+							},
+						},
+					},
+				},
+			},
+			expectedFiles: []string{
+				filepath.Join("artifact-1", "artifact-1-file"),
+				filepath.Join("artifact-2", "artifact-2-file"),
+			},
+		},
+		{
+			name: "download non-expired to absolute directory",
+			opts: DownloadOptions{
+				RunID:          "2345",
+				DestinationDir: "/tmp",
 			},
 			platform: &fakePlatform{
 				runArtifacts: map[string][]testArtifact{
@@ -323,6 +370,53 @@ func Test_runDownload(t *testing.T) {
 			wantErr:       "no artifact matches any of the names or patterns provided",
 		},
 		{
+			name: "pattern matches",
+			opts: DownloadOptions{
+				RunID:        "2345",
+				FilePatterns: []string{"artifact-*"},
+			},
+			platform: &fakePlatform{
+				runArtifacts: map[string][]testArtifact{
+					"2345": {
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-1",
+								DownloadURL: "http://download.com/artifact1.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-1-file",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "non-artifact-2",
+								DownloadURL: "http://download.com/non-artifact-2.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"non-artifact-2-file",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-3",
+								DownloadURL: "http://download.com/artifact3.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-3-file",
+							},
+						},
+					},
+				},
+			},
+			expectedFiles: []string{
+				filepath.Join("artifact-1", "artifact-1-file"),
+				filepath.Join("artifact-3", "artifact-3-file"),
+			},
+		},
+		{
 			name: "no pattern matches",
 			opts: DownloadOptions{
 				RunID:        "2345",
@@ -356,6 +450,99 @@ func Test_runDownload(t *testing.T) {
 			},
 			expectedFiles: []string{},
 			wantErr:       "no artifact matches any of the names or patterns provided",
+		},
+		{
+			name: "want specific single artifact",
+			opts: DownloadOptions{
+				RunID: "2345",
+				Names: []string{"non-artifact-2"},
+			},
+			platform: &fakePlatform{
+				runArtifacts: map[string][]testArtifact{
+					"2345": {
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-1",
+								DownloadURL: "http://download.com/artifact1.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-1-file",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "non-artifact-2",
+								DownloadURL: "http://download.com/non-artifact-2.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"non-artifact-2-file",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-3",
+								DownloadURL: "http://download.com/artifact3.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-3-file",
+							},
+						},
+					},
+				},
+			},
+			expectedFiles: []string{
+				filepath.Join("non-artifact-2-file"),
+			},
+		},
+		{
+			name: "want specific multiple artifacts",
+			opts: DownloadOptions{
+				RunID: "2345",
+				Names: []string{"artifact-1", "artifact-3"},
+			},
+			platform: &fakePlatform{
+				runArtifacts: map[string][]testArtifact{
+					"2345": {
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-1",
+								DownloadURL: "http://download.com/artifact1.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-1-file",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "non-artifact-2",
+								DownloadURL: "http://download.com/non-artifact-2.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"non-artifact-2-file",
+							},
+						},
+						{
+							artifact: shared.Artifact{
+								Name:        "artifact-3",
+								DownloadURL: "http://download.com/artifact3.zip",
+								Expired:     false,
+							},
+							files: []string{
+								"artifact-3-file",
+							},
+						},
+					},
+				},
+			},
+			expectedFiles: []string{
+				filepath.Join("artifact-1", "artifact-1-file"),
+				filepath.Join("artifact-3", "artifact-3-file"),
+			},
 		},
 		{
 			name: "avoid redownloading files of the same name",

@@ -166,8 +166,15 @@ func runDownload(opts *DownloadOptions) error {
 			}
 		}
 		destDir := opts.DestinationDir
-		// Why do we only include the artifact name in the destination directory if there are multiple?
-		if len(wantPatterns) != 0 || len(wantNames) != 1 {
+
+		// Isolate the downloaded artifact file to avoid potential conflicts from other downloaded artifacts when:
+		//
+		// 1. len(wantPatterns) > 0: Any pattern can result in 2+ artifacts
+		// 2. len(wantNames) == 0: User wants all artifacts regardless what they are named
+		// 3. len(wantNames) > 1: User wants multiple, specific artifacts
+		//
+		// Otherwise if a single artifact is wanted, then the protective subdirectory is an unnecessary inconvenience.
+		if len(wantPatterns) > 0 || len(wantNames) != 1 {
 			destDir = filepath.Join(destDir, a.Name)
 		}
 

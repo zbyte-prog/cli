@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/ghrepo"
@@ -31,6 +30,14 @@ type releaseNotes struct {
 }
 
 var notImplementedError = errors.New("not implemented")
+
+type errMissingRequiredWorkflowScope struct {
+	Hostname string
+}
+
+func (e errMissingRequiredWorkflowScope) Error() string {
+	return "workflow scope may be required"
+}
 
 func remoteTagExists(httpClient *http.Client, repo ghrepo.Interface, tagName string) (bool, error) {
 	gql := api.NewClientFromHTTP(httpClient)
@@ -192,12 +199,9 @@ func createRelease(httpClient *http.Client, repo ghrepo.Interface, params map[st
 	// https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps#available-scopes
 	if resp.StatusCode == http.StatusNotFound && !tokenHasWorkflowScope(resp) {
 		normalizedHostname := ghauth.NormalizeHostname(resp.Request.URL.Hostname())
-		errMissingRequiredWorkflowScope := errors.New(heredoc.Docf(`
-				HTTP 404: Failed to create release, "workflow" scope may be required
-				To request it, run gh auth refresh -h %[1]s -s workflow
-			`, normalizedHostname))
-
-		return nil, errMissingRequiredWorkflowScope
+		return nil, &errMissingRequiredWorkflowScope{
+			Hostname: normalizedHostname,
+		}
 	}
 
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300

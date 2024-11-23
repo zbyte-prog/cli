@@ -477,6 +477,21 @@ func createRun(opts *CreateOptions) error {
 	}
 
 	newRelease, err := createRelease(httpClient, baseRepo, params)
+
+	var errMissingRequiredWorkflowScope *errMissingRequiredWorkflowScope
+	if errors.As(err, &errMissingRequiredWorkflowScope) {
+		host := errMissingRequiredWorkflowScope.Hostname
+		refreshInstructions := fmt.Sprintf("gh auth refresh -h %[1]s -s workflow", host)
+		cs := opts.IO.ColorScheme()
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%s Failed to create release, \"workflow\" scope may be required.\n", cs.WarningIcon()))
+		sb.WriteString(fmt.Sprintf("To request it, run:\n%s\n", cs.Bold(refreshInstructions)))
+		fmt.Fprint(opts.IO.ErrOut, sb.String())
+
+		return cmdutil.SilentError
+	}
+
 	if err != nil {
 		return err
 	}

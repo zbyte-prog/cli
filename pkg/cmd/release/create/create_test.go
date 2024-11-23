@@ -1102,10 +1102,12 @@ func Test_createRun(t *testing.T) {
 					httpmock.REST("POST", "repos/OWNER/REPO/releases"),
 					httpmock.StatusScopesResponder(404, `repo,read:org`))
 			},
-			wantErr: heredoc.Doc(`
-				HTTP 404: Failed to create release, "workflow" scope may be required
-				To request it, run gh auth refresh -h github.com -s workflow
+			wantStderr: heredoc.Doc(`
+				! Failed to create release, "workflow" scope may be required.
+				To request it, run:
+				gh auth refresh -h github.com -s workflow
 			`),
+			wantErr: cmdutil.SilentError.Error(),
 		},
 		{
 			name:  "API returns 404, OAuth token has workflow scope",
@@ -1182,7 +1184,6 @@ func Test_createRun(t *testing.T) {
 			err := createRun(&tt.opts)
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
-				return
 			} else {
 				require.NoError(t, err)
 			}

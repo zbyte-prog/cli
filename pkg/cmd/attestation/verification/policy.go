@@ -69,7 +69,7 @@ The following policy criteria will be enforced against all attestations:
 	}
 
 	if c.SAN != "" {
-		info += fmt.Sprintf("\n- Signing certificate must have a Subject Alternative Name matching the exact value %s", c.SAN)
+		info += fmt.Sprintf("\n- Signing certificate Subject Alternative Name must match %s", c.SAN)
 	} else if c.SANRegex != "" {
 		info += fmt.Sprintf("\n- Signing certificate must have a Subject Alternative Name matching the regex %s", c.SANRegex)
 	}

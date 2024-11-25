@@ -61,7 +61,7 @@ The following policy criteria will be enforced against all attestations:
 	info := fmt.Sprintf(template, c.PredicateType, c.Certificate.Issuer, c.Certificate.SourceRepositoryOwnerURI)
 
 	if c.Certificate.SourceRepositoryURI != "" {
-		info += fmt.Sprintf("\n- Artifact built in a repository whose URI is %s", c.Certificate.SourceRepositoryURI)
+		info += fmt.Sprintf("\n- Source Repository URI must match %s", c.Certificate.SourceRepositoryURI)
 	}
 
 	if c.Certificate.RunnerEnvironment == GitHubRunner {

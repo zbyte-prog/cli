@@ -1499,17 +1499,16 @@ func TestCommandMocking(t *testing.T) {
 		return
 	}
 
-	// WM-TODO: maybe don't use 255, I only picked it because it was distinct
 	jsonVar, ok := os.LookupEnv("GH_HELPER_PROCESS_RICH_COMMANDS")
 	if !ok {
 		fmt.Fprint(os.Stderr, "missing GH_HELPER_PROCESS_RICH_COMMANDS")
-		os.Exit(255)
+		os.Exit(1)
 	}
 
 	var commands mockedCommands
 	if err := json.Unmarshal([]byte(jsonVar), &commands); err != nil {
 		fmt.Fprint(os.Stderr, "failed to unmarshal GH_HELPER_PROCESS_RICH_COMMANDS")
-		os.Exit(255)
+		os.Exit(1)
 	}
 
 	// The discarded args are those for the go test binary itself, e.g. `-test.run=TestHelperProcessRich`
@@ -1518,12 +1517,17 @@ func TestCommandMocking(t *testing.T) {
 	commandResult, ok := commands[args(strings.Join(realArgs, " "))]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "unexpected command: %s\n", strings.Join(realArgs, " "))
-		os.Exit(255)
+		os.Exit(1)
 	}
 
-	// WM-TODO: maybe pointer on these fields, or only print if not-empty
-	fmt.Fprint(os.Stdout, commandResult.Stdout)
-	fmt.Fprint(os.Stderr, commandResult.Stderr)
+	if commandResult.Stdout != "" {
+		fmt.Fprint(os.Stdout, commandResult.Stdout)
+	}
+
+	if commandResult.Stderr != "" {
+		fmt.Fprint(os.Stderr, commandResult.Stderr)
+	}
+
 	os.Exit(commandResult.ExitStatus)
 }
 

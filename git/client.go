@@ -95,13 +95,35 @@ func (c *Client) Command(ctx context.Context, args ...string) (*Command, error) 
 	return &Command{cmd}, nil
 }
 
+// CredentialPattern is used to indicate to AuthenticatedCommand which patterns git should match
+// against when trying to find credentials. It is a little overengineered as a type because we
+// want AuthenticatedCommand to have a clear complication error when this is not provided,
+// as opposed to using a string which might compile with `client.AuthenticatedCommand(ctx, "fetch")`.
+//
+// It is only usable when constructed by another function in the package because the empty pattern,
+// without insecure set to true, will result in an error in AuthenticatedCommand.
+//
+// Callers can currently opt-in to an insecure mode for backwards compatability by using
+// InsecureAllMatchingCredentialsPattern.
 type CredentialPattern struct {
 	insecure bool // should only be constructable via InsecureAllMatchingCredentialPattern
 	pattern  string
 }
 
+// InsecureAllMatchingCredentialsPattern allows for opting in to an insecure mode for backwards compatability.
 var InsecureAllMatchingCredentialsPattern = CredentialPattern{insecure: true, pattern: ""}
 var disallowedCredentialPattern = CredentialPattern{insecure: false, pattern: ""}
+
+// WM-TODO: Should this handle command modifiers, e.g. RepoDir being set in Clone
+// WM-TODO: Are there any funny remotes that might not resolve to a URL?
+// WM-TODO: This should probably have its own tests
+func CredentialPatternFromRemote(ctx context.Context, c *Client, remote string) (CredentialPattern, error) {
+	gitURL, err := c.GetRemoteURL(ctx, remote)
+	if err != nil {
+		return CredentialPattern{}, err
+	}
+	return CredentialPatternFromGitURL(gitURL)
+}
 
 // AuthenticatedCommand is a wrapper around Command that included configuration to use gh
 // as the credential helper for git.
@@ -650,17 +672,6 @@ func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods
 		return "", err
 	}
 	return target, nil
-}
-
-// WM-TODO: Bit of a weird method to hang off the client?
-// WM-TODO: We need to make sure this handles command modifiers everywhere...
-// WM-TODO: Are there any funny refspec usages that might not resolve via get-url
-func (c *Client) CredentialPatternFromRemote(ctx context.Context, remote string) (CredentialPattern, error) {
-	gitURL, err := c.GetRemoteURL(ctx, remote)
-	if err != nil {
-		return CredentialPattern{}, err
-	}
-	return CredentialPatternFromGitURL(gitURL)
 }
 
 func resolveGitPath() (string, error) {

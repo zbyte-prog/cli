@@ -133,7 +133,7 @@ func checkoutRun(opts *CheckoutOptions) error {
 	// Note that although we will probably be fetching from the headRemote, in practice, PR checkout can only
 	// ever point to one host, and we know baseRemote must be populated, where headRemote might be nil (e.g. when
 	// it was deleted).
-	credentialPattern, err := opts.GitClient.CredentialPatternFromRemote(context.Background(), baseRemote.Name)
+	credentialPattern, err := git.CredentialPatternFromRemote(context.Background(), opts.GitClient, baseRemote.Name)
 	if err != nil {
 		return err
 	}

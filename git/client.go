@@ -117,6 +117,7 @@ var disallowedCredentialPattern = CredentialPattern{insecure: false, pattern: ""
 // WM-TODO: Should this handle command modifiers, e.g. RepoDir being set in Clone
 // WM-TODO: Are there any funny remotes that might not resolve to a URL?
 // WM-TODO: This should probably have its own tests
+// WM-TODO: Consider what to do if remote was SSH, it's probably not breaking, but maybe we want to do something better
 func CredentialPatternFromRemote(ctx context.Context, c *Client, remote string) (CredentialPattern, error) {
 	gitURL, err := c.GetRemoteURL(ctx, remote)
 	if err != nil {

@@ -122,8 +122,6 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 		},
 	}
 
-	inspectCmd.Flags().StringVarP(&opts.BundlePath, "bundle", "b", "", "Path to bundle on disk, either a single bundle in a JSON file or a JSON lines file with multiple bundles")
-	// inspectCmd.MarkFlagRequired("bundle") //nolint:errcheck
 	inspectCmd.Flags().StringVarP(&opts.Hostname, "hostname", "", "", "Configure host to use")
 	cmdutil.StringEnumFlag(inspectCmd, &opts.DigestAlgorithm, "digest-alg", "d", "sha256", []string{"sha256", "sha512"}, "The algorithm used to compute a digest of the artifact")
 	cmdutil.AddFormatFlags(inspectCmd, &opts.exporter)
@@ -140,7 +138,7 @@ type BundleInspection struct {
 	Certificate            CertificateInspection `json:"certificate"`
 	TransparencyLogEntries []TlogEntryInspection `json:"transparencyLogEntries"`
 	SignedTimestamps       []time.Time           `json:"signedTimestamps"`
-	Statement              in_toto.Statement     `json:"statement"`
+	Statement              *in_toto.Statement    `json:"statement"`
 }
 
 type CertificateInspection struct {
@@ -203,7 +201,7 @@ func runInspect(opts *Options) error {
 				return fmt.Errorf("failed to fetch envelope statement: %w", err)
 			}
 
-			inspectedBundle.Statement = *stmt
+			inspectedBundle.Statement = stmt
 		}
 
 		tlogTimestamps, err := dumpTlogs(entity)
@@ -253,12 +251,12 @@ func printInspectionSummary(logger *io.Handler, bundles []BundleInspection) {
 	bundleSummaries := make([][][]string, len(bundles))
 	for i, iB := range bundles {
 		bundleSummaries[i] = [][]string{
-			[]string{"Authentic", formatAuthentic(iB.Authentic, iB.Certificate.CertificateIssuer)},
-			[]string{"Source NWO", formatNwo(iB.Certificate.SourceRepositoryURI)},
-			[]string{"PredicateType", iB.Statement.GetPredicateType()},
-			[]string{"SubjectAlternativeName", iB.Certificate.SubjectAlternativeName},
-			[]string{"RunInvocationURI", iB.Certificate.RunInvocationURI},
-			[]string{"CertificateNotBefore", iB.Certificate.NotBefore.Format(time.RFC3339)},
+			{"Authentic", formatAuthentic(iB.Authentic, iB.Certificate.CertificateIssuer)},
+			{"Source NWO", formatNwo(iB.Certificate.SourceRepositoryURI)},
+			{"PredicateType", iB.Statement.GetPredicateType()},
+			{"SubjectAlternativeName", iB.Certificate.SubjectAlternativeName},
+			{"RunInvocationURI", iB.Certificate.RunInvocationURI},
+			{"CertificateNotBefore", iB.Certificate.NotBefore.Format(time.RFC3339)},
 		}
 	}
 

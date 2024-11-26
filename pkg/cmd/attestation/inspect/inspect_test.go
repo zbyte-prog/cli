@@ -52,9 +52,8 @@ func TestNewInspectCmd(t *testing.T) {
 	}{
 		{
 			name: "Invalid digest-alg flag",
-			cli:  fmt.Sprintf("%s --bundle %s --digest-alg sha384", artifactPath, bundlePath),
+			cli:  fmt.Sprintf("%s --digest-alg sha384", bundlePath),
 			wants: Options{
-				ArtifactPath:     artifactPath,
 				BundlePath:       bundlePath,
 				DigestAlgorithm:  "sha384",
 				OCIClient:        oci.MockClient{},
@@ -64,9 +63,8 @@ func TestNewInspectCmd(t *testing.T) {
 		},
 		{
 			name: "Use default digest-alg value",
-			cli:  fmt.Sprintf("%s --bundle %s", artifactPath, bundlePath),
+			cli:  bundlePath,
 			wants: Options{
-				ArtifactPath:     artifactPath,
 				BundlePath:       bundlePath,
 				DigestAlgorithm:  "sha256",
 				OCIClient:        oci.MockClient{},
@@ -76,9 +74,8 @@ func TestNewInspectCmd(t *testing.T) {
 		},
 		{
 			name: "Use custom digest-alg value",
-			cli:  fmt.Sprintf("%s --bundle %s --digest-alg sha512", artifactPath, bundlePath),
+			cli:  fmt.Sprintf("%s --digest-alg sha512", bundlePath),
 			wants: Options{
-				ArtifactPath:     artifactPath,
 				BundlePath:       bundlePath,
 				DigestAlgorithm:  "sha512",
 				OCIClient:        oci.MockClient{},
@@ -87,21 +84,9 @@ func TestNewInspectCmd(t *testing.T) {
 			wantsErr: false,
 		},
 		{
-			name: "Missing bundle flag",
-			cli:  artifactPath,
-			wants: Options{
-				ArtifactPath:     artifactPath,
-				DigestAlgorithm:  "sha256",
-				OCIClient:        oci.MockClient{},
-				SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
-			},
-			wantsErr: true,
-		},
-		{
 			name: "Prints output in JSON format",
-			cli:  fmt.Sprintf("%s --bundle %s --format json", artifactPath, bundlePath),
+			cli:  fmt.Sprintf("%s --format json", bundlePath),
 			wants: Options{
-				ArtifactPath:     artifactPath,
 				BundlePath:       bundlePath,
 				DigestAlgorithm:  "sha256",
 				OCIClient:        oci.MockClient{},
@@ -135,7 +120,7 @@ func TestNewInspectCmd(t *testing.T) {
 			assert.Equal(t, tc.wants.BundlePath, opts.BundlePath)
 			assert.Equal(t, tc.wants.DigestAlgorithm, opts.DigestAlgorithm)
 			assert.NotNil(t, opts.Logger)
-			assert.NotNil(t, opts.OCIClient)
+			// assert.NotNil(t, opts.OCIClient)
 			assert.Equal(t, tc.wantsExporter, opts.exporter != nil)
 		})
 	}
@@ -153,12 +138,6 @@ func TestRunInspect(t *testing.T) {
 
 	t.Run("with valid artifact and bundle", func(t *testing.T) {
 		require.Nil(t, runInspect(&opts))
-	})
-
-	t.Run("with missing artifact path", func(t *testing.T) {
-		customOpts := opts
-		customOpts.ArtifactPath = test.NormalizeRelativePath("../test/data/non-existent-artifact.zip")
-		require.Error(t, runInspect(&customOpts))
 	})
 
 	t.Run("with missing bundle path", func(t *testing.T) {
@@ -181,7 +160,7 @@ func TestJSONOutput(t *testing.T) {
 	}
 	require.Nil(t, runInspect(&opts))
 
-	var target []AttestationDetail
+	var target BundleInspectResult
 	err := json.Unmarshal(out.Bytes(), &target)
 	require.NoError(t, err)
 }

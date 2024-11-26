@@ -243,18 +243,7 @@ func runVerify(opts *Options) error {
 	attestations = filteredAttestations
 
 	// print information about the policy that will be enforced against attestations
-	if opts.Logger.DebugEnabled() {
-		policyTableInfo := ec.BuildPolicyInformationForTable()
-		headers := []string{"attribute", "must match"}
-		opts.Logger.Println("")
-		if err = opts.Logger.PrintTable(headers, policyTableInfo); err != nil {
-			opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to print policy information to table"))
-			return err
-		}
-		opts.Logger.Println("")
-	} else {
-		opts.Logger.Println(ec.BuildPolicyInformation())
-	}
+	opts.Logger.Println(ec.BuildPolicyInformation())
 
 	verified, errMsg, err := verifyAttestations(*artifact, attestations, opts.SigstoreVerifier, ec)
 	if err != nil {

@@ -29,10 +29,6 @@ func NewTestHandler() *Handler {
 	return NewHandler(testIO)
 }
 
-func (h *Handler) DebugEnabled() bool {
-	return h.debugEnabled
-}
-
 // Printf writes the formatted arguments to the stderr writer.
 func (h *Handler) Printf(f string, v ...interface{}) (int, error) {
 	if !h.IO.IsStdoutTTY() {

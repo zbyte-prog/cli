@@ -98,9 +98,3 @@ func WithRepoDir(repoDir string) CommandModifier {
 		gc.setRepoDir(repoDir)
 	}
 }
-
-func WithExtraArgs(args ...string) CommandModifier {
-	return func(gc *Command) {
-		gc.Args = append(gc.Args, args...)
-	}
-}

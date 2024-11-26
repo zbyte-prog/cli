@@ -1082,13 +1082,13 @@ func TestClientUnsetRemoteResolution(t *testing.T) {
 			name:        "unset remote resolution",
 			wantCmdArgs: `path/to/git config --unset remote.origin.gh-resolved`,
 		},
-		// {
-		// 	name:          "git error",
-		// 	cmdExitStatus: 1,
-		// 	cmdStderr:     "git error message",
-		// 	wantCmdArgs:   `path/to/git config --unset remote.origin.gh-resolved`,
-		// 	wantErrorMsg:  "failed to run git: git error message",
-		// },
+		{
+			name:          "git error",
+			cmdExitStatus: 1,
+			cmdStderr:     "git error message",
+			wantCmdArgs:   `path/to/git config --unset remote.origin.gh-resolved`,
+			wantErrorMsg:  "failed to run git: git error message",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1285,11 +1285,7 @@ func TestClientPush(t *testing.T) {
 		{
 			name: "push",
 			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 0,
-					Stdout:     "https://github.com/cli/nonexistent.git",
-				},
-				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
+				`path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
 					ExitStatus: 0,
 				},
 			},
@@ -1298,38 +1294,20 @@ func TestClientPush(t *testing.T) {
 			name: "accepts command modifiers",
 			mods: []CommandModifier{WithRepoDir("/path/to/repo")},
 			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 0,
-					Stdout:     "https://github.com/cli/nonexistent.git",
-				},
-				`path/to/git -C /path/to/repo -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
+				`path/to/git -C /path/to/repo -c credential.helper= -c credential.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
 					ExitStatus: 0,
 				},
 			},
 		},
 		{
-			name: "git error on get-url",
+			name: "git error on push",
 			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 1,
-					Stderr:     "get-url error message",
-				},
-			},
-			wantErrorMsg: "failed to run git: get-url error message",
-		},
-		{
-			name: "git error on fetch",
-			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 0,
-					Stdout:     "https://github.com/cli/nonexistent.git",
-				},
-				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
+				`path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
 					ExitStatus: 1,
 					Stderr:     "push error message",
 				},
 			},
-			wantErrorMsg: "failed to run git: fetch error message",
+			wantErrorMsg: "failed to run git: push error message",
 		},
 	}
 

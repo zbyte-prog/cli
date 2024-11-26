@@ -612,13 +612,8 @@ func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...Comman
 }
 
 func (c *Client) Push(ctx context.Context, remote string, ref string, mods ...CommandModifier) error {
-	host, err := c.CredentialPatternFromRemote(ctx, remote)
-	if err != nil {
-		return err
-	}
-
 	args := []string{"push", "--set-upstream", remote, ref}
-	cmd, err := c.AuthenticatedCommand(ctx, host, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, InsecureAllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}

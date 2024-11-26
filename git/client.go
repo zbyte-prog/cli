@@ -597,16 +597,11 @@ func (c *Client) Fetch(ctx context.Context, remote string, refspec string, mods 
 }
 
 func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...CommandModifier) error {
-	host, err := c.CredentialPatternFromRemote(ctx, remote)
-	if err != nil {
-		return err
-	}
-
 	args := []string{"pull", "--ff-only"}
 	if remote != "" && branch != "" {
 		args = append(args, remote, branch)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, host, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, InsecureAllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}

@@ -644,7 +644,6 @@ func TestPrMerge_deleteBranch(t *testing.T) {
 	cs.Register(`git checkout main`, 0, "")
 	cs.Register(`git rev-parse --verify refs/heads/blueberries`, 0, "")
 	cs.Register(`git branch -D blueberries`, 0, "")
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git pull --ff-only`, 0, "")
 
 	output, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
@@ -696,7 +695,6 @@ func TestPrMerge_deleteBranch_nonDefault(t *testing.T) {
 	cs.Register(`git checkout fruit`, 0, "")
 	cs.Register(`git rev-parse --verify refs/heads/blueberries`, 0, "")
 	cs.Register(`git branch -D blueberries`, 0, "")
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git pull --ff-only`, 0, "")
 
 	output, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
@@ -746,7 +744,6 @@ func TestPrMerge_deleteBranch_onlyLocally(t *testing.T) {
 	cs.Register(`git checkout main`, 0, "")
 	cs.Register(`git rev-parse --verify refs/heads/blueberries`, 0, "")
 	cs.Register(`git branch -D blueberries`, 0, "")
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git pull --ff-only`, 0, "")
 
 	output, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
@@ -797,7 +794,6 @@ func TestPrMerge_deleteBranch_checkoutNewBranch(t *testing.T) {
 	cs.Register(`git checkout -b fruit --track origin/fruit`, 0, "")
 	cs.Register(`git rev-parse --verify refs/heads/blueberries`, 0, "")
 	cs.Register(`git branch -D blueberries`, 0, "")
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git pull --ff-only`, 0, "")
 
 	output, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
@@ -1085,7 +1081,6 @@ func TestPrMerge_alreadyMerged(t *testing.T) {
 	cs.Register(`git checkout main`, 0, "")
 	cs.Register(`git rev-parse --verify refs/heads/blueberries`, 0, "")
 	cs.Register(`git branch -D blueberries`, 0, "")
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git pull --ff-only`, 0, "")
 
 	pm := &prompter.PrompterMock{
@@ -1329,7 +1324,6 @@ func TestPRMergeTTY_withDeleteBranch(t *testing.T) {
 	cs.Register(`git checkout main`, 0, "")
 	cs.Register(`git rev-parse --verify refs/heads/blueberries`, 0, "")
 	cs.Register(`git branch -D blueberries`, 0, "")
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git pull --ff-only`, 0, "")
 
 	pm := &prompter.PrompterMock{

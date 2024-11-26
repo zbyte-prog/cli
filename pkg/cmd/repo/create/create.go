@@ -676,7 +676,12 @@ func createFromLocal(opts *CreateOptions) error {
 	}
 
 	if opts.Push && repoType == bare {
-		cmd, err := opts.GitClient.AuthenticatedCommand(context.Background(), "push", baseRemote, "--mirror")
+		// WM-TODO: can we collapse this into opts.GitClient.Push?
+		credentialPattern, err := opts.GitClient.CredentialPatternFromRemote(context.Background(), baseRemote)
+		if err != nil {
+			return err
+		}
+		cmd, err := opts.GitClient.AuthenticatedCommand(context.Background(), credentialPattern, "push", baseRemote, "--mirror")
 		if err != nil {
 			return err
 		}

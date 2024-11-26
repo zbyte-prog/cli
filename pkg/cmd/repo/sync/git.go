@@ -54,8 +54,13 @@ func (g *gitExecuter) CurrentBranch() (string, error) {
 }
 
 func (g *gitExecuter) Fetch(remote, ref string) error {
+	host, err := g.client.CredentialPatternFromRemote(context.Background(), remote)
+	if err != nil {
+		return err
+	}
+
 	args := []string{"fetch", "-q", remote, ref}
-	cmd, err := g.client.AuthenticatedCommand(context.Background(), args...)
+	cmd, err := g.client.AuthenticatedCommand(context.Background(), host, args...)
 	if err != nil {
 		return err
 	}

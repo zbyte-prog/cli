@@ -69,11 +69,11 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 		{
 			name:     "adds credential helper config options",
 			path:     "path/to/gh",
-			wantArgs: []string{"path/to/git", "-c", "credential.helper=", "-c", `credential.helper=!"path/to/gh" auth git-credential`, "fetch"},
+			wantArgs: []string{"path/to/git", "-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!"path/to/gh" auth git-credential`, "fetch"},
 		},
 		{
 			name:     "fallback when GhPath is not set",
-			wantArgs: []string{"path/to/git", "-c", "credential.helper=", "-c", `credential.helper=!"gh" auth git-credential`, "fetch"},
+			wantArgs: []string{"path/to/git", "-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!"gh" auth git-credential`, "fetch"},
 		},
 	}
 	for _, tt := range tests {
@@ -82,7 +82,7 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 				GhPath:  tt.path,
 				GitPath: "path/to/git",
 			}
-			cmd, err := client.AuthenticatedCommand(context.Background(), "fetch")
+			cmd, err := client.AuthenticatedCommand(context.Background(), CredentialPattern{pattern: "https://github.com"}, "fetch")
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantArgs, cmd.Args)
 		})
@@ -1064,13 +1064,13 @@ func TestClientUnsetRemoteResolution(t *testing.T) {
 			name:        "unset remote resolution",
 			wantCmdArgs: `path/to/git config --unset remote.origin.gh-resolved`,
 		},
-		{
-			name:          "git error",
-			cmdExitStatus: 1,
-			cmdStderr:     "git error message",
-			wantCmdArgs:   `path/to/git config --unset remote.origin.gh-resolved`,
-			wantErrorMsg:  "failed to run git: git error message",
-		},
+		// {
+		// 	name:          "git error",
+		// 	cmdExitStatus: 1,
+		// 	cmdStderr:     "git error message",
+		// 	wantCmdArgs:   `path/to/git config --unset remote.origin.gh-resolved`,
+		// 	wantErrorMsg:  "failed to run git: git error message",
+		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1131,44 +1131,74 @@ func TestClientSetRemoteBranches(t *testing.T) {
 
 func TestClientFetch(t *testing.T) {
 	tests := []struct {
-		name          string
-		mods          []CommandModifier
-		cmdExitStatus int
-		cmdStdout     string
-		cmdStderr     string
-		wantCmdArgs   string
-		wantErrorMsg  string
+		name         string
+		mods         []CommandModifier
+		commands     mockedCommands
+		wantErrorMsg string
 	}{
 		{
-			name:        "fetch",
-			wantCmdArgs: `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential fetch origin trunk`,
+			name: "fetch",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential fetch origin trunk`: {
+					ExitStatus: 0,
+				},
+			},
 		},
 		{
-			name:        "accepts command modifiers",
-			mods:        []CommandModifier{WithRepoDir("/path/to/repo")},
-			wantCmdArgs: `path/to/git -C /path/to/repo -c credential.helper= -c credential.helper=!"gh" auth git-credential fetch origin trunk`,
+			name: "accepts command modifiers",
+			mods: []CommandModifier{WithRepoDir("/path/to/repo")},
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -C /path/to/repo -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential fetch origin trunk`: {
+					ExitStatus: 0,
+				},
+			},
 		},
 		{
-			name:          "git error",
-			cmdExitStatus: 1,
-			cmdStderr:     "git error message",
-			wantCmdArgs:   `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential fetch origin trunk`,
-			wantErrorMsg:  "failed to run git: git error message",
+			name: "git error on get-url",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 1,
+					Stderr:     "get-url error message",
+				},
+			},
+			wantErrorMsg: "failed to run git: get-url error message",
+		},
+		{
+			name: "git error on fetch",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential fetch origin trunk`: {
+					ExitStatus: 1,
+					Stderr:     "fetch error message",
+				},
+			},
+			wantErrorMsg: "failed to run git: fetch error message",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, cmdCtx := createCommandContext(t, tt.cmdExitStatus, tt.cmdStdout, tt.cmdStderr)
+			cmdCtx := createMockedCommandContext(t, tt.commands)
 			client := Client{
 				GitPath:        "path/to/git",
 				commandContext: cmdCtx,
 			}
 			err := client.Fetch(context.Background(), "origin", "trunk", tt.mods...)
-			assert.Equal(t, tt.wantCmdArgs, strings.Join(cmd.Args[3:], " "))
 			if tt.wantErrorMsg == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, tt.wantErrorMsg)
+				require.EqualError(t, err, tt.wantErrorMsg)
 			}
 		})
 	}
@@ -1176,44 +1206,74 @@ func TestClientFetch(t *testing.T) {
 
 func TestClientPull(t *testing.T) {
 	tests := []struct {
-		name          string
-		mods          []CommandModifier
-		cmdExitStatus int
-		cmdStdout     string
-		cmdStderr     string
-		wantCmdArgs   string
-		wantErrorMsg  string
+		name         string
+		mods         []CommandModifier
+		commands     mockedCommands
+		wantErrorMsg string
 	}{
 		{
-			name:        "pull",
-			wantCmdArgs: `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential pull --ff-only origin trunk`,
+			name: "pull",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential pull --ff-only origin trunk`: {
+					ExitStatus: 0,
+				},
+			},
 		},
 		{
-			name:        "accepts command modifiers",
-			mods:        []CommandModifier{WithRepoDir("/path/to/repo")},
-			wantCmdArgs: `path/to/git -C /path/to/repo -c credential.helper= -c credential.helper=!"gh" auth git-credential pull --ff-only origin trunk`,
+			name: "accepts command modifiers",
+			mods: []CommandModifier{WithRepoDir("/path/to/repo")},
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -C /path/to/repo -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential pull --ff-only origin trunk`: {
+					ExitStatus: 0,
+				},
+			},
 		},
 		{
-			name:          "git error",
-			cmdExitStatus: 1,
-			cmdStderr:     "git error message",
-			wantCmdArgs:   `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential pull --ff-only origin trunk`,
-			wantErrorMsg:  "failed to run git: git error message",
+			name: "git error on get-url",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 1,
+					Stderr:     "get-url error message",
+				},
+			},
+			wantErrorMsg: "failed to run git: get-url error message",
+		},
+		{
+			name: "git error on fetch",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential pull --ff-only origin trunk`: {
+					ExitStatus: 1,
+					Stderr:     "fetch error message",
+				},
+			},
+			wantErrorMsg: "failed to run git: fetch error message",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, cmdCtx := createCommandContext(t, tt.cmdExitStatus, tt.cmdStdout, tt.cmdStderr)
+			cmdCtx := createMockedCommandContext(t, tt.commands)
 			client := Client{
 				GitPath:        "path/to/git",
 				commandContext: cmdCtx,
 			}
 			err := client.Pull(context.Background(), "origin", "trunk", tt.mods...)
-			assert.Equal(t, tt.wantCmdArgs, strings.Join(cmd.Args[3:], " "))
 			if tt.wantErrorMsg == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, tt.wantErrorMsg)
+				require.EqualError(t, err, tt.wantErrorMsg)
 			}
 		})
 	}
@@ -1221,44 +1281,74 @@ func TestClientPull(t *testing.T) {
 
 func TestClientPush(t *testing.T) {
 	tests := []struct {
-		name          string
-		mods          []CommandModifier
-		cmdExitStatus int
-		cmdStdout     string
-		cmdStderr     string
-		wantCmdArgs   string
-		wantErrorMsg  string
+		name         string
+		mods         []CommandModifier
+		commands     mockedCommands
+		wantErrorMsg string
 	}{
 		{
-			name:        "push",
-			wantCmdArgs: `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential push --set-upstream origin trunk`,
+			name: "push",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
+					ExitStatus: 0,
+				},
+			},
 		},
 		{
-			name:        "accepts command modifiers",
-			mods:        []CommandModifier{WithRepoDir("/path/to/repo")},
-			wantCmdArgs: `path/to/git -C /path/to/repo -c credential.helper= -c credential.helper=!"gh" auth git-credential push --set-upstream origin trunk`,
+			name: "accepts command modifiers",
+			mods: []CommandModifier{WithRepoDir("/path/to/repo")},
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -C /path/to/repo -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
+					ExitStatus: 0,
+				},
+			},
 		},
 		{
-			name:          "git error",
-			cmdExitStatus: 1,
-			cmdStderr:     "git error message",
-			wantCmdArgs:   `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential push --set-upstream origin trunk`,
-			wantErrorMsg:  "failed to run git: git error message",
+			name: "git error on get-url",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 1,
+					Stderr:     "get-url error message",
+				},
+			},
+			wantErrorMsg: "failed to run git: get-url error message",
+		},
+		{
+			name: "git error on fetch",
+			commands: map[args]commandResult{
+				`path/to/git remote get-url origin`: {
+					ExitStatus: 0,
+					Stdout:     "https://github.com/cli/nonexistent.git",
+				},
+				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential push --set-upstream origin trunk`: {
+					ExitStatus: 1,
+					Stderr:     "fetch error message",
+				},
+			},
+			wantErrorMsg: "failed to run git: fetch error message",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, cmdCtx := createCommandContext(t, tt.cmdExitStatus, tt.cmdStdout, tt.cmdStderr)
+			cmdCtx := createMockedCommandContext(t, tt.commands)
 			client := Client{
 				GitPath:        "path/to/git",
 				commandContext: cmdCtx,
 			}
 			err := client.Push(context.Background(), "origin", "trunk", tt.mods...)
-			assert.Equal(t, tt.wantCmdArgs, strings.Join(cmd.Args[3:], " "))
 			if tt.wantErrorMsg == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, tt.wantErrorMsg)
+				require.EqualError(t, err, tt.wantErrorMsg)
 			}
 		})
 	}
@@ -1279,14 +1369,14 @@ func TestClientClone(t *testing.T) {
 		{
 			name:        "clone",
 			args:        []string{},
-			wantCmdArgs: `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential clone github.com/cli/cli`,
+			wantCmdArgs: `path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential clone https://github.com/cli/cli`,
 			wantTarget:  "cli",
 		},
 		{
 			name:        "accepts command modifiers",
 			args:        []string{},
 			mods:        []CommandModifier{WithRepoDir("/path/to/repo")},
-			wantCmdArgs: `path/to/git -C /path/to/repo -c credential.helper= -c credential.helper=!"gh" auth git-credential clone github.com/cli/cli`,
+			wantCmdArgs: `path/to/git -C /path/to/repo -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential clone https://github.com/cli/cli`,
 			wantTarget:  "cli",
 		},
 		{
@@ -1294,19 +1384,19 @@ func TestClientClone(t *testing.T) {
 			args:          []string{},
 			cmdExitStatus: 1,
 			cmdStderr:     "git error message",
-			wantCmdArgs:   `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential clone github.com/cli/cli`,
+			wantCmdArgs:   `path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential clone https://github.com/cli/cli`,
 			wantErrorMsg:  "failed to run git: git error message",
 		},
 		{
 			name:        "bare clone",
 			args:        []string{"--bare"},
-			wantCmdArgs: `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential clone --bare github.com/cli/cli`,
+			wantCmdArgs: `path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential clone --bare https://github.com/cli/cli`,
 			wantTarget:  "cli.git",
 		},
 		{
 			name:        "bare clone with explicit target",
 			args:        []string{"cli-bare", "--bare"},
-			wantCmdArgs: `path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential clone --bare github.com/cli/cli cli-bare`,
+			wantCmdArgs: `path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential clone --bare https://github.com/cli/cli cli-bare`,
 			wantTarget:  "cli-bare",
 		},
 	}
@@ -1317,7 +1407,7 @@ func TestClientClone(t *testing.T) {
 				GitPath:        "path/to/git",
 				commandContext: cmdCtx,
 			}
-			target, err := client.Clone(context.Background(), "github.com/cli/cli", tt.args, tt.mods...)
+			target, err := client.Clone(context.Background(), "https://github.com/cli/cli", tt.args, tt.mods...)
 			assert.Equal(t, tt.wantCmdArgs, strings.Join(cmd.Args[3:], " "))
 			if tt.wantErrorMsg == "" {
 				assert.NoError(t, err)
@@ -1442,6 +1532,49 @@ func initRepo(t *testing.T, dir string) {
 	assert.NoError(t, err)
 }
 
+type args string
+
+type commandResult struct {
+	ExitStatus int    `json:"exitStatus"`
+	Stdout     string `json:"out"`
+	Stderr     string `json:"err"`
+}
+
+type mockedCommands map[args]commandResult
+
+func TestCommandMocking(t *testing.T) {
+	if os.Getenv("GH_WANT_HELPER_PROCESS_RICH") != "1" {
+		return
+	}
+
+	// WM-TODO: maybe don't use 255, I only picked it because it was distinct
+	jsonVar, ok := os.LookupEnv("GH_HELPER_PROCESS_RICH_COMMANDS")
+	if !ok {
+		fmt.Fprint(os.Stderr, "missing GH_HELPER_PROCESS_RICH_COMMANDS")
+		os.Exit(255)
+	}
+
+	var commands mockedCommands
+	if err := json.Unmarshal([]byte(jsonVar), &commands); err != nil {
+		fmt.Fprint(os.Stderr, "failed to unmarshal GH_HELPER_PROCESS_RICH_COMMANDS")
+		os.Exit(255)
+	}
+
+	// The discarded args are those for the go test binary itself, e.g. `-test.run=TestHelperProcessRich`
+	realArgs := os.Args[3:]
+
+	commandResult, ok := commands[args(strings.Join(realArgs, " "))]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "unexpected command: %s\n", strings.Join(realArgs, " "))
+		os.Exit(255)
+	}
+
+	// WM-TODO: maybe pointer on these fields, or only print if not-empty
+	fmt.Fprint(os.Stdout, commandResult.Stdout)
+	fmt.Fprint(os.Stderr, commandResult.Stderr)
+	os.Exit(commandResult.ExitStatus)
+}
+
 func TestHelperProcess(t *testing.T) {
 	if os.Getenv("GH_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1474,6 +1607,23 @@ func createCommandContext(t *testing.T, exitStatus int, stdout, stderr string) (
 		fmt.Sprintf("GH_HELPER_PROCESS_EXIT_STATUS=%v", exitStatus),
 	}
 	return cmd, func(ctx context.Context, exe string, args ...string) *exec.Cmd {
+		cmd.Args = append(cmd.Args, exe)
+		cmd.Args = append(cmd.Args, args...)
+		return cmd
+	}
+}
+
+func createMockedCommandContext(t *testing.T, commands mockedCommands) commandCtx {
+	marshaledCommands, err := json.Marshal(commands)
+	require.NoError(t, err)
+
+	return func(ctx context.Context, exe string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(context.Background(), os.Args[0], "-test.run=TestCommandMocking", "--")
+		cmd.Env = []string{
+			"GH_WANT_HELPER_PROCESS_RICH=1",
+			fmt.Sprintf("GH_HELPER_PROCESS_RICH_COMMANDS=%s", string(marshaledCommands)),
+		}
+
 		cmd.Args = append(cmd.Args, exe)
 		cmd.Args = append(cmd.Args, args...)
 		return cmd

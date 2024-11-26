@@ -507,6 +507,7 @@ func Test_createRun(t *testing.T) {
 				cs.Register(`git -C . rev-parse --git-dir`, 0, ".")
 				cs.Register(`git -C . rev-parse HEAD`, 0, "commithash")
 				cs.Register(`git -C . remote add origin https://github.com/OWNER/REPO`, 0, "")
+				cs.Register(`git -C . remote get-url origin`, 0, "https://github.com/OWNER/REPO")
 				cs.Register(`git -C . push origin --mirror`, 0, "")
 			},
 			wantStdout: "✓ Created repository OWNER/REPO on GitHub\n  https://github.com/OWNER/REPO\n✓ Added remote https://github.com/OWNER/REPO.git\n✓ Mirrored all refs to https://github.com/OWNER/REPO.git\n",
@@ -575,6 +576,7 @@ func Test_createRun(t *testing.T) {
 				cs.Register(`git -C . rev-parse --git-dir`, 0, ".git")
 				cs.Register(`git -C . rev-parse HEAD`, 0, "commithash")
 				cs.Register(`git -C . remote add origin https://github.com/OWNER/REPO`, 0, "")
+				cs.Register(`git -C . remote get-url origin`, 0, "https://github.com/OWNER/REPO")
 				cs.Register(`git -C . push --set-upstream origin HEAD`, 0, "")
 			},
 			wantStdout: "✓ Created repository OWNER/REPO on GitHub\n  https://github.com/OWNER/REPO\n✓ Added remote https://github.com/OWNER/REPO.git\n✓ Pushed commits to https://github.com/OWNER/REPO.git\n",
@@ -795,6 +797,7 @@ func Test_createRun(t *testing.T) {
 				cs.Register(`git -C . rev-parse --git-dir`, 0, ".")
 				cs.Register(`git -C . rev-parse HEAD`, 0, "commithash")
 				cs.Register(`git -C . remote add origin https://github.com/OWNER/REPO`, 0, "")
+				cs.Register(`git -C . remote get-url origin`, 0, "https://github.com/OWNER/REPO")
 				cs.Register(`git -C . push origin --mirror`, 0, "")
 			},
 			wantStdout: "https://github.com/OWNER/REPO\n",

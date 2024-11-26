@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/safeexec"
 )
 
@@ -94,16 +95,27 @@ func (c *Client) Command(ctx context.Context, args ...string) (*Command, error) 
 	return &Command{cmd}, nil
 }
 
+// WM-TODO: not sure about this type, but I want to ensure that all call sites are provding the host,
+// which is hard if the signature of AuthenticatedCommand is (context.Context, host string, args ...string)
+// because this means AuthenticatedCommand(ctx, "fetch") will not be a compile error.
+type CredentialPattern struct {
+	pattern string
+}
+
 // AuthenticatedCommand is a wrapper around Command that included configuration to use gh
 // as the credential helper for git.
-func (c *Client) AuthenticatedCommand(ctx context.Context, args ...string) (*Command, error) {
-	preArgs := []string{"-c", "credential.helper="}
+func (c *Client) AuthenticatedCommand(ctx context.Context, credentialPattern CredentialPattern, args ...string) (*Command, error) {
+	if credentialPattern.pattern == "" {
+		panic("get your shit together")
+	}
+
+	preArgs := []string{"-c", fmt.Sprintf("credential.%s.helper=", credentialPattern.pattern)}
 	if c.GhPath == "" {
 		// Assumes that gh is in PATH.
 		c.GhPath = "gh"
 	}
 	credHelper := fmt.Sprintf("!%q auth git-credential", c.GhPath)
-	preArgs = append(preArgs, "-c", fmt.Sprintf("credential.helper=%s", credHelper))
+	preArgs = append(preArgs, "-c", fmt.Sprintf("credential.%s.helper=%s", credentialPattern.pattern, credHelper))
 	args = append(preArgs, args...)
 	return c.Command(ctx, args...)
 }
@@ -150,6 +162,19 @@ func (c *Client) UpdateRemoteURL(ctx context.Context, name, url string) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Client) GetRemoteURL(ctx context.Context, name string) (string, error) {
+	args := []string{"remote", "get-url", name}
+	cmd, err := c.Command(ctx, args...)
+	if err != nil {
+		return "", err
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func (c *Client) SetRemoteResolution(ctx context.Context, name, resolution string) error {
@@ -545,11 +570,16 @@ func (c *Client) AddRemote(ctx context.Context, name, urlStr string, trackingBra
 // Below are commands that make network calls and need authentication credentials supplied from gh.
 
 func (c *Client) Fetch(ctx context.Context, remote string, refspec string, mods ...CommandModifier) error {
+	host, err := c.CredentialPatternFromRemote(ctx, remote)
+	if err != nil {
+		return err
+	}
+
 	args := []string{"fetch", remote}
 	if refspec != "" {
 		args = append(args, refspec)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, host, args...)
 	if err != nil {
 		return err
 	}
@@ -560,11 +590,16 @@ func (c *Client) Fetch(ctx context.Context, remote string, refspec string, mods 
 }
 
 func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...CommandModifier) error {
+	host, err := c.CredentialPatternFromRemote(ctx, remote)
+	if err != nil {
+		return err
+	}
+
 	args := []string{"pull", "--ff-only"}
 	if remote != "" && branch != "" {
 		args = append(args, remote, branch)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, host, args...)
 	if err != nil {
 		return err
 	}
@@ -575,8 +610,13 @@ func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...Comman
 }
 
 func (c *Client) Push(ctx context.Context, remote string, ref string, mods ...CommandModifier) error {
+	host, err := c.CredentialPatternFromRemote(ctx, remote)
+	if err != nil {
+		return err
+	}
+
 	args := []string{"push", "--set-upstream", remote, ref}
-	cmd, err := c.AuthenticatedCommand(ctx, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, host, args...)
 	if err != nil {
 		return err
 	}
@@ -587,6 +627,11 @@ func (c *Client) Push(ctx context.Context, remote string, ref string, mods ...Co
 }
 
 func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods ...CommandModifier) (string, error) {
+	host, err := CredentialPatternFromGitURL(cloneURL)
+	if err != nil {
+		return "", err
+	}
+
 	cloneArgs, target := parseCloneArgs(args)
 	cloneArgs = append(cloneArgs, cloneURL)
 	// If the args contain an explicit target, pass it to clone otherwise,
@@ -601,7 +646,7 @@ func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods
 		}
 	}
 	cloneArgs = append([]string{"clone"}, cloneArgs...)
-	cmd, err := c.AuthenticatedCommand(ctx, cloneArgs...)
+	cmd, err := c.AuthenticatedCommand(ctx, host, cloneArgs...)
 	if err != nil {
 		return "", err
 	}
@@ -613,6 +658,17 @@ func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods
 		return "", err
 	}
 	return target, nil
+}
+
+// WM-TODO: Bit of a weird method to hang off the client?
+// WM-TODO: We need to make sure this handles command modifiers everywhere...
+// WM-TODO: Are there any funny refspec usages that might not resolve via get-url
+func (c *Client) CredentialPatternFromRemote(ctx context.Context, remote string) (CredentialPattern, error) {
+	gitURL, err := c.GetRemoteURL(ctx, remote)
+	if err != nil {
+		return CredentialPattern{}, err
+	}
+	return CredentialPatternFromGitURL(gitURL)
 }
 
 func resolveGitPath() (string, error) {
@@ -728,4 +784,16 @@ var globReplacer = strings.NewReplacer(
 
 func escapeGlob(p string) string {
 	return globReplacer.Replace(p)
+}
+
+// Cool cool cool...
+// YOLO
+func CredentialPatternFromGitURL(gitURL string) (CredentialPattern, error) {
+	normalizedURL, err := ParseURL(gitURL)
+	if err != nil {
+		return CredentialPattern{}, fmt.Errorf("failed to parse remote URL: %w", err)
+	}
+	return CredentialPattern{
+		pattern: strings.TrimSuffix(ghinstance.HostPrefix(normalizedURL.Host), "/"),
+	}, nil
 }

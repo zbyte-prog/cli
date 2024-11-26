@@ -95,27 +95,34 @@ func (c *Client) Command(ctx context.Context, args ...string) (*Command, error) 
 	return &Command{cmd}, nil
 }
 
-// WM-TODO: not sure about this type, but I want to ensure that all call sites are provding the host,
-// which is hard if the signature of AuthenticatedCommand is (context.Context, host string, args ...string)
-// because this means AuthenticatedCommand(ctx, "fetch") will not be a compile error.
 type CredentialPattern struct {
-	pattern string
+	insecure bool // should only be constructable via InsecureAllMatchingCredentialPattern
+	pattern  string
 }
+
+var InsecureAllMatchingCredentialsPattern = CredentialPattern{insecure: true, pattern: ""}
+var disallowedCredentialPattern = CredentialPattern{insecure: false, pattern: ""}
 
 // AuthenticatedCommand is a wrapper around Command that included configuration to use gh
 // as the credential helper for git.
 func (c *Client) AuthenticatedCommand(ctx context.Context, credentialPattern CredentialPattern, args ...string) (*Command, error) {
-	if credentialPattern.pattern == "" {
-		panic("get your shit together")
-	}
-
-	preArgs := []string{"-c", fmt.Sprintf("credential.%s.helper=", credentialPattern.pattern)}
 	if c.GhPath == "" {
 		// Assumes that gh is in PATH.
 		c.GhPath = "gh"
 	}
 	credHelper := fmt.Sprintf("!%q auth git-credential", c.GhPath)
-	preArgs = append(preArgs, "-c", fmt.Sprintf("credential.%s.helper=%s", credentialPattern.pattern, credHelper))
+
+	var preArgs []string
+	if credentialPattern == disallowedCredentialPattern {
+		return nil, fmt.Errorf("empty credential pattern is not allowed execept explicitly")
+	} else if credentialPattern == InsecureAllMatchingCredentialsPattern {
+		preArgs = []string{"-c", "credential.helper="}
+		preArgs = append(preArgs, "-c", fmt.Sprintf("credential.helper=%s", credHelper))
+	} else {
+		preArgs = []string{"-c", fmt.Sprintf("credential.%s.helper=", credentialPattern.pattern)}
+		preArgs = append(preArgs, "-c", fmt.Sprintf("credential.%s.helper=%s", credentialPattern.pattern, credHelper))
+	}
+
 	args = append(preArgs, args...)
 	return c.Command(ctx, args...)
 }

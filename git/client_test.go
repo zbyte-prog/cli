@@ -64,16 +64,31 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
+		pattern  CredentialPattern
 		wantArgs []string
+		wantErr  error
 	}{
 		{
-			name:     "adds credential helper config options",
+			name:     "when credential pattern is TODO, credential helper matches everything",
 			path:     "path/to/gh",
+			pattern:  InsecureAllMatchingCredentialsPattern,
+			wantArgs: []string{"path/to/git", "-c", "credential.helper=", "-c", `credential.helper=!"path/to/gh" auth git-credential`, "fetch"},
+		},
+		{
+			name:     "when credential pattern is set, credential helper only matches that pattern",
+			path:     "path/to/gh",
+			pattern:  CredentialPattern{pattern: "https://github.com"},
 			wantArgs: []string{"path/to/git", "-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!"path/to/gh" auth git-credential`, "fetch"},
 		},
 		{
 			name:     "fallback when GhPath is not set",
-			wantArgs: []string{"path/to/git", "-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!"gh" auth git-credential`, "fetch"},
+			pattern:  InsecureAllMatchingCredentialsPattern,
+			wantArgs: []string{"path/to/git", "-c", "credential.helper=", "-c", `credential.helper=!"gh" auth git-credential`, "fetch"},
+		},
+		{
+			name:    "errors when attempting to use an empty pattern that isn't marked insecure",
+			pattern: CredentialPattern{insecure: false, pattern: ""},
+			wantErr: fmt.Errorf("empty credential pattern is not allowed execept explicitly"),
 		},
 	}
 	for _, tt := range tests {
@@ -82,9 +97,12 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 				GhPath:  tt.path,
 				GitPath: "path/to/git",
 			}
-			cmd, err := client.AuthenticatedCommand(context.Background(), CredentialPattern{pattern: "https://github.com"}, "fetch")
-			assert.NoError(t, err)
-			assert.Equal(t, tt.wantArgs, cmd.Args)
+			cmd, err := client.AuthenticatedCommand(context.Background(), tt.pattern, "fetch")
+			if tt.wantErr != nil {
+				require.Equal(t, tt.wantErr, err)
+				return
+			}
+			require.Equal(t, tt.wantArgs, cmd.Args)
 		})
 	}
 }

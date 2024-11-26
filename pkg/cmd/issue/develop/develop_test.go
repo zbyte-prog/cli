@@ -314,7 +314,6 @@ func TestDevelopRun(t *testing.T) {
 				)
 			},
 			runStubs: func(cs *run.CommandStubber) {
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git fetch origin \+refs/heads/my-issue-1:refs/remotes/origin/my-issue-1`, 0, "")
 			},
 			expectedOut: "github.com/OWNER/REPO/tree/my-issue-1\n",
@@ -361,7 +360,6 @@ func TestDevelopRun(t *testing.T) {
 				)
 			},
 			runStubs: func(cs *run.CommandStubber) {
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/cli/cli.git")
 				cs.Register(`git fetch origin \+refs/heads/my-issue-1:refs/remotes/origin/my-issue-1`, 0, "")
 			},
 			expectedOut: "github.com/OWNER2/REPO/tree/my-issue-1\n",
@@ -400,7 +398,6 @@ func TestDevelopRun(t *testing.T) {
 				)
 			},
 			runStubs: func(cs *run.CommandStubber) {
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/cli/cli.git")
 				cs.Register(`git fetch origin \+refs/heads/my-branch:refs/remotes/origin/my-branch`, 0, "")
 			},
 			expectedOut: "github.com/OWNER/REPO/tree/my-branch\n",
@@ -470,7 +467,6 @@ func TestDevelopRun(t *testing.T) {
 				)
 			},
 			runStubs: func(cs *run.CommandStubber) {
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/cli/cli.git")
 				cs.Register(`git fetch origin \+refs/heads/my-branch:refs/remotes/origin/my-branch`, 0, "")
 				cs.Register(`git rev-parse --verify refs/heads/my-branch`, 0, "")
 				cs.Register(`git checkout my-branch`, 0, "")
@@ -513,7 +509,6 @@ func TestDevelopRun(t *testing.T) {
 				)
 			},
 			runStubs: func(cs *run.CommandStubber) {
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/cli/cli.git")
 				cs.Register(`git fetch origin \+refs/heads/my-branch:refs/remotes/origin/my-branch`, 0, "")
 				cs.Register(`git rev-parse --verify refs/heads/my-branch`, 1, "")
 				cs.Register(`git checkout -b my-branch --track origin/my-branch`, 0, "")

@@ -1166,33 +1166,15 @@ func TestClientFetch(t *testing.T) {
 			name: "accepts command modifiers",
 			mods: []CommandModifier{WithRepoDir("/path/to/repo")},
 			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 0,
-					Stdout:     "https://github.com/cli/nonexistent.git",
-				},
-				`path/to/git -C /path/to/repo -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential fetch origin trunk`: {
+				`path/to/git -C /path/to/repo -c credential.helper= -c credential.helper=!"gh" auth git-credential fetch origin trunk`: {
 					ExitStatus: 0,
 				},
 			},
-		},
-		{
-			name: "git error on get-url",
-			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 1,
-					Stderr:     "get-url error message",
-				},
-			},
-			wantErrorMsg: "failed to run git: get-url error message",
 		},
 		{
 			name: "git error on fetch",
 			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 0,
-					Stdout:     "https://github.com/cli/nonexistent.git",
-				},
-				`path/to/git -c credential.https://github.com.helper= -c credential.https://github.com.helper=!"gh" auth git-credential fetch origin trunk`: {
+				`path/to/git -c credential.helper= -c credential.helper=!"gh" auth git-credential fetch origin trunk`: {
 					ExitStatus: 1,
 					Stderr:     "fetch error message",
 				},
@@ -1237,10 +1219,6 @@ func TestClientPull(t *testing.T) {
 			name: "accepts command modifiers",
 			mods: []CommandModifier{WithRepoDir("/path/to/repo")},
 			commands: map[args]commandResult{
-				`path/to/git remote get-url origin`: {
-					ExitStatus: 0,
-					Stdout:     "https://github.com/cli/nonexistent.git",
-				},
 				`path/to/git -C /path/to/repo -c credential.helper= -c credential.helper=!"gh" auth git-credential pull --ff-only origin trunk`: {
 					ExitStatus: 0,
 				},

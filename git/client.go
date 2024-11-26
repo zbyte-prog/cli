@@ -577,16 +577,11 @@ func (c *Client) AddRemote(ctx context.Context, name, urlStr string, trackingBra
 // Below are commands that make network calls and need authentication credentials supplied from gh.
 
 func (c *Client) Fetch(ctx context.Context, remote string, refspec string, mods ...CommandModifier) error {
-	host, err := c.CredentialPatternFromRemote(ctx, remote)
-	if err != nil {
-		return err
-	}
-
 	args := []string{"fetch", remote}
 	if refspec != "" {
 		args = append(args, refspec)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, host, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, InsecureAllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}

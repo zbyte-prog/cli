@@ -251,9 +251,12 @@ func executeCmds(client *git.Client, credentialPattern git.CredentialPattern, cm
 	for _, args := range cmdQueue {
 		var err error
 		var cmd *git.Command
-		if args[0] == "fetch" || args[0] == "submodule" {
+		switch args[0] {
+		case "submodule":
 			cmd, err = client.AuthenticatedCommand(context.Background(), credentialPattern, args...)
-		} else {
+		case "fetch":
+			cmd, err = client.AuthenticatedCommand(context.Background(), git.InsecureAllMatchingCredentialsPattern, args...)
+		default:
 			cmd, err = client.Command(context.Background(), args...)
 		}
 		if err != nil {

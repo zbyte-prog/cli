@@ -442,7 +442,6 @@ func TestRepoFork(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git clone --depth 1 https://github.com/someone/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},
@@ -475,7 +474,6 @@ func TestRepoFork(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git clone https://github.com/gamehendge/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},
@@ -492,7 +490,6 @@ func TestRepoFork(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git clone https://github.com/someone/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},
@@ -529,7 +526,6 @@ func TestRepoFork(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git clone https://github.com/someone/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},
@@ -554,7 +550,6 @@ func TestRepoFork(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git clone https://github.com/someone/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},
@@ -591,7 +586,6 @@ func TestRepoFork(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git clone https://github.com/someone/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},
@@ -607,7 +601,6 @@ func TestRepoFork(t *testing.T) {
 			execStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git clone https://github.com/someone/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},
@@ -698,7 +691,6 @@ func TestRepoFork(t *testing.T) {
 				cs.Register(`git clone https://github.com/someone/REPO\.git`, 128, "")
 				cs.Register(`git clone https://github.com/someone/REPO\.git`, 0, "")
 				cs.Register(`git -C REPO remote add upstream https://github\.com/OWNER/REPO\.git`, 0, "")
-				cs.Register(`git -C REPO remote get-url upstream`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git -C REPO fetch upstream`, 0, "")
 				cs.Register(`git -C REPO config --add remote.upstream.gh-resolved base`, 0, "")
 			},

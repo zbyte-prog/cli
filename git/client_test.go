@@ -71,7 +71,7 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 		{
 			name:     "when credential pattern is TODO, credential helper matches everything",
 			path:     "path/to/gh",
-			pattern:  InsecureAllMatchingCredentialsPattern,
+			pattern:  AllMatchingCredentialsPattern,
 			wantArgs: []string{"path/to/git", "-c", "credential.helper=", "-c", `credential.helper=!"path/to/gh" auth git-credential`, "fetch"},
 		},
 		{
@@ -82,12 +82,12 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 		},
 		{
 			name:     "fallback when GhPath is not set",
-			pattern:  InsecureAllMatchingCredentialsPattern,
+			pattern:  AllMatchingCredentialsPattern,
 			wantArgs: []string{"path/to/git", "-c", "credential.helper=", "-c", `credential.helper=!"gh" auth git-credential`, "fetch"},
 		},
 		{
-			name:    "errors when attempting to use an empty pattern that isn't marked insecure",
-			pattern: CredentialPattern{insecure: false, pattern: ""},
+			name:    "errors when attempting to use an empty pattern that isn't marked all matching",
+			pattern: CredentialPattern{allMatching: false, pattern: ""},
 			wantErr: fmt.Errorf("empty credential pattern is not allowed unless provided explicitly"),
 		},
 	}
@@ -1565,8 +1565,8 @@ func TestCredentialPatternFromGitURL(t *testing.T) {
 			name:   "Given a well formed gitURL, it returns the corresponding CredentialPattern",
 			gitURL: "https://github.com/OWNER/REPO",
 			wantCredentialPattern: CredentialPattern{
-				pattern:  "https://github.com",
-				insecure: false,
+				pattern:     "https://github.com",
+				allMatching: false,
 			},
 		},
 		{
@@ -1601,8 +1601,8 @@ func TestCredentialPatternFromRemote(t *testing.T) {
 			name:   "Given a well formed remote, it returns the corresponding CredentialPattern",
 			remote: "https://github.com/OWNER/REPO",
 			wantCredentialPattern: CredentialPattern{
-				pattern:  "https://github.com",
-				insecure: false,
+				pattern:     "https://github.com",
+				allMatching: false,
 			},
 		},
 		{

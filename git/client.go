@@ -101,18 +101,19 @@ func (c *Client) Command(ctx context.Context, args ...string) (*Command, error) 
 // as opposed to using a string which might compile with `client.AuthenticatedCommand(ctx, "fetch")`.
 //
 // It is only usable when constructed by another function in the package because the empty pattern,
-// without insecure set to true, will result in an error in AuthenticatedCommand.
+// without allMatching set to true, will result in an error in AuthenticatedCommand.
 //
-// Callers can currently opt-in to an insecure mode for backwards compatibility by using
-// InsecureAllMatchingCredentialsPattern.
+// Callers can currently opt-in to an slightly less secure mode for backwards compatibility by using
+// AllMatchingCredentialsPattern.
 type CredentialPattern struct {
-	insecure bool // should only be constructable via InsecureAllMatchingCredentialPattern
-	pattern  string
+	allMatching bool // should only be constructable via AllMatchingCredentialsPattern
+	pattern     string
 }
 
-// InsecureAllMatchingCredentialsPattern allows for opting in to an insecure mode for backwards compatibility.
-var InsecureAllMatchingCredentialsPattern = CredentialPattern{insecure: true, pattern: ""}
-var disallowedCredentialPattern = CredentialPattern{insecure: false, pattern: ""}
+// AllMatchingCredentialsPattern allows for setting gh as credential helper for all hosts.
+// However, we should endeavour to remove it as it's less secure.
+var AllMatchingCredentialsPattern = CredentialPattern{allMatching: true, pattern: ""}
+var disallowedCredentialPattern = CredentialPattern{allMatching: false, pattern: ""}
 
 // WM-TODO: Are there any funny remotes that might not resolve to a URL?
 func CredentialPatternFromRemote(ctx context.Context, c *Client, remote string) (CredentialPattern, error) {
@@ -145,7 +146,7 @@ func (c *Client) AuthenticatedCommand(ctx context.Context, credentialPattern Cre
 	var preArgs []string
 	if credentialPattern == disallowedCredentialPattern {
 		return nil, fmt.Errorf("empty credential pattern is not allowed unless provided explicitly")
-	} else if credentialPattern == InsecureAllMatchingCredentialsPattern {
+	} else if credentialPattern == AllMatchingCredentialsPattern {
 		preArgs = []string{"-c", "credential.helper="}
 		preArgs = append(preArgs, "-c", fmt.Sprintf("credential.helper=%s", credHelper))
 	} else {
@@ -611,7 +612,7 @@ func (c *Client) Fetch(ctx context.Context, remote string, refspec string, mods 
 	if refspec != "" {
 		args = append(args, refspec)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, InsecureAllMatchingCredentialsPattern, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, AllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}
@@ -626,7 +627,7 @@ func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...Comman
 	if remote != "" && branch != "" {
 		args = append(args, remote, branch)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, InsecureAllMatchingCredentialsPattern, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, AllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}
@@ -638,7 +639,7 @@ func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...Comman
 
 func (c *Client) Push(ctx context.Context, remote string, ref string, mods ...CommandModifier) error {
 	args := []string{"push", "--set-upstream", remote, ref}
-	cmd, err := c.AuthenticatedCommand(ctx, InsecureAllMatchingCredentialsPattern, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, AllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}

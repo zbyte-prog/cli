@@ -255,7 +255,7 @@ func executeCmds(client *git.Client, credentialPattern git.CredentialPattern, cm
 		case "submodule":
 			cmd, err = client.AuthenticatedCommand(context.Background(), credentialPattern, args...)
 		case "fetch":
-			cmd, err = client.AuthenticatedCommand(context.Background(), git.InsecureAllMatchingCredentialsPattern, args...)
+			cmd, err = client.AuthenticatedCommand(context.Background(), git.AllMatchingCredentialsPattern, args...)
 		default:
 			cmd, err = client.Command(context.Background(), args...)
 		}

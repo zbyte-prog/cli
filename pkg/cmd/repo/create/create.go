@@ -676,7 +676,7 @@ func createFromLocal(opts *CreateOptions) error {
 	}
 
 	if opts.Push && repoType == bare {
-		cmd, err := opts.GitClient.AuthenticatedCommand(context.Background(), "push", baseRemote, "--mirror")
+		cmd, err := opts.GitClient.AuthenticatedCommand(context.Background(), git.AllMatchingCredentialsPattern, "push", baseRemote, "--mirror")
 		if err != nil {
 			return err
 		}

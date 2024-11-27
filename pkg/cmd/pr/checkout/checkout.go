@@ -130,7 +130,14 @@ func checkoutRun(opts *CheckoutOptions) error {
 		cmdQueue = append(cmdQueue, []string{"submodule", "update", "--init", "--recursive"})
 	}
 
-	err = executeCmds(opts.GitClient, cmdQueue)
+	// Note that although we will probably be fetching from the headRemote, in practice, PR checkout can only
+	// ever point to one host, and we know baseRemote must be populated, where headRemote might be nil (e.g. when
+	// it was deleted).
+	credentialPattern, err := git.CredentialPatternFromRemote(context.Background(), opts.GitClient, baseRemote.Name)
+	if err != nil {
+		return err
+	}
+	err = executeCmds(opts.GitClient, credentialPattern, cmdQueue)
 	if err != nil {
 		return err
 	}
@@ -240,13 +247,16 @@ func localBranchExists(client *git.Client, b string) bool {
 	return err == nil
 }
 
-func executeCmds(client *git.Client, cmdQueue [][]string) error {
+func executeCmds(client *git.Client, credentialPattern git.CredentialPattern, cmdQueue [][]string) error {
 	for _, args := range cmdQueue {
 		var err error
 		var cmd *git.Command
-		if args[0] == "fetch" || args[0] == "submodule" {
-			cmd, err = client.AuthenticatedCommand(context.Background(), args...)
-		} else {
+		switch args[0] {
+		case "submodule":
+			cmd, err = client.AuthenticatedCommand(context.Background(), credentialPattern, args...)
+		case "fetch":
+			cmd, err = client.AuthenticatedCommand(context.Background(), git.AllMatchingCredentialsPattern, args...)
+		default:
 			cmd, err = client.Command(context.Background(), args...)
 		}
 		if err != nil {

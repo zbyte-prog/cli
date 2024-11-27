@@ -249,7 +249,7 @@ func TestDevelopRun(t *testing.T) {
 			expectedOut: heredoc.Doc(`
 
 				Showing linked branches for OWNER/REPO#42
-				
+
 				BRANCH  URL
 				foo     https://github.com/OWNER/REPO/tree/foo
 				bar     https://github.com/OWNER/OTHER-REPO/tree/bar

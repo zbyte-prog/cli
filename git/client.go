@@ -95,9 +95,9 @@ func (c *Client) Command(ctx context.Context, args ...string) (*Command, error) 
 	return &Command{cmd}, nil
 }
 
-// CredentialPattern is used to indicate to AuthenticatedCommand which patterns git should match
+// CredentialPattern is used to inform AuthenticatedCommand which patterns Git should match
 // against when trying to find credentials. It is a little over-engineered as a type because we
-// want AuthenticatedCommand to have a clear complication error when this is not provided,
+// want AuthenticatedCommand to have a clear compilation error when this is not provided,
 // as opposed to using a string which might compile with `client.AuthenticatedCommand(ctx, "fetch")`.
 //
 // It is only usable when constructed by another function in the package because the empty pattern,

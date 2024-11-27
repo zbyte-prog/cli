@@ -1494,6 +1494,7 @@ type commandResult struct {
 
 type mockedCommands map[args]commandResult
 
+// TestCommandMocking is an invoked test helper that emulates expected behavior for predefined shell commands, erroring when unexpected conditions are encountered.
 func TestCommandMocking(t *testing.T) {
 	if os.Getenv("GH_WANT_HELPER_PROCESS_RICH") != "1" {
 		return

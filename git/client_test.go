@@ -1655,6 +1655,7 @@ func createMockedCommandContext(t *testing.T, commands mockedCommands) commandCt
 	marshaledCommands, err := json.Marshal(commands)
 	require.NoError(t, err)
 
+	// invokes helper within current test binary, emulating desired behavior 
 	return func(ctx context.Context, exe string, args ...string) *exec.Cmd {
 		cmd := exec.CommandContext(context.Background(), os.Args[0], "-test.run=TestCommandMocking", "--")
 		cmd.Env = []string{

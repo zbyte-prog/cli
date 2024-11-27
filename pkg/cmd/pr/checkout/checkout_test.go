@@ -73,6 +73,32 @@ func Test_checkoutRun(t *testing.T) {
 		wantErr    bool
 	}{
 		{
+			name: "checkout with ssh remote URL",
+			opts: &CheckoutOptions{
+				SelectorArg: "123",
+				Finder: func() shared.PRFinder {
+					baseRepo, pr := stubPR("OWNER/REPO:master", "OWNER/REPO:feature")
+					finder := shared.NewMockFinder("123", pr, baseRepo)
+					return finder
+				}(),
+				Config: func() (gh.Config, error) {
+					return config.NewBlankConfig(), nil
+				},
+				Branch: func() (string, error) {
+					return "main", nil
+				},
+			},
+			remotes: map[string]string{
+				"origin": "OWNER/REPO",
+			},
+			runStubs: func(cs *run.CommandStubber) {
+				cs.Register(`git show-ref --verify -- refs/heads/feature`, 1, "")
+				cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
+				cs.Register(`git fetch origin \+refs/heads/feature:refs/remotes/origin/feature`, 0, "")
+				cs.Register(`git checkout -b feature --track origin/feature`, 0, "")
+			},
+		},
+		{
 			name: "fork repo was deleted",
 			opts: &CheckoutOptions{
 				SelectorArg: "123",

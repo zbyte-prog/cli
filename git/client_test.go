@@ -88,7 +88,7 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 		{
 			name:    "errors when attempting to use an empty pattern that isn't marked insecure",
 			pattern: CredentialPattern{insecure: false, pattern: ""},
-			wantErr: fmt.Errorf("empty credential pattern is not allowed except explicitly"),
+			wantErr: fmt.Errorf("empty credential pattern is not allowed unless provided explicitly"),
 		},
 	}
 	for _, tt := range tests {

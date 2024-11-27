@@ -114,10 +114,7 @@ type CredentialPattern struct {
 var InsecureAllMatchingCredentialsPattern = CredentialPattern{insecure: true, pattern: ""}
 var disallowedCredentialPattern = CredentialPattern{insecure: false, pattern: ""}
 
-// WM-TODO: Should this handle command modifiers, e.g. RepoDir being set in Clone
 // WM-TODO: Are there any funny remotes that might not resolve to a URL?
-// WM-TODO: This should probably have its own tests
-// WM-TODO: Consider what to do if remote was SSH, it's probably not breaking, but maybe we want to do something better
 func CredentialPatternFromRemote(ctx context.Context, c *Client, remote string) (CredentialPattern, error) {
 	gitURL, err := c.GetRemoteURL(ctx, remote)
 	if err != nil {
@@ -126,8 +123,6 @@ func CredentialPatternFromRemote(ctx context.Context, c *Client, remote string) 
 	return CredentialPatternFromGitURL(gitURL)
 }
 
-// Cool cool cool...
-// YOLO
 func CredentialPatternFromGitURL(gitURL string) (CredentialPattern, error) {
 	normalizedURL, err := ParseURL(gitURL)
 	if err != nil {
@@ -654,7 +649,9 @@ func (c *Client) Push(ctx context.Context, remote string, ref string, mods ...Co
 }
 
 func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods ...CommandModifier) (string, error) {
-	host, err := CredentialPatternFromGitURL(cloneURL)
+	// Note that even if this is an SSH clone URL, we are setting the pattern anyway.
+	// We could write some code to prevent this, but it also doesn't seem harmful.
+	pattern, err := CredentialPatternFromGitURL(cloneURL)
 	if err != nil {
 		return "", err
 	}
@@ -673,7 +670,7 @@ func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods
 		}
 	}
 	cloneArgs = append([]string{"clone"}, cloneArgs...)
-	cmd, err := c.AuthenticatedCommand(ctx, host, cloneArgs...)
+	cmd, err := c.AuthenticatedCommand(ctx, pattern, cloneArgs...)
 	if err != nil {
 		return "", err
 	}

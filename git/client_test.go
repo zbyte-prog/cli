@@ -88,7 +88,7 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 		{
 			name:    "errors when attempting to use an empty pattern that isn't marked insecure",
 			pattern: CredentialPattern{insecure: false, pattern: ""},
-			wantErr: fmt.Errorf("empty credential pattern is not allowed execept explicitly"),
+			wantErr: fmt.Errorf("empty credential pattern is not allowed except explicitly"),
 		},
 	}
 	for _, tt := range tests {
@@ -1552,6 +1552,87 @@ func TestHelperProcess(t *testing.T) {
 		os.Exit(i)
 	}
 	os.Exit(0)
+}
+
+func TestCredentialPatternFromGitURL(t *testing.T) {
+	tests := []struct {
+		name                  string
+		gitURL                string
+		wantErr               bool
+		wantCredentialPattern CredentialPattern
+	}{
+		{
+			name:   "Given a well formed gitURL, it returns the corresponding CredentialPattern",
+			gitURL: "https://github.com/OWNER/REPO",
+			wantCredentialPattern: CredentialPattern{
+				pattern:  "https://github.com",
+				insecure: false,
+			},
+		},
+		{
+			name: "Given a malformed gitURL, it returns an error",
+			// This pattern is copied from the tests in ParseURL
+			// Unexpectedly, a non URL-like string did not error in ParseURL
+			gitURL:  "ssh://git@[/tmp/git-repo",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			credentialPattern, err := CredentialPatternFromGitURL(tt.gitURL)
+			if tt.wantErr {
+				assert.ErrorContains(t, err, "failed to parse remote URL")
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantCredentialPattern, credentialPattern)
+			}
+		})
+	}
+}
+
+func TestCredentialPatternFromRemote(t *testing.T) {
+	tests := []struct {
+		name                  string
+		remote                string
+		wantCredentialPattern CredentialPattern
+		wantErr               bool
+	}{
+		{
+			name:   "Given a well formed remote, it returns the corresponding CredentialPattern",
+			remote: "https://github.com/OWNER/REPO",
+			wantCredentialPattern: CredentialPattern{
+				pattern:  "https://github.com",
+				insecure: false,
+			},
+		},
+		{
+			name:    "Given an error from GetRemoteURL, it returns that error",
+			remote:  "foo remote",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cmdCtx func(ctx context.Context, name string, args ...string) *exec.Cmd
+			if tt.wantErr {
+				_, cmdCtx = createCommandContext(t, 1, tt.remote, "GetRemoteURL error")
+			} else {
+				_, cmdCtx = createCommandContext(t, 0, tt.remote, "")
+			}
+
+			client := Client{
+				GitPath:        "path/to/git",
+				commandContext: cmdCtx,
+			}
+			credentialPattern, err := CredentialPatternFromRemote(context.Background(), &client, tt.remote)
+			if tt.wantErr {
+				assert.ErrorContains(t, err, "GetRemoteURL error")
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantCredentialPattern, credentialPattern)
+			}
+		})
+	}
 }
 
 func createCommandContext(t *testing.T, exitStatus int, stdout, stderr string) (*exec.Cmd, commandCtx) {

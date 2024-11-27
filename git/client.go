@@ -96,21 +96,21 @@ func (c *Client) Command(ctx context.Context, args ...string) (*Command, error) 
 }
 
 // CredentialPattern is used to indicate to AuthenticatedCommand which patterns git should match
-// against when trying to find credentials. It is a little overengineered as a type because we
+// against when trying to find credentials. It is a little over-engineered as a type because we
 // want AuthenticatedCommand to have a clear complication error when this is not provided,
 // as opposed to using a string which might compile with `client.AuthenticatedCommand(ctx, "fetch")`.
 //
 // It is only usable when constructed by another function in the package because the empty pattern,
 // without insecure set to true, will result in an error in AuthenticatedCommand.
 //
-// Callers can currently opt-in to an insecure mode for backwards compatability by using
+// Callers can currently opt-in to an insecure mode for backwards compatibility by using
 // InsecureAllMatchingCredentialsPattern.
 type CredentialPattern struct {
 	insecure bool // should only be constructable via InsecureAllMatchingCredentialPattern
 	pattern  string
 }
 
-// InsecureAllMatchingCredentialsPattern allows for opting in to an insecure mode for backwards compatability.
+// InsecureAllMatchingCredentialsPattern allows for opting in to an insecure mode for backwards compatibility.
 var InsecureAllMatchingCredentialsPattern = CredentialPattern{insecure: true, pattern: ""}
 var disallowedCredentialPattern = CredentialPattern{insecure: false, pattern: ""}
 
@@ -126,6 +126,18 @@ func CredentialPatternFromRemote(ctx context.Context, c *Client, remote string) 
 	return CredentialPatternFromGitURL(gitURL)
 }
 
+// Cool cool cool...
+// YOLO
+func CredentialPatternFromGitURL(gitURL string) (CredentialPattern, error) {
+	normalizedURL, err := ParseURL(gitURL)
+	if err != nil {
+		return CredentialPattern{}, fmt.Errorf("failed to parse remote URL: %w", err)
+	}
+	return CredentialPattern{
+		pattern: strings.TrimSuffix(ghinstance.HostPrefix(normalizedURL.Host), "/"),
+	}, nil
+}
+
 // AuthenticatedCommand is a wrapper around Command that included configuration to use gh
 // as the credential helper for git.
 func (c *Client) AuthenticatedCommand(ctx context.Context, credentialPattern CredentialPattern, args ...string) (*Command, error) {
@@ -137,7 +149,7 @@ func (c *Client) AuthenticatedCommand(ctx context.Context, credentialPattern Cre
 
 	var preArgs []string
 	if credentialPattern == disallowedCredentialPattern {
-		return nil, fmt.Errorf("empty credential pattern is not allowed execept explicitly")
+		return nil, fmt.Errorf("empty credential pattern is not allowed unless provided explicitly")
 	} else if credentialPattern == InsecureAllMatchingCredentialsPattern {
 		preArgs = []string{"-c", "credential.helper="}
 		preArgs = append(preArgs, "-c", fmt.Sprintf("credential.helper=%s", credHelper))
@@ -788,16 +800,4 @@ var globReplacer = strings.NewReplacer(
 
 func escapeGlob(p string) string {
 	return globReplacer.Replace(p)
-}
-
-// Cool cool cool...
-// YOLO
-func CredentialPatternFromGitURL(gitURL string) (CredentialPattern, error) {
-	normalizedURL, err := ParseURL(gitURL)
-	if err != nil {
-		return CredentialPattern{}, fmt.Errorf("failed to parse remote URL: %w", err)
-	}
-	return CredentialPattern{
-		pattern: strings.TrimSuffix(ghinstance.HostPrefix(normalizedURL.Host), "/"),
-	}, nil
 }

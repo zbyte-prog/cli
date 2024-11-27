@@ -69,7 +69,7 @@ func TestClientAuthenticatedCommand(t *testing.T) {
 		wantErr  error
 	}{
 		{
-			name:     "when credential pattern is TODO, credential helper matches everything",
+			name:     "when credential pattern allows for anything, credential helper matches everything",
 			path:     "path/to/gh",
 			pattern:  AllMatchingCredentialsPattern,
 			wantArgs: []string{"path/to/git", "-c", "credential.helper=", "-c", `credential.helper=!"path/to/gh" auth git-credential`, "fetch"},

@@ -43,9 +43,13 @@ func ShouldCheckForExtensionUpdate() bool {
 	return !IsCI() && IsTerminal(os.Stdout) && IsTerminal(os.Stderr)
 }
 
-func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension, stateFilePath string) (*ReleaseInfo, error) {
+func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension, stateFilePath string, now time.Time) (*ReleaseInfo, error) {
+	if ext.IsLocal() {
+		return nil, nil
+	}
+
 	stateEntry, _ := getStateEntry(stateFilePath)
-	if stateEntry != nil && time.Since(stateEntry.CheckedForUpdateAt).Hours() < 24 {
+	if stateEntry != nil && now.Sub(stateEntry.CheckedForUpdateAt).Hours() < 24 {
 		return nil, nil
 	}
 
@@ -54,7 +58,7 @@ func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Exte
 		URL:     ext.URL(),
 	}
 
-	err := setStateEntry(stateFilePath, time.Now(), *releaseInfo)
+	err := setStateEntry(stateFilePath, now, *releaseInfo)
 	if err != nil {
 		return nil, err
 	}

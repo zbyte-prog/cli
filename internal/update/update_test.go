@@ -6,9 +6,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/cli/cli/v2/pkg/cmd/extension"
+	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/cli/cli/v2/pkg/httpmock"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestCheckForUpdate(t *testing.T) {
@@ -112,6 +118,136 @@ func TestCheckForUpdate(t *testing.T) {
 			}
 			if rel.URL != s.LatestURL {
 				t.Errorf("URL: %q", rel.URL)
+			}
+		})
+	}
+}
+
+func TestCheckForExtensionUpdate(t *testing.T) {
+	now := time.Date(2024, 12, 17, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name                string
+		extCurrentVersion   string
+		extLatestVersion    string
+		extIsLocal          bool
+		extURL              string
+		stateEntry          *StateEntry
+		ri                  ReleaseInfo
+		wantErr             bool
+		expectedReleaseInfo *ReleaseInfo
+		expectedStateEntry  *StateEntry
+	}{
+		{
+			name:              "return latest release given extension is out of date and no state entry",
+			extCurrentVersion: "v0.1.0",
+			extLatestVersion:  "v1.0.0",
+			extIsLocal:        false,
+			extURL:            "http://example.com",
+			stateEntry:        nil,
+			expectedReleaseInfo: &ReleaseInfo{
+				Version: "v1.0.0",
+				URL:     "http://example.com",
+			},
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: now,
+				LatestRelease: ReleaseInfo{
+					Version: "v1.0.0",
+					URL:     "http://example.com",
+				},
+			},
+		},
+		{
+			name:              "return latest release given extension is out of date and state entry is old enough",
+			extCurrentVersion: "v0.1.0",
+			extLatestVersion:  "v1.0.0",
+			extIsLocal:        false,
+			extURL:            "http://example.com",
+			stateEntry: &StateEntry{
+				CheckedForUpdateAt: now.Add(-24 * time.Hour),
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedReleaseInfo: &ReleaseInfo{
+				Version: "v1.0.0",
+				URL:     "http://example.com",
+			},
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: now,
+				LatestRelease: ReleaseInfo{
+					Version: "v1.0.0",
+					URL:     "http://example.com",
+				},
+			},
+		},
+		{
+			name:              "return nothing given extension is out of date but state entry is too recent",
+			extCurrentVersion: "v0.1.0",
+			extLatestVersion:  "v1.0.0",
+			extIsLocal:        false,
+			extURL:            "http://example.com",
+			stateEntry: &StateEntry{
+				CheckedForUpdateAt: now.Add(-23 * time.Hour),
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedReleaseInfo: nil,
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: now.Add(-23 * time.Hour),
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			em := &extensions.ExtensionManagerMock{}
+
+			ext := &extensions.ExtensionMock{
+				CurrentVersionFunc: func() string {
+					return tt.extCurrentVersion
+				},
+				LatestVersionFunc: func() string {
+					return tt.extLatestVersion
+				},
+				IsLocalFunc: func() bool {
+					return tt.extIsLocal
+				},
+				URLFunc: func() string {
+					return tt.extURL
+				},
+			}
+
+			// Ensure test is testing actual update available logic
+			ext.UpdateAvailableFunc = func() bool {
+				// Should this function be removed from the extension interface?
+				return extension.UpdateAvailable(ext)
+			}
+
+			// Create state file for test as necessary
+			stateFilePath := filepath.Join(t.TempDir(), "state.yml")
+			if tt.stateEntry != nil {
+				stateEntryYaml, err := yaml.Marshal(tt.stateEntry)
+				require.NoError(t, err)
+				require.NoError(t, os.WriteFile(stateFilePath, stateEntryYaml, 0644))
+			}
+
+			actual, err := CheckForExtensionUpdate(em, ext, stateFilePath, now)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.Equal(t, tt.expectedReleaseInfo, actual)
+
+				stateEntry, err := getStateEntry(stateFilePath)
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedStateEntry, stateEntry)
 			}
 		})
 	}

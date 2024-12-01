@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/update"
@@ -83,5 +84,5 @@ func checkForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Exte
 	}
 
 	stateFilePath := filepath.Join(config.StateDir(), "extensions", ext.FullName(), "state.yml")
-	return update.CheckForExtensionUpdate(em, ext, stateFilePath)
+	return update.CheckForExtensionUpdate(em, ext, stateFilePath, time.Now())
 }

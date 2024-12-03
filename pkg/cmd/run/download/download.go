@@ -151,8 +151,10 @@ func runDownload(opts *DownloadOptions) error {
 	opts.IO.StartProgressIndicator()
 	defer opts.IO.StopProgressIndicator()
 
-	// track downloaded artifacts and avoid re-downloading any of the same name
+	// track downloaded artifacts and avoid re-downloading any of the same name, isolate if multiple artifacts
 	downloaded := set.NewStringSet()
+	isolateArtifacts := isolateArtifacts(wantNames, wantPatterns)
+
 	for _, a := range artifacts {
 		if a.Expired {
 			continue
@@ -165,10 +167,16 @@ func runDownload(opts *DownloadOptions) error {
 				continue
 			}
 		}
+
 		destDir := opts.DestinationDir
-		if len(wantPatterns) != 0 || len(wantNames) != 1 {
+		if isolateArtifacts {
 			destDir = filepath.Join(destDir, a.Name)
 		}
+
+		if !filepathDescendsFrom(destDir, opts.DestinationDir) {
+			return fmt.Errorf("error downloading %s: would result in path traversal", a.Name)
+		}
+
 		err := opts.Platform.Download(a.DownloadURL, destDir)
 		if err != nil {
 			return fmt.Errorf("error downloading %s: %w", a.Name, err)
@@ -181,6 +189,25 @@ func runDownload(opts *DownloadOptions) error {
 	}
 
 	return nil
+}
+
+func isolateArtifacts(wantNames []string, wantPatterns []string) bool {
+	if len(wantPatterns) > 0 {
+		// Patterns can match multiple artifacts
+		return true
+	}
+
+	if len(wantNames) == 0 {
+		// All artifacts wanted regardless what they are named
+		return true
+	}
+
+	if len(wantNames) > 1 {
+		// Multiple, specific artifacts wanted
+		return true
+	}
+
+	return false
 }
 
 func matchAnyName(names []string, name string) bool {

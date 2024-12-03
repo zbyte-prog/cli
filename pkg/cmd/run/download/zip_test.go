@@ -130,6 +130,86 @@ func Test_filepathDescendsFrom(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "deny parent directory filename (`..`) escaping absolute directory",
+			args: args{
+				p:   filepath.FromSlash(".."),
+				dir: filepath.FromSlash("/var/logs/"),
+			},
+			want: false,
+		},
+		{
+			name: "deny parent directory filename (`..`) escaping current directory",
+			args: args{
+				p:   filepath.FromSlash(".."),
+				dir: filepath.FromSlash("."),
+			},
+			want: false,
+		},
+		{
+			name: "deny parent directory filename (`..`) escaping parent directory",
+			args: args{
+				p:   filepath.FromSlash(".."),
+				dir: filepath.FromSlash(".."),
+			},
+			want: false,
+		},
+		{
+			name: "deny parent directory filename (`..`) escaping relative directory",
+			args: args{
+				p:   filepath.FromSlash(".."),
+				dir: filepath.FromSlash("relative-dir"),
+			},
+			want: false,
+		},
+		{
+			name: "deny current directory filename (`.`) in absolute directory",
+			args: args{
+				p:   filepath.FromSlash("."),
+				dir: filepath.FromSlash("/var/logs/"),
+			},
+			want: false,
+		},
+		{
+			name: "deny current directory filename (`.`) in current directory",
+			args: args{
+				p:   filepath.FromSlash("."),
+				dir: filepath.FromSlash("."),
+			},
+			want: false,
+		},
+		{
+			name: "deny current directory filename (`.`) in parent directory",
+			args: args{
+				p:   filepath.FromSlash("."),
+				dir: filepath.FromSlash(".."),
+			},
+			want: false,
+		},
+		{
+			name: "deny current directory filename (`.`) in relative directory",
+			args: args{
+				p:   filepath.FromSlash("."),
+				dir: filepath.FromSlash("relative-dir"),
+			},
+			want: false,
+		},
+		{
+			name: "relative path, absolute dir",
+			args: args{
+				p:   filepath.FromSlash("whatever"),
+				dir: filepath.FromSlash("/a/b/c"),
+			},
+			want: false,
+		},
+		{
+			name: "absolute path, relative dir",
+			args: args{
+				p:   filepath.FromSlash("/a/b/c"),
+				dir: filepath.FromSlash("whatever"),
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

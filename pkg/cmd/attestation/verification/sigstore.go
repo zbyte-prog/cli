@@ -41,7 +41,11 @@ type SigstoreVerifier interface {
 }
 
 type LiveSigstoreVerifier struct {
-	config SigstoreConfig
+	TrustedRoot  string
+	Logger       *io.Handler
+	NoPublicGood bool
+	// If tenancy mode is not used, trust domain is empty
+	TrustDomain string
 }
 
 var ErrNoAttestationsVerified = errors.New("no attestations were verified")
@@ -51,7 +55,10 @@ var ErrNoAttestationsVerified = errors.New("no attestations were verified")
 // Public Good, GitHub, or a custom trusted root.
 func NewLiveSigstoreVerifier(config SigstoreConfig) *LiveSigstoreVerifier {
 	return &LiveSigstoreVerifier{
-		config: config,
+		TrustedRoot:  config.TrustedRoot,
+		Logger:       config.Logger,
+		NoPublicGood: config.NoPublicGood,
+		TrustDomain:  config.TrustDomain,
 	}
 }
 
@@ -72,10 +79,10 @@ func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.Bundle) (*verify.SignedE
 	}
 	issuer := leafCert.Issuer.Organization[0]
 
-	if v.config.TrustedRoot != "" {
-		customTrustRoots, err := os.ReadFile(v.config.TrustedRoot)
+	if v.TrustedRoot != "" {
+		customTrustRoots, err := os.ReadFile(v.TrustedRoot)
 		if err != nil {
-			return nil, "", fmt.Errorf("unable to read file %s: %v", v.config.TrustedRoot, err)
+			return nil, "", fmt.Errorf("unable to read file %s: %v", v.TrustedRoot, err)
 		}
 
 		reader := bufio.NewReader(bytes.NewReader(customTrustRoots))
@@ -107,7 +114,7 @@ func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.Bundle) (*verify.SignedE
 					// Note that we are *only* inferring the policy with the
 					// issuer. We *must* use the trusted root provided.
 					if issuer == PublicGoodIssuerOrg {
-						if v.config.NoPublicGood {
+						if v.NoPublicGood {
 							return nil, "", fmt.Errorf("detected public good instance but requested verification without public good instance")
 						}
 						verifier, err := newPublicGoodVerifierWithTrustedRoot(trustedRoot)
@@ -136,15 +143,15 @@ func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.Bundle) (*verify.SignedE
 		return nil, "", fmt.Errorf("unable to use provided trusted roots")
 	}
 
-	if leafCert.Issuer.Organization[0] == PublicGoodIssuerOrg && !v.config.NoPublicGood {
+	if leafCert.Issuer.Organization[0] == PublicGoodIssuerOrg && !v.NoPublicGood {
 		publicGoodVerifier, err := newPublicGoodVerifier()
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to create Public Good Sigstore verifier: %v", err)
 		}
 
 		return publicGoodVerifier, issuer, nil
-	} else if leafCert.Issuer.Organization[0] == GitHubIssuerOrg || v.config.NoPublicGood {
-		ghVerifier, err := newGitHubVerifier(v.config.TrustDomain)
+	} else if leafCert.Issuer.Organization[0] == GitHubIssuerOrg || v.NoPublicGood {
+		ghVerifier, err := newGitHubVerifier(v.TrustDomain)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to create GitHub Sigstore verifier: %v", err)
 		}
@@ -174,12 +181,12 @@ func (v *LiveSigstoreVerifier) verify(attestation *api.Attestation, policy verif
 		return nil, fmt.Errorf("failed to find recognized issuer from bundle content: %v", err)
 	}
 
-	v.config.Logger.VerbosePrintf("Attempting verification against issuer \"%s\"\n", issuer)
+	v.Logger.VerbosePrintf("Attempting verification against issuer \"%s\"\n", issuer)
 	// attempt to verify the attestation
 	result, err := verifier.Verify(attestation.Bundle, policy)
 	// if verification fails, create the error and exit verification early
 	if err != nil {
-		v.config.Logger.VerbosePrint(v.config.Logger.ColorScheme.Redf(
+		v.Logger.VerbosePrint(v.Logger.ColorScheme.Redf(
 			"Failed to verify against issuer \"%s\" \n\n", issuer,
 		))
 
@@ -188,7 +195,7 @@ func (v *LiveSigstoreVerifier) verify(attestation *api.Attestation, policy verif
 
 	// if verification is successful, add the result
 	// to the AttestationProcessingResult entry
-	v.config.Logger.VerbosePrint(v.config.Logger.ColorScheme.Greenf(
+	v.Logger.VerbosePrint(v.Logger.ColorScheme.Greenf(
 		"SUCCESS - attestation signature verified with \"%s\"\n", issuer,
 	))
 
@@ -208,7 +215,7 @@ func (v *LiveSigstoreVerifier) Verify(attestations []*api.Attestation, policy ve
 	var lastError error
 	totalAttestations := len(attestations)
 	for i, a := range attestations {
-		v.config.Logger.VerbosePrintf("Verifying attestation %d/%d against the configured Sigstore trust roots\n", i+1, totalAttestations)
+		v.Logger.VerbosePrintf("Verifying attestation %d/%d against the configured Sigstore trust roots\n", i+1, totalAttestations)
 
 		apr, err := v.verify(a, policy)
 		if err != nil {

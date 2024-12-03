@@ -88,22 +88,10 @@ func (v *LiveSigstoreVerifier) chooseVerifier(issuer string) (*verify.SignedEnti
 			if v.NoPublicGood {
 				return nil, fmt.Errorf("detected public good instance but requested verification without public good instance")
 			}
-
-			publicGoodVerifier, err := newPublicGoodVerifier()
-			if err != nil {
-				return nil, fmt.Errorf("failed to create Public Good Sigstore verifier: %v", err)
-			}
-
-			return publicGoodVerifier, nil
+			return newPublicGoodVerifier()
 		} else if issuer == GitHubIssuerOrg {
-			ghVerifier, err := newGitHubVerifier(v.TrustDomain)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create GitHub Sigstore verifier: %v", err)
-			}
-
-			return ghVerifier, nil
+			return newGitHubVerifier(v.TrustDomain)
 		}
-
 		return nil, fmt.Errorf("leaf certificate issuer is not recognized")
 	}
 
@@ -144,24 +132,12 @@ func (v *LiveSigstoreVerifier) chooseVerifier(issuer string) (*verify.SignedEnti
 				if v.NoPublicGood {
 					return nil, fmt.Errorf("detected public good instance but requested verification without public good instance")
 				}
-				verifier, err := newPublicGoodVerifierWithTrustedRoot(trustedRoot)
-				if err != nil {
-					return nil, err
-				}
-				return verifier, nil
+				return newPublicGoodVerifierWithTrustedRoot(trustedRoot)
 			} else if issuer == GitHubIssuerOrg {
-				verifier, err := newGitHubVerifierWithTrustedRoot(trustedRoot)
-				if err != nil {
-					return nil, err
-				}
-				return verifier, nil
+				return newGitHubVerifierWithTrustedRoot(trustedRoot)
 			} else {
 				// Make best guess at reasonable policy
-				customVerifier, err := newCustomVerifier(trustedRoot)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create custom verifier: %v", err)
-				}
-				return customVerifier, nil
+				return newCustomVerifier(trustedRoot)
 			}
 		}
 		line, readError = reader.ReadBytes('\n')

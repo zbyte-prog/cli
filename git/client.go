@@ -115,23 +115,23 @@ type CredentialPattern struct {
 var AllMatchingCredentialsPattern = CredentialPattern{allMatching: true, pattern: ""}
 var disallowedCredentialPattern = CredentialPattern{allMatching: false, pattern: ""}
 
-// WM-TODO: Are there any funny remotes that might not resolve to a URL?
-func CredentialPatternFromRemote(ctx context.Context, c *Client, remote string) (CredentialPattern, error) {
-	gitURL, err := c.GetRemoteURL(ctx, remote)
-	if err != nil {
-		return CredentialPattern{}, err
-	}
-	return CredentialPatternFromGitURL(gitURL)
-}
-
+// CredentialPatternFromGitURL takes a git remote URL e.g. "https://github.com/cli/cli.git" or
+// "git@github.com:cli/cli.git" and returns the credential pattern that should be used for it.
 func CredentialPatternFromGitURL(gitURL string) (CredentialPattern, error) {
 	normalizedURL, err := ParseURL(gitURL)
 	if err != nil {
 		return CredentialPattern{}, fmt.Errorf("failed to parse remote URL: %w", err)
 	}
+	return CredentialPatternFromHost(normalizedURL.Host), nil
+}
+
+// CredentialPatternFromHost expects host to be in the form "github.com" and returns
+// the credential pattern that should be used for it.
+// It does not perform any canonicalisation e.g. "api.github.com" will not work as expected.
+func CredentialPatternFromHost(host string) CredentialPattern {
 	return CredentialPattern{
-		pattern: strings.TrimSuffix(ghinstance.HostPrefix(normalizedURL.Host), "/"),
-	}, nil
+		pattern: strings.TrimSuffix(ghinstance.HostPrefix(host), "/"),
+	}
 }
 
 // AuthenticatedCommand is a wrapper around Command that included configuration to use gh
@@ -200,19 +200,6 @@ func (c *Client) UpdateRemoteURL(ctx context.Context, name, url string) error {
 		return err
 	}
 	return nil
-}
-
-func (c *Client) GetRemoteURL(ctx context.Context, name string) (string, error) {
-	args := []string{"remote", "get-url", name}
-	cmd, err := c.Command(ctx, args...)
-	if err != nil {
-		return "", err
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 func (c *Client) SetRemoteResolution(ctx context.Context, name, resolution string) error {

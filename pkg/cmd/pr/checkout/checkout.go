@@ -130,14 +130,9 @@ func checkoutRun(opts *CheckoutOptions) error {
 		cmdQueue = append(cmdQueue, []string{"submodule", "update", "--init", "--recursive"})
 	}
 
-	// Note that although we will probably be fetching from the headRemote, in practice, PR checkout can only
-	// ever point to one host, and we know baseRemote must be populated, where headRemote might be nil (e.g. when
-	// it was deleted).
-	credentialPattern, err := git.CredentialPatternFromRemote(context.Background(), opts.GitClient, baseRemote.Name)
-	if err != nil {
-		return err
-	}
-	err = executeCmds(opts.GitClient, credentialPattern, cmdQueue)
+	// Note that although we will probably be fetching from the head, in practice, PR checkout can only
+	// ever point to one host, and we know baseRepo must be populated.
+	err = executeCmds(opts.GitClient, git.CredentialPatternFromHost(baseRepo.RepoHost()), cmdQueue)
 	if err != nil {
 		return err
 	}

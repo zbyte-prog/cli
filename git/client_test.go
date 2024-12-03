@@ -1564,7 +1564,7 @@ func TestCredentialPatternFromGitURL(t *testing.T) {
 	}{
 		{
 			name:   "Given a well formed gitURL, it returns the corresponding CredentialPattern",
-			gitURL: "https://github.com/OWNER/REPO",
+			gitURL: "https://github.com/OWNER/REPO.git",
 			wantCredentialPattern: CredentialPattern{
 				pattern:     "https://github.com",
 				allMatching: false,
@@ -1591,47 +1591,25 @@ func TestCredentialPatternFromGitURL(t *testing.T) {
 	}
 }
 
-func TestCredentialPatternFromRemote(t *testing.T) {
+func TestCredentialPatternFromHost(t *testing.T) {
 	tests := []struct {
 		name                  string
-		remote                string
+		host                  string
 		wantCredentialPattern CredentialPattern
-		wantErr               bool
 	}{
 		{
-			name:   "Given a well formed remote, it returns the corresponding CredentialPattern",
-			remote: "https://github.com/OWNER/REPO",
+			name: "Given a well formed host, it returns the corresponding CredentialPattern",
+			host: "github.com",
 			wantCredentialPattern: CredentialPattern{
 				pattern:     "https://github.com",
 				allMatching: false,
 			},
 		},
-		{
-			name:    "Given an error from GetRemoteURL, it returns that error",
-			remote:  "foo remote",
-			wantErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var cmdCtx func(ctx context.Context, name string, args ...string) *exec.Cmd
-			if tt.wantErr {
-				_, cmdCtx = createCommandContext(t, 1, tt.remote, "GetRemoteURL error")
-			} else {
-				_, cmdCtx = createCommandContext(t, 0, tt.remote, "")
-			}
-
-			client := Client{
-				GitPath:        "path/to/git",
-				commandContext: cmdCtx,
-			}
-			credentialPattern, err := CredentialPatternFromRemote(context.Background(), &client, tt.remote)
-			if tt.wantErr {
-				assert.ErrorContains(t, err, "GetRemoteURL error")
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.wantCredentialPattern, credentialPattern)
-			}
+			credentialPattern := CredentialPatternFromHost(tt.host)
+			require.Equal(t, tt.wantCredentialPattern, credentialPattern)
 		})
 	}
 }

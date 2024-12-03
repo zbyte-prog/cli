@@ -104,38 +104,37 @@ func (v *LiveSigstoreVerifier) chooseVerifier(b *bundle.Bundle) (*verify.SignedE
 					return nil, "", err
 				}
 
-				if len(lowestCert.Issuer.Organization) == 0 {
+				// if the custom trusted root issuer is not set or doesn't match the bundle's issuer, skip it
+				if len(lowestCert.Issuer.Organization) == 0 || lowestCert.Issuer.Organization[0] != issuer {
 					continue
 				}
 
-				if lowestCert.Issuer.Organization[0] == issuer {
-					// Determine what policy to use with this trusted root.
-					//
-					// Note that we are *only* inferring the policy with the
-					// issuer. We *must* use the trusted root provided.
-					if issuer == PublicGoodIssuerOrg {
-						if v.NoPublicGood {
-							return nil, "", fmt.Errorf("detected public good instance but requested verification without public good instance")
-						}
-						verifier, err := newPublicGoodVerifierWithTrustedRoot(trustedRoot)
-						if err != nil {
-							return nil, "", err
-						}
-						return verifier, issuer, nil
-					} else if issuer == GitHubIssuerOrg {
-						verifier, err := newGitHubVerifierWithTrustedRoot(trustedRoot)
-						if err != nil {
-							return nil, "", err
-						}
-						return verifier, issuer, nil
-					} else {
-						// Make best guess at reasonable policy
-						customVerifier, err := newCustomVerifier(trustedRoot)
-						if err != nil {
-							return nil, "", fmt.Errorf("failed to create custom verifier: %v", err)
-						}
-						return customVerifier, issuer, nil
+				// Determine what policy to use with this trusted root.
+				//
+				// Note that we are *only* inferring the policy with the
+				// issuer. We *must* use the trusted root provided.
+				if issuer == PublicGoodIssuerOrg {
+					if v.NoPublicGood {
+						return nil, "", fmt.Errorf("detected public good instance but requested verification without public good instance")
 					}
+					verifier, err := newPublicGoodVerifierWithTrustedRoot(trustedRoot)
+					if err != nil {
+						return nil, "", err
+					}
+					return verifier, issuer, nil
+				} else if issuer == GitHubIssuerOrg {
+					verifier, err := newGitHubVerifierWithTrustedRoot(trustedRoot)
+					if err != nil {
+						return nil, "", err
+					}
+					return verifier, issuer, nil
+				} else {
+					// Make best guess at reasonable policy
+					customVerifier, err := newCustomVerifier(trustedRoot)
+					if err != nil {
+						return nil, "", fmt.Errorf("failed to create custom verifier: %v", err)
+					}
+					return customVerifier, issuer, nil
 				}
 			}
 			line, readError = reader.ReadBytes('\n')

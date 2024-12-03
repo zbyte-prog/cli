@@ -84,15 +84,17 @@ func (v *LiveSigstoreVerifier) chooseVerifier(issuer string) (*verify.SignedEnti
 	// if no custom trusted root is set, attempt to create a Public Good or
 	// GitHub Sigstore verifier
 	if v.TrustedRoot == "" {
-		if issuer == PublicGoodIssuerOrg {
+		switch issuer {
+		case PublicGoodIssuerOrg:
 			if v.NoPublicGood {
 				return nil, fmt.Errorf("detected public good instance but requested verification without public good instance")
 			}
 			return newPublicGoodVerifier()
-		} else if issuer == GitHubIssuerOrg {
+		case GitHubIssuerOrg:
 			return newGitHubVerifier(v.TrustDomain)
+		default:
+			return nil, fmt.Errorf("leaf certificate issuer is not recognized")
 		}
-		return nil, fmt.Errorf("leaf certificate issuer is not recognized")
 	}
 
 	customTrustRoots, err := os.ReadFile(v.TrustedRoot)
@@ -128,14 +130,15 @@ func (v *LiveSigstoreVerifier) chooseVerifier(issuer string) (*verify.SignedEnti
 			//
 			// Note that we are *only* inferring the policy with the
 			// issuer. We *must* use the trusted root provided.
-			if issuer == PublicGoodIssuerOrg {
+			switch issuer {
+			case PublicGoodIssuerOrg:
 				if v.NoPublicGood {
 					return nil, fmt.Errorf("detected public good instance but requested verification without public good instance")
 				}
 				return newPublicGoodVerifierWithTrustedRoot(trustedRoot)
-			} else if issuer == GitHubIssuerOrg {
+			case GitHubIssuerOrg:
 				return newGitHubVerifierWithTrustedRoot(trustedRoot)
-			} else {
+			default:
 				// Make best guess at reasonable policy
 				return newCustomVerifier(trustedRoot)
 			}

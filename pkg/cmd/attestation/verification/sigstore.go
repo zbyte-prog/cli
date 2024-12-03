@@ -121,7 +121,7 @@ func (v *LiveSigstoreVerifier) chooseVerifier(issuer string) (*verify.SignedEnti
 				return nil, err
 			}
 
-			// if the custom trusted root issuer is not set or doesn't match the bundle's issuer, skip it
+			// if the custom trusted root issuer is not set or doesn't match the given issuer, skip it
 			if len(lowestCert.Issuer.Organization) == 0 || lowestCert.Issuer.Organization[0] != issuer {
 				continue
 			}

@@ -93,7 +93,6 @@ func Test_checkoutRun(t *testing.T) {
 			},
 			runStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git show-ref --verify -- refs/heads/feature`, 1, "")
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git fetch origin \+refs/heads/feature:refs/remotes/origin/feature`, 0, "")
 				cs.Register(`git checkout -b feature --track origin/feature`, 0, "")
 			},
@@ -120,7 +119,6 @@ func Test_checkoutRun(t *testing.T) {
 				"origin": "OWNER/REPO",
 			},
 			runStubs: func(cs *run.CommandStubber) {
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git fetch origin refs/pull/123/head:feature`, 0, "")
 				cs.Register(`git config branch\.feature\.merge`, 1, "")
 				cs.Register(`git checkout feature`, 0, "")
@@ -151,7 +149,6 @@ func Test_checkoutRun(t *testing.T) {
 			},
 			runStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git show-ref --verify -- refs/heads/foobar`, 1, "")
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 				cs.Register(`git fetch origin \+refs/heads/feature:refs/remotes/origin/feature`, 0, "")
 				cs.Register(`git checkout -b foobar --track origin/feature`, 0, "")
 			},
@@ -179,7 +176,6 @@ func Test_checkoutRun(t *testing.T) {
 			},
 			runStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git config branch\.foobar\.merge`, 1, "")
-				cs.Register(`git remote get-url origin`, 0, "https://github.com/hubot/REPO.git")
 				cs.Register(`git fetch origin refs/pull/123/head:foobar`, 0, "")
 				cs.Register(`git checkout foobar`, 0, "")
 				cs.Register(`git config branch\.foobar\.remote https://github.com/hubot/REPO.git`, 0, "")
@@ -305,7 +301,6 @@ func TestPRCheckout_sameRepo(t *testing.T) {
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
 
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin \+refs/heads/feature:refs/remotes/origin/feature`, 0, "")
 	cs.Register(`git show-ref --verify -- refs/heads/feature`, 1, "")
 	cs.Register(`git checkout -b feature --track origin/feature`, 0, "")
@@ -325,8 +320,6 @@ func TestPRCheckout_existingBranch(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin \+refs/heads/feature:refs/remotes/origin/feature`, 0, "")
 	cs.Register(`git show-ref --verify -- refs/heads/feature`, 0, "")
 	cs.Register(`git checkout feature`, 0, "")
@@ -359,8 +352,6 @@ func TestPRCheckout_differentRepo_remoteExists(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch robot-fork \+refs/heads/feature:refs/remotes/robot-fork/feature`, 0, "")
 	cs.Register(`git show-ref --verify -- refs/heads/feature`, 1, "")
 	cs.Register(`git checkout -b feature --track robot-fork/feature`, 0, "")
@@ -381,8 +372,6 @@ func TestPRCheckout_differentRepo(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin refs/pull/123/head:feature`, 0, "")
 	cs.Register(`git config branch\.feature\.merge`, 1, "")
 	cs.Register(`git checkout feature`, 0, "")
@@ -405,8 +394,6 @@ func TestPRCheckout_differentRepo_existingBranch(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin refs/pull/123/head:feature`, 0, "")
 	cs.Register(`git config branch\.feature\.merge`, 0, "refs/heads/feature\n")
 	cs.Register(`git checkout feature`, 0, "")
@@ -426,8 +413,6 @@ func TestPRCheckout_detachedHead(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin refs/pull/123/head:feature`, 0, "")
 	cs.Register(`git config branch\.feature\.merge`, 0, "refs/heads/feature\n")
 	cs.Register(`git checkout feature`, 0, "")
@@ -447,8 +432,6 @@ func TestPRCheckout_differentRepo_currentBranch(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin refs/pull/123/head`, 0, "")
 	cs.Register(`git config branch\.feature\.merge`, 0, "refs/heads/feature\n")
 	cs.Register(`git merge --ff-only FETCH_HEAD`, 0, "")
@@ -468,7 +451,6 @@ func TestPRCheckout_differentRepo_invalidBranchName(t *testing.T) {
 
 	_, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
 	output, err := runCommand(http, nil, "master", `123`)
 	assert.EqualError(t, err, `invalid branch name: "-foo"`)
 	assert.Equal(t, "", output.Stderr())
@@ -485,8 +467,6 @@ func TestPRCheckout_maintainerCanModify(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin refs/pull/123/head:feature`, 0, "")
 	cs.Register(`git config branch\.feature\.merge`, 1, "")
 	cs.Register(`git checkout feature`, 0, "")
@@ -508,8 +488,6 @@ func TestPRCheckout_recurseSubmodules(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin \+refs/heads/feature:refs/remotes/origin/feature`, 0, "")
 	cs.Register(`git show-ref --verify -- refs/heads/feature`, 0, "")
 	cs.Register(`git checkout feature`, 0, "")
@@ -531,8 +509,6 @@ func TestPRCheckout_force(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/OWNER/REPO.git")
 	cs.Register(`git fetch origin \+refs/heads/feature:refs/remotes/origin/feature`, 0, "")
 	cs.Register(`git show-ref --verify -- refs/heads/feature`, 0, "")
 	cs.Register(`git checkout feature`, 0, "")
@@ -554,9 +530,7 @@ func TestPRCheckout_detach(t *testing.T) {
 
 	cs, cmdTeardown := run.Stub()
 	defer cmdTeardown(t)
-
 	cs.Register(`git checkout --detach FETCH_HEAD`, 0, "")
-	cs.Register(`git remote get-url origin`, 0, "https://github.com/hubot/REPO.git")
 	cs.Register(`git fetch origin refs/pull/123/head`, 0, "")
 
 	output, err := runCommand(http, nil, "", `123 --detach`)

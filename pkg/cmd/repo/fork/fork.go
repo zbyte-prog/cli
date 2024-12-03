@@ -306,6 +306,10 @@ func forkRun(opts *ForkOptions) error {
 					if err != nil {
 						return err
 					}
+
+					if connectedToTerminal {
+						fmt.Fprintf(stderr, "%s Renamed remote %s to %s\n", cs.SuccessIcon(), cs.Bold(remoteName), cs.Bold(renameTarget))
+					}
 				} else {
 					return fmt.Errorf("a git remote named '%s' already exists", remoteName)
 				}

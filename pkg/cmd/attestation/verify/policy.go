@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 	"github.com/sigstore/sigstore-go/pkg/verify"
@@ -22,7 +23,23 @@ func expandToGitHubURL(tenant, ownerOrRepo string) string {
 }
 
 func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, error) {
-	var c verification.EnforcementCriteria
+	// initialize the enforcement criteria with the provided PredicateType
+	c := verification.EnforcementCriteria{
+		PredicateType: opts.PredicateType,
+	}
+
+	// set the owner value by checking the repo and owner options
+	var owner string
+	if opts.Repo != "" {
+		// we expect the repo argument to be in the format <OWNER>/<REPO>
+		splitRepo := strings.Split(opts.Repo, "/")
+		// if Repo is provided but owner is not, set the OWNER portion of the Repo value
+		// to Owner
+		owner = splitRepo[0]
+	} else {
+		// otherwise use the user provided owner value
+		owner = opts.Owner
+	}
 
 	// Set SANRegex using either the opts.SignerRepo or opts.SignerWorkflow values
 	if opts.SignerRepo != "" {
@@ -35,10 +52,16 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		}
 
 		c.SANRegex = validatedWorkflowRegex
-	} else {
+	} else if opts.SANRegex != "" || opts.SAN != "" {
 		// If neither of those values were set, default to the provided SANRegex and SAN values
 		c.SANRegex = opts.SANRegex
 		c.SAN = opts.SAN
+	} else if opts.Repo != "" {
+		// if the user has not provided the SAN, SANRegex, SignerRepo, or SignerWorkflow options
+		// then we default to the repo and owner options
+		c.SANRegex = expandToGitHubURL(opts.Tenant, opts.Repo)
+	} else {
+		c.SANRegex = expandToGitHubURL(opts.Tenant, owner)
 	}
 
 	// if the DenySelfHostedRunner option is set to true, set the
@@ -66,9 +89,9 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 	// If the tenant option is provided, set the SourceRepositoryOwnerURI extension
 	// using the specific URI format
 	if opts.Tenant != "" {
-		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Owner)
+		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, owner)
 	} else {
-		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", opts.Owner)
+		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", owner)
 	}
 
 	// if the tenant is provided and OIDC issuer provided matches the default
@@ -79,8 +102,6 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		// otherwise use the custom OIDC issuer provided as an option
 		c.Certificate.Issuer = opts.OIDCIssuer
 	}
-
-	c.PredicateType = opts.PredicateType
 
 	return c, nil
 }

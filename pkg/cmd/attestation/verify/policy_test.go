@@ -56,6 +56,29 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		require.Equal(t, "(?i)^https://github/foo", c.SANRegex)
 	})
 
+	t.Run("sets SANRegex using opts.Repo", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+			Repo:         "foo/bar",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "(?i)^https://github.com/foo/bar/", c.SANRegex)
+	})
+
+	t.Run("sets SANRegex using opts.Owner", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "foo",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "(?i)^https://github.com/foo/", c.SANRegex)
+	})
+
 	t.Run("sets Extensions.RunnerEnvironment to GitHubRunner value if opts.DenySelfHostedRunner is true", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath:         artifactPath,

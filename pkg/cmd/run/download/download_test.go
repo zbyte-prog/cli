@@ -12,6 +12,7 @@ import (
 
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/prompter"
+	"github.com/cli/cli/v2/internal/safepaths"
 	"github.com/cli/cli/v2/pkg/cmd/run/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -185,8 +186,8 @@ func (f *fakePlatform) List(runID string) ([]shared.Artifact, error) {
 	return artifacts, nil
 }
 
-func (f *fakePlatform) Download(url string, dir string) error {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+func (f *fakePlatform) Download(url string, dir safepaths.Absolute) error {
+	if err := os.MkdirAll(dir.String(), 0755); err != nil {
 		return err
 	}
 	// Now to be consistent, we find the artifact with the provided URL.
@@ -198,7 +199,7 @@ func (f *fakePlatform) Download(url string, dir string) error {
 		for _, testArtifact := range run.testArtifacts {
 			if testArtifact.artifact.DownloadURL == url {
 				for _, file := range testArtifact.files {
-					path := filepath.Join(dir, file)
+					path := filepath.Join(dir.String(), file)
 					return os.WriteFile(path, []byte{}, 0600)
 				}
 			}

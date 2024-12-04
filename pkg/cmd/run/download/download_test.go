@@ -145,29 +145,40 @@ func Test_NewCmdDownload(t *testing.T) {
 	}
 }
 
+type run struct {
+	id            string
+	testArtifacts []testArtifact
+}
+
 type testArtifact struct {
 	artifact shared.Artifact
 	files    []string
 }
 
 type fakePlatform struct {
-	runArtifacts map[string][]testArtifact
+	runs []run
 }
 
 func (f *fakePlatform) List(runID string) ([]shared.Artifact, error) {
-	var runIds []string
+	runIds := map[string]struct{}{}
 	if runID != "" {
-		runIds = []string{runID}
+		runIds[runID] = struct{}{}
 	} else {
-		for k := range f.runArtifacts {
-			runIds = append(runIds, k)
+		for _, run := range f.runs {
+			runIds[run.id] = struct{}{}
 		}
 	}
 
 	var artifacts []shared.Artifact
-	for _, id := range runIds {
-		for _, a := range f.runArtifacts[id] {
-			artifacts = append(artifacts, a.artifact)
+	for _, run := range f.runs {
+		// Skip over any runs that we aren't looking for
+		if _, ok := runIds[run.id]; !ok {
+			continue
+		}
+
+		// Grab the artifacts of everything else
+		for _, testArtifact := range run.testArtifacts {
+			artifacts = append(artifacts, testArtifact.artifact)
 		}
 	}
 
@@ -183,8 +194,8 @@ func (f *fakePlatform) Download(url string, dir string) error {
 	// rather than keying directly to it, but it allows the setup of the
 	// fake platform to be declarative rather than imperative.
 	// Think fakePlatform { artifacts: ... } rather than fakePlatform.makeArtifactAvailable()
-	for _, testArtifacts := range f.runArtifacts {
-		for _, testArtifact := range testArtifacts {
+	for _, run := range f.runs {
+		for _, testArtifact := range run.testArtifacts {
 			if testArtifact.artifact.DownloadURL == url {
 				for _, file := range testArtifact.files {
 					path := filepath.Join(dir, file)
@@ -213,36 +224,39 @@ func Test_runDownload(t *testing.T) {
 				DestinationDir: "./tmp",
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "expired-artifact",
+									DownloadURL: "http://download.com/expired.zip",
+									Expired:     true,
+								},
+								files: []string{
+									"expired",
+								},
 							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "expired-artifact",
-								DownloadURL: "http://download.com/expired.zip",
-								Expired:     true,
-							},
-							files: []string{
-								"expired",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-2",
-								DownloadURL: "http://download.com/artifact2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-2-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-2",
+									DownloadURL: "http://download.com/artifact2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-2-file",
+								},
 							},
 						},
 					},
@@ -260,36 +274,39 @@ func Test_runDownload(t *testing.T) {
 				DestinationDir: "/tmp",
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "expired-artifact",
+									DownloadURL: "http://download.com/expired.zip",
+									Expired:     true,
+								},
+								files: []string{
+									"expired",
+								},
 							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "expired-artifact",
-								DownloadURL: "http://download.com/expired.zip",
-								Expired:     true,
-							},
-							files: []string{
-								"expired",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-2",
-								DownloadURL: "http://download.com/artifact2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-2-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-2",
+									DownloadURL: "http://download.com/artifact2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-2-file",
+								},
 							},
 						},
 					},
@@ -306,26 +323,29 @@ func Test_runDownload(t *testing.T) {
 				RunID: "2345",
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     true,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     true,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-2",
-								DownloadURL: "http://download.com/artifact2.zip",
-								Expired:     true,
-							},
-							files: []string{
-								"artifact-2-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-2",
+									DownloadURL: "http://download.com/artifact2.zip",
+									Expired:     true,
+								},
+								files: []string{
+									"artifact-2-file",
+								},
 							},
 						},
 					},
@@ -341,26 +361,29 @@ func Test_runDownload(t *testing.T) {
 				Names: []string{"artifact-3"},
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-2",
-								DownloadURL: "http://download.com/artifact2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-2-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-2",
+									DownloadURL: "http://download.com/artifact2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-2-file",
+								},
 							},
 						},
 					},
@@ -376,36 +399,39 @@ func Test_runDownload(t *testing.T) {
 				FilePatterns: []string{"artifact-*"},
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "non-artifact-2",
+									DownloadURL: "http://download.com/non-artifact-2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"non-artifact-2-file",
+								},
 							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "non-artifact-2",
-								DownloadURL: "http://download.com/non-artifact-2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"non-artifact-2-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-3",
-								DownloadURL: "http://download.com/artifact3.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-3-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-3",
+									DownloadURL: "http://download.com/artifact3.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-3-file",
+								},
 							},
 						},
 					},
@@ -423,26 +449,29 @@ func Test_runDownload(t *testing.T) {
 				FilePatterns: []string{"artifiction-*"},
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-2",
-								DownloadURL: "http://download.com/artifact2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-2-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-2",
+									DownloadURL: "http://download.com/artifact2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-2-file",
+								},
 							},
 						},
 					},
@@ -458,36 +487,39 @@ func Test_runDownload(t *testing.T) {
 				Names: []string{"non-artifact-2"},
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "non-artifact-2",
+									DownloadURL: "http://download.com/non-artifact-2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"non-artifact-2-file",
+								},
 							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "non-artifact-2",
-								DownloadURL: "http://download.com/non-artifact-2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"non-artifact-2-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-3",
-								DownloadURL: "http://download.com/artifact3.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-3-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-3",
+									DownloadURL: "http://download.com/artifact3.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-3-file",
+								},
 							},
 						},
 					},
@@ -504,36 +536,39 @@ func Test_runDownload(t *testing.T) {
 				Names: []string{"artifact-1", "artifact-3"},
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "non-artifact-2",
+									DownloadURL: "http://download.com/non-artifact-2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"non-artifact-2-file",
+								},
 							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "non-artifact-2",
-								DownloadURL: "http://download.com/non-artifact-2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"non-artifact-2-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-3",
-								DownloadURL: "http://download.com/artifact3.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-3-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-3",
+									DownloadURL: "http://download.com/artifact3.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-3-file",
+								},
 							},
 						},
 					},
@@ -550,26 +585,29 @@ func Test_runDownload(t *testing.T) {
 				RunID: "2345",
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-2-file",
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-2-file",
+								},
 							},
 						},
 					},
@@ -587,38 +625,44 @@ func Test_runDownload(t *testing.T) {
 				Names:    []string(nil),
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-1",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-1",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-1-file",
+								},
 							},
-							files: []string{
-								"artifact-1-file",
-							},
-						},
-						{
-							artifact: shared.Artifact{
-								Name:        "expired-artifact",
-								DownloadURL: "http://download.com/expired.zip",
-								Expired:     true,
-							},
-							files: []string{
-								"expired",
+							{
+								artifact: shared.Artifact{
+									Name:        "expired-artifact",
+									DownloadURL: "http://download.com/expired.zip",
+									Expired:     true,
+								},
+								files: []string{
+									"expired",
+								},
 							},
 						},
 					},
-					"6789": {
-						{
-							artifact: shared.Artifact{
-								Name:        "artifact-2",
-								DownloadURL: "http://download.com/artifact2.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"artifact-2-file",
+					{
+						id: "6789",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "artifact-2",
+									DownloadURL: "http://download.com/artifact2.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"artifact-2-file",
+								},
 							},
 						},
 					},
@@ -645,16 +689,19 @@ func Test_runDownload(t *testing.T) {
 				RunID: "2345",
 			},
 			platform: &fakePlatform{
-				runArtifacts: map[string][]testArtifact{
-					"2345": {
-						{
-							artifact: shared.Artifact{
-								Name:        "..",
-								DownloadURL: "http://download.com/artifact1.zip",
-								Expired:     false,
-							},
-							files: []string{
-								"etc/passwd",
+				runs: []run{
+					{
+						id: "2345",
+						testArtifacts: []testArtifact{
+							{
+								artifact: shared.Artifact{
+									Name:        "..",
+									DownloadURL: "http://download.com/artifact1.zip",
+									Expired:     false,
+								},
+								files: []string{
+									"etc/passwd",
+								},
 							},
 						},
 					},

@@ -449,10 +449,10 @@ func TestRunVerify(t *testing.T) {
 	t.Run("with repo which not matches SourceRepositoryURI", func(t *testing.T) {
 		opts := publicGoodOpts
 		opts.BundlePath = ""
-		opts.Repo = "wrong/example"
+		opts.Repo = "sigstore/wrong"
 
 		err := runVerify(&opts)
-		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/wrong/example, got https://github.com/sigstore/sigstore-js")
+		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/sigstore/wrong, got https://github.com/sigstore/sigstore-js")
 	})
 
 	t.Run("with invalid repo", func(t *testing.T) {

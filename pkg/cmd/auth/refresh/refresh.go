@@ -72,6 +72,8 @@ func NewCmdRefresh(f *cmdutil.Factory, runF func(*RefreshOptions) error) *cobra.
 			If you have multiple accounts in %[1]sgh auth status%[1]s and want to refresh the credentials for an
 			inactive account, you will have to use %[1]sgh auth switch%[1]s to that account first before using
 			this command, and then switch back when you are done.
+
+			Run %[1]sgh help scopes%[1]s to see information about auth scopes.
 		`, "`"),
 		Example: heredoc.Doc(`
 			$ gh auth refresh --scopes write:org,read:public_key

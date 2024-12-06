@@ -66,7 +66,7 @@ func NewCmdBrowse(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			- Issues
 			- Pull requests
 			- Repository content
-			- Repository profile
+			- Repository home page
 			- Repository settings
 		`),
 		Use:  "browse [<number> | <path> | <commit-SHA>]",

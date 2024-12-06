@@ -84,6 +84,8 @@ func NewCmdLogin(f *cmdutil.Factory, runF func(*LoginOptions) error) *cobra.Comm
 			Specifying %[1]sssh%[1]s for the git protocol will detect existing SSH keys to upload,
 			prompting to create and upload a new key if one is not found. This can be skipped with
 			%[1]s--skip-ssh-key%[1]s flag.
+
+			Run %[1]sgh help scopes%[1]s to see information about auth scopes.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Start interactive setup

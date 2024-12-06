@@ -115,15 +115,15 @@ func TestVerifyIntegration(t *testing.T) {
 	t.Run("with bundle from OCI registry", func(t *testing.T) {
 		opts := Options{
 			APIClient:             api.NewLiveClient(hc, host, logger),
-			ArtifactPath:          "oci://ghcr.io/malancas/attest-demo:latest",
+			ArtifactPath:          "oci://ghcr.io/github/artifact-attestations-helm-charts/policy-controller:v0.10.0-github9",
 			UseBundleFromRegistry: true,
 			DigestAlgorithm:       "sha256",
 			Logger:                logger,
 			OCIClient:             oci.NewLiveClient(),
 			OIDCIssuer:            verification.GitHubOIDCIssuer,
-			Owner:                 "malancas",
+			Owner:                 "github",
 			PredicateType:         verification.SLSAPredicateV1,
-			SANRegex:              "^https://github.com/malancas/",
+			SANRegex:              "^https://github.com/github/",
 			SigstoreVerifier:      verification.NewLiveSigstoreVerifier(sigstoreConfig),
 		}
 

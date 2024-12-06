@@ -277,6 +277,70 @@ var HelpTopics = []helpTopic{
 			control some behavior.
 		`),
 	},
+	{
+		name:  "scopes",
+		short: "Auth scopes for token used by gh",
+		long: heredoc.Docf(`
+			Scopes let you specify exactly what type of access you need. Scopes limit access for OAuth tokens.
+			They do not grant any additional permission beyond that which the user already has.
+			- %[1]s(no scope)%[1]s: grants read-only access to public information (including user profile info, repository 	info, and gists).
+			- %[1]srepo%[1]s: grants full access to public and private repositories including read and write access to code,
+			commit statuses, repository invitations, collaborators, deployment statuses, and repository webhooks.
+			  NOTE: In addition to repository related resources, the repo scope also grants access to manage organization-owned
+			  resources including projects, invitations, team memberships and webhooks.
+			  This scope also grants the ability to manage projects owned by users.
+			  - %[1]srepo:status%[1]s: grants read/write access to commit statuses in public and private repositories.
+			This scope is only necessary to grant other users or services access to private repository commit statuses without granting access to the code.
+			  - %[1]srepo_deployment%[1]s: grants access to deployment statuses for public and private repositories.
+			This scope is only necessary to grant other users or services access to deployment statuses, without granting access to the code.
+			  - %[1]spublic_repo%[1]s: limits access to public repositories. That includes read/write access to code,
+			commit statuses, repository projects, collaborators, and deployment statuses for public repositories and
+			organizations. Also required for starring public repositories.
+			  - %[1]srepo:invite%[1]s: grants accept/decline abilities for invitations to collaborate on a repository.
+			This scope is only necessary to grant other users or services access to invites without granting access to the code.
+			  - %[1]ssecurity_events%[1]s: grants read and write access to security events in the code scanning API.
+			This scope is only necessary to grant other users or services access to security events without granting access to the code.
+			- %[1]sadmin:repo_hook%[1]s: grants read, write, ping, and delete access to repository hooks in public or private repositories.
+			The %[1]srepo%[1]s and %[1]spublic_repo%[1]s scopes grant full access to repositories, including repository hooks. Use the %[1]sadmin:repo_hook%[1]s scope to limit access to only repository hooks.
+			  - %[1]swrite:repo_hook%[1]s: grants read, write, and ping access to hooks in public or private repositories.
+			  - %[1]sread:repo_hook%[1]s: grants read and ping access to hooks in public or private repositories.
+			- %[1]sadmin:org%[1]s: fully manage the organization and its teams, projects, and memberships.
+			  - %[1]swrite:org%[1]s: read and write access to organization membership and organization projects.
+			  - %[1]sread:org%[1]s: read-only access to organization membership, organization projects, and team membership.
+			- %[1]sadmin:public_key%[1]s: fully manage public keys.
+			  - %[1]swrite:public_key%[1]s: create, list, and view details for public keys.
+			  - %[1]sread:public_key%[1]s: list and view details for public keys.
+			- %[1]sadmin:org_hook%[1]s: grants read, write, ping, and delete access to organization hooks.
+			  NOTE: OAuth tokens will only be able to perform these actions on organization hooks which were created by the OAuth app.
+			  Personal access tokens will only be able to perform these actions on organization hooks created by a user.
+			- %[1]sgist%[1]s: grants write access to gists.
+			- %[1]snotifications%[1]s: grants:
+			  - read access to a user's notifications
+			  - mark as read access to threads
+			  - watch and unwatch access to a repository, and
+			  - read, write, and delete access to thread subscriptions.
+			- %[1]suser%[1]s: grants read/write access to profile info only. Note that this scope includes %[1]suser:email%[1]s and %[1]suser:follow%[1]s.
+			  - %[1]sread:user%[1]s: grants access to read a user's profile data.
+			  - %[1]suser:email%[1]s: grants read access to a user's email addresses.
+			  - %[1]suser:follow%[1]s: grants access to follow or unfollow other users.
+			- %[1]sproject%[1]s: grants read/write access to user and organization projects.
+			  - %[1]sread:project%[1]s: grants read only access to user and organization projects.
+			- %[1]sdelete_repo%[1]s: grants access to delete adminable repositories.
+			- %[1]swrite:packages%[1]s: grants access to upload or publish a package in GitHub Packages.
+			- %[1]sread:packages%[1]s: grants access to download or install packages from GitHub Packages.
+			- %[1]sdelete:packages%[1]s: grants access to delete packages from GitHub Packages.
+			- %[1]sadmin:gpg_key%[1]s: fully manage GPG keys.
+			  - %[1]swrite:gpg_key%[1]s: create, list, and view details for GPG keys.
+			  - %[1]sread:gpg_key%[1]s: list and view details for GPG keys.
+			- %[1]scodespace%[1]s: grants the ability to create and manage codespaces. Codespaces can expose a
+			%[1]sGITHUB_TOKEN%[1]s which may have a different set of scopes.
+			- %[1]sworkflow%[1]s: grants the ability to add and update GitHub Actions workflow files.
+			Workflow files can be committed without this scope if the same file (with both the same path and contents) exists
+			on another branch in the same repository. Workflow files can expose %[1]sGITHUB_TOKEN%[1]s which may have a
+			different set of scopes.
+			NOTE: You can always find up-to-date list of scopes at <https://docs.github.com/en/developers/apps/building-oauth-apps/scopes-for-oauth-apps/#available-scopes>.
+		`, "`"),
+	},
 }
 
 func NewCmdHelpTopic(ios *iostreams.IOStreams, ht helpTopic) *cobra.Command {

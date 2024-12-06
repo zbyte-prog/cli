@@ -63,11 +63,11 @@ func NewCmdBrowse(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 		Long:  heredoc.Doc(`
 			Transition from the terminal to the web browser to view and interact with:
 
-			- issues
-			- pull requests
-			- repository content
-			- repository profile
-			- repository settings
+			- Issues
+			- Pull requests
+			- Repository content
+			- Repository profile
+			- Repository settings
 		`),
 		Use:   "browse [<number> | <path> | <commit-SHA>]",
 		Args:  cobra.MaximumNArgs(1),

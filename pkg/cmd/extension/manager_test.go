@@ -771,7 +771,7 @@ func TestManager_Install_local_no_executable_found(t *testing.T) {
 	// to simulate an attempt to install a local extension without an executable
 
 	err := m.InstallLocal(localDir)
-	require.ErrorIs(t, err, ErrExtensionExecutableNotFound)
+	require.ErrorAs(t, err, new(*ErrExtensionExecutableNotFound))
 	assert.Equal(t, "", stdout.String())
 	assert.Equal(t, "", stderr.String())
 }

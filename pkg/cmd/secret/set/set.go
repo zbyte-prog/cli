@@ -198,12 +198,12 @@ func setRun(opts *SetOptions) error {
 			return err
 		}
 
-		if err = cmdutil.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes); err != nil {
+		if err = shared.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes); err != nil {
 			if !opts.CanPrompt {
 				return err
 			}
 
-			selectedRepo, errSelectingRepo := cmdutil.PromptForRepo(baseRepo, opts.Remotes, opts.Prompter)
+			selectedRepo, errSelectingRepo := shared.PromptForRepo(baseRepo, opts.Remotes, opts.Prompter)
 			if errSelectingRepo != nil {
 				return errSelectingRepo
 			}

@@ -111,7 +111,7 @@ func removeRun(opts *DeleteOptions) error {
 			return err
 		}
 
-		err = cmdutil.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes)
+		err = shared.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes)
 		if err != nil {
 			return err
 		}

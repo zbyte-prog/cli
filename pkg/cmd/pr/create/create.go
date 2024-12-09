@@ -119,6 +119,10 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			alongside %[1]s--fill%[1]s, the values specified by %[1]s--title%[1]s and/or %[1]s--body%[1]s will
 			take precedence and overwrite any autofilled content.
 
+			The base branch for the created PR can be specified using the %[1]s--base%[1]s flag. If not provided,
+			the value of %[1]sgh-merge-base%[1]s git branch config will be used. If not configured, the repository's
+			default branch will be used.
+
 			Link an issue to the pull request by referencing the issue in the body of the pull
 			request. If the body text mentions %[1]sFixes #123%[1]s or %[1]sCloses #123%[1]s, the referenced issue
 			will automatically get closed when the pull request gets merged.

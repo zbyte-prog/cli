@@ -48,7 +48,7 @@ func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Exte
 		return nil, nil
 	}
 
-	stateFilePath := filepath.Join(em.UpdateDir(ext.FullName()), "state.yml") // TODO: See what removing FullName() changes
+	stateFilePath := filepath.Join(em.UpdateDir(ext.Name()), "state.yml")
 	stateEntry, _ := getStateEntry(stateFilePath)
 	if stateEntry != nil && now.Sub(stateEntry.CheckedForUpdateAt).Hours() < 24 {
 		return nil, nil

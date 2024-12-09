@@ -137,9 +137,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			CurrentVersionFunc: func() string {
 				return tt.extCurrentVersion
 			},
-			FullNameFunc: func() string {
-				return tt.extFullName
-			},
 			IsPinnedFunc: func() bool {
 				return tt.extIsPinned
 			},

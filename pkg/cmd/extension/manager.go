@@ -542,10 +542,7 @@ func (m *Manager) upgradeBinExtension(ext *Extension) error {
 }
 
 func (m *Manager) Remove(name string) error {
-	name, err := ensurePrefixed(name)
-	if err != nil {
-		return err
-	}
+	name = ensurePrefixed(name)
 	targetDir := filepath.Join(m.installDir(), name)
 	if _, err := os.Lstat(targetDir); os.IsNotExist(err) {
 		return fmt.Errorf("no extension found: %q", targetDir)
@@ -565,7 +562,7 @@ func (m *Manager) installDir() string {
 
 // UpdateDir returns the extension-specific directory where updates are stored.
 func (m *Manager) UpdateDir(name string) string {
-	return filepath.Join(m.updateDir(), name)
+	return filepath.Join(m.updateDir(), ensurePrefixed(name))
 }
 
 //go:embed ext_tmpls/goBinMain.go.txt
@@ -842,12 +839,9 @@ func (m *Manager) cleanExtensionUpdateDir(name string) error {
 }
 
 // ensurePrefixed just makes sure that the provided extension name is prefixed with "gh-".
-func ensurePrefixed(name string) (string, error) {
-	if name == "" {
-		return "", errors.New("failed prefixing extension name: must not be empty")
-	}
+func ensurePrefixed(name string) string {
 	if !strings.HasPrefix(name, "gh-") {
 		name = "gh-" + name
 	}
-	return name, nil
+	return name
 }

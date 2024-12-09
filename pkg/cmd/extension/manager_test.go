@@ -1331,20 +1331,11 @@ func Test_ensurePrefixed(t *testing.T) {
 			input:    "gh-purrfect",
 			expected: "gh-purrfect",
 		},
-		{
-			name:    "empty string",
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := ensurePrefixed(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.Equal(t, tt.expected, actual)
-			}
+			require.Equal(t, tt.expected, ensurePrefixed(tt.input))
 		})
 	}
 }

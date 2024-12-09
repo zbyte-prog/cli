@@ -203,6 +203,7 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			expectedReleaseInfo: nil,
 		},
 		// TODO: Local extension with no previous state entry
+		// TODO: Capture git and binary specific entries
 	}
 
 	for _, tt := range tests {
@@ -217,9 +218,6 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			ext := &extensions.ExtensionMock{
 				NameFunc: func() string {
 					return "extension-update-test"
-				},
-				FullNameFunc: func() string {
-					return "gh-extension-update-test"
 				},
 				CurrentVersionFunc: func() string {
 					return tt.extCurrentVersion
@@ -248,7 +246,7 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			}
 
 			// Setup previous state file for test as necessary
-			stateFilePath := filepath.Join(em.UpdateDir(ext.FullName()), "state.yml")
+			stateFilePath := filepath.Join(em.UpdateDir(ext.Name()), "state.yml")
 			if tt.previousStateEntry != nil {
 				require.NoError(t, setStateEntry(stateFilePath, tt.previousStateEntry.CheckedForUpdateAt, tt.previousStateEntry.LatestRelease))
 			}

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/cli/cli/v2/internal/prompter"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/cli/cli/v2/internal/prompter"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
@@ -46,7 +47,7 @@ type SetOptions struct {
 	Application     string
 
 	HasRepoOverride bool
-	Interactive     bool
+	CanPrompt       bool
 }
 
 func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command {
@@ -112,8 +113,6 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 			// support `-R, --repo` override
 			opts.BaseRepo = f.BaseRepo
 
-			flagCount := cmdutil.CountSetFlags(cmd.Flags())
-
 			if err := cmdutil.MutuallyExclusive("specify only one of `--org`, `--env`, or `--user`", opts.OrgName != "", opts.EnvName != "", opts.UserSecrets); err != nil {
 				return err
 			}
@@ -132,10 +131,6 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 				}
 			} else {
 				opts.SecretName = args[0]
-
-				if flagCount == 0 {
-					opts.Interactive = true
-				}
 			}
 
 			if cmd.Flags().Changed("visibility") {
@@ -157,6 +152,7 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 			}
 
 			opts.HasRepoOverride = cmd.Flags().Changed("repo")
+			opts.CanPrompt = opts.IO.CanPrompt()
 
 			if runF != nil {
 				return runF(opts)
@@ -202,19 +198,17 @@ func setRun(opts *SetOptions) error {
 			return err
 		}
 
-		err = cmdutil.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes)
-		if err != nil {
-			if opts.Interactive {
-				selectedRepo, errSelectedRepo := cmdutil.PromptForRepo(baseRepo, opts.Remotes, opts.Prompter)
-
-				if errSelectedRepo != nil {
-					return errSelectedRepo
-				}
-
-				baseRepo = selectedRepo
-			} else {
+		if err = cmdutil.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes); err != nil {
+			if !opts.CanPrompt {
 				return err
 			}
+
+			selectedRepo, errSelectingRepo := cmdutil.PromptForRepo(baseRepo, opts.Remotes, opts.Prompter)
+			if errSelectingRepo != nil {
+				return errSelectingRepo
+			}
+
+			baseRepo = selectedRepo
 		}
 
 		host = baseRepo.RepoHost()

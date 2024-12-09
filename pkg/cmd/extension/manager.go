@@ -33,6 +33,7 @@ const darwinAmd64 = "darwin-amd64"
 
 type Manager struct {
 	dataDir    func() string
+	updateDir  func() string
 	lookPath   func(string) (string, error)
 	findSh     func() (string, error)
 	newCommand func(string, ...string) *exec.Cmd
@@ -46,7 +47,10 @@ type Manager struct {
 
 func NewManager(ios *iostreams.IOStreams, gc *git.Client) *Manager {
 	return &Manager{
-		dataDir:    config.DataDir,
+		dataDir: config.DataDir,
+		updateDir: func() string {
+			return filepath.Join(config.StateDir(), "extensions")
+		},
 		lookPath:   safeexec.LookPath,
 		findSh:     findsh.Find,
 		newCommand: exec.Command,
@@ -193,6 +197,9 @@ func (m *Manager) populateLatestVersions(exts []*Extension) {
 
 func (m *Manager) InstallLocal(dir string) error {
 	name := filepath.Base(dir)
+	if err := m.cleanExtensionUpdateDir(name); err != nil {
+		return err
+	}
 	targetLink := filepath.Join(m.installDir(), name)
 	if err := os.MkdirAll(filepath.Dir(targetLink), 0755); err != nil {
 		return err
@@ -299,8 +306,11 @@ func (m *Manager) installBin(repo ghrepo.Interface, target string) error {
 
 	// TODO clean this up if function errs?
 	if !m.dryRunMode {
-		err = os.MkdirAll(targetDir, 0755)
-		if err != nil {
+		if err := m.cleanExtensionUpdateDir(name); err != nil {
+			return err
+		}
+
+		if err = os.MkdirAll(targetDir, 0755); err != nil {
 			return fmt.Errorf("failed to create installation directory: %w", err)
 		}
 	}
@@ -385,6 +395,10 @@ func (m *Manager) installGit(repo ghrepo.Interface, target string) error {
 
 	name := strings.TrimSuffix(path.Base(cloneURL), ".git")
 	targetDir := filepath.Join(m.installDir(), name)
+
+	if err := m.cleanExtensionUpdateDir(name); err != nil {
+		return err
+	}
 
 	_, err := m.gitClient.Clone(cloneURL, []string{targetDir})
 	if err != nil {
@@ -528,18 +542,30 @@ func (m *Manager) upgradeBinExtension(ext *Extension) error {
 }
 
 func (m *Manager) Remove(name string) error {
-	targetDir := filepath.Join(m.installDir(), "gh-"+name)
+	name, err := ensurePrefixed(name)
+	if err != nil {
+		return err
+	}
+	targetDir := filepath.Join(m.installDir(), name)
 	if _, err := os.Lstat(targetDir); os.IsNotExist(err) {
 		return fmt.Errorf("no extension found: %q", targetDir)
 	}
 	if m.dryRunMode {
 		return nil
 	}
+	if err := m.cleanExtensionUpdateDir(name); err != nil {
+		return err
+	}
 	return os.RemoveAll(targetDir)
 }
 
 func (m *Manager) installDir() string {
 	return filepath.Join(m.dataDir(), "extensions")
+}
+
+// UpdateDir returns the extension-specific directory where updates are stored.
+func (m *Manager) UpdateDir(name string) string {
+	return filepath.Join(m.updateDir(), name)
 }
 
 //go:embed ext_tmpls/goBinMain.go.txt
@@ -801,4 +827,27 @@ func codesignBinary(binPath string) error {
 	}
 	cmd := exec.Command(codesignExe, "--sign", "-", "--force", "--preserve-metadata=entitlements,requirements,flags,runtime", binPath)
 	return cmd.Run()
+}
+
+// cleanExtensionUpdateDir should be used before installing extensions to avoid past metadata creating problems.
+func (m *Manager) cleanExtensionUpdateDir(name string) error {
+	updatePath := m.UpdateDir(name)
+	if _, err := os.Stat(updatePath); err == nil {
+		if err := os.RemoveAll(updatePath); err != nil {
+			return fmt.Errorf("failed to remove previous extension update state: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// ensurePrefixed just makes sure that the provided extension name is prefixed with "gh-".
+func ensurePrefixed(name string) (string, error) {
+	if name == "" {
+		return "", errors.New("failed prefixing extension name: must not be empty")
+	}
+	if !strings.HasPrefix(name, "gh-") {
+		name = "gh-" + name
+	}
+	return name, nil
 }

@@ -4,11 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/update"
 	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -83,6 +81,5 @@ func checkForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Exte
 		return nil, nil
 	}
 
-	stateFilePath := filepath.Join(config.StateDir(), "extensions", ext.FullName(), "state.yml")
-	return update.CheckForExtensionUpdate(em, ext, stateFilePath, time.Now())
+	return update.CheckForExtensionUpdate(em, ext, time.Now())
 }

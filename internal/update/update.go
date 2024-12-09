@@ -43,11 +43,12 @@ func ShouldCheckForExtensionUpdate() bool {
 	return !IsCI() && IsTerminal(os.Stdout) && IsTerminal(os.Stderr)
 }
 
-func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension, stateFilePath string, now time.Time) (*ReleaseInfo, error) {
+func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension, now time.Time) (*ReleaseInfo, error) {
 	if ext.IsLocal() {
 		return nil, nil
 	}
 
+	stateFilePath := filepath.Join(em.UpdateDir(ext.FullName()), "state.yml") // TODO: See what removing FullName() changes
 	stateEntry, _ := getStateEntry(stateFilePath)
 	if stateEntry != nil && now.Sub(stateEntry.CheckedForUpdateAt).Hours() < 24 {
 		return nil, nil

@@ -10,11 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cli/cli/v2/pkg/cmd/extension"
 	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 func TestCheckForUpdate(t *testing.T) {
@@ -125,6 +123,8 @@ func TestCheckForUpdate(t *testing.T) {
 
 func TestCheckForExtensionUpdate(t *testing.T) {
 	now := time.Date(2024, 12, 17, 12, 0, 0, 0, time.UTC)
+	previousTooSoon := now.Add(-23 * time.Hour).Add(-59 * time.Minute).Add(-59 * time.Second)
+	previousOldEnough := now.Add(-24 * time.Hour)
 
 	tests := []struct {
 		name                string
@@ -132,11 +132,10 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 		extLatestVersion    string
 		extIsLocal          bool
 		extURL              string
-		stateEntry          *StateEntry
-		ri                  ReleaseInfo
-		wantErr             bool
-		expectedReleaseInfo *ReleaseInfo
+		previousStateEntry  *StateEntry
 		expectedStateEntry  *StateEntry
+		expectedReleaseInfo *ReleaseInfo
+		wantErr             bool
 	}{
 		{
 			name:              "return latest release given extension is out of date and no state entry",
@@ -144,17 +143,16 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			extLatestVersion:  "v1.0.0",
 			extIsLocal:        false,
 			extURL:            "http://example.com",
-			stateEntry:        nil,
-			expectedReleaseInfo: &ReleaseInfo{
-				Version: "v1.0.0",
-				URL:     "http://example.com",
-			},
 			expectedStateEntry: &StateEntry{
 				CheckedForUpdateAt: now,
 				LatestRelease: ReleaseInfo{
 					Version: "v1.0.0",
 					URL:     "http://example.com",
 				},
+			},
+			expectedReleaseInfo: &ReleaseInfo{
+				Version: "v1.0.0",
+				URL:     "http://example.com",
 			},
 		},
 		{
@@ -163,16 +161,12 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			extLatestVersion:  "v1.0.0",
 			extIsLocal:        false,
 			extURL:            "http://example.com",
-			stateEntry: &StateEntry{
-				CheckedForUpdateAt: now.Add(-24 * time.Hour),
+			previousStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousOldEnough,
 				LatestRelease: ReleaseInfo{
 					Version: "v0.1.0",
 					URL:     "http://example.com",
 				},
-			},
-			expectedReleaseInfo: &ReleaseInfo{
-				Version: "v1.0.0",
-				URL:     "http://example.com",
 			},
 			expectedStateEntry: &StateEntry{
 				CheckedForUpdateAt: now,
@@ -181,6 +175,10 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 					URL:     "http://example.com",
 				},
 			},
+			expectedReleaseInfo: &ReleaseInfo{
+				Version: "v1.0.0",
+				URL:     "http://example.com",
+			},
 		},
 		{
 			name:              "return nothing given extension is out of date but state entry is too recent",
@@ -188,29 +186,41 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			extLatestVersion:  "v1.0.0",
 			extIsLocal:        false,
 			extURL:            "http://example.com",
-			stateEntry: &StateEntry{
-				CheckedForUpdateAt: now.Add(-23 * time.Hour),
+			previousStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousTooSoon,
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousTooSoon,
 				LatestRelease: ReleaseInfo{
 					Version: "v0.1.0",
 					URL:     "http://example.com",
 				},
 			},
 			expectedReleaseInfo: nil,
-			expectedStateEntry: &StateEntry{
-				CheckedForUpdateAt: now.Add(-23 * time.Hour),
-				LatestRelease: ReleaseInfo{
-					Version: "v0.1.0",
-					URL:     "http://example.com",
-				},
-			},
 		},
+		// TODO: Local extension with no previous state entry
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			em := &extensions.ExtensionManagerMock{}
+			updateDir := t.TempDir()
+			em := &extensions.ExtensionManagerMock{
+				UpdateDirFunc: func(name string) string {
+					return filepath.Join(updateDir, name)
+				},
+			}
 
 			ext := &extensions.ExtensionMock{
+				NameFunc: func() string {
+					return "extension-update-test"
+				},
+				FullNameFunc: func() string {
+					return "gh-extension-update-test"
+				},
 				CurrentVersionFunc: func() string {
 					return tt.extCurrentVersion
 				},
@@ -225,21 +235,25 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 				},
 			}
 
-			// Ensure test is testing actual update available logic
+			// UpdateAvailable is arguably code under test but moq does not support partial mocks so this is a little brittle.
 			ext.UpdateAvailableFunc = func() bool {
-				// Should this function be removed from the extension interface?
-				return extension.UpdateAvailable(ext)
+				if ext.IsLocal() {
+					panic("Local extensions do not get update notices")
+				}
+
+				// Actual extension versions should drive tests instead of managing UpdateAvailable separately.
+				current := ext.CurrentVersion()
+				latest := ext.LatestVersion()
+				return current != "" && latest != "" && current != latest
 			}
 
-			// Create state file for test as necessary
-			stateFilePath := filepath.Join(t.TempDir(), "state.yml")
-			if tt.stateEntry != nil {
-				stateEntryYaml, err := yaml.Marshal(tt.stateEntry)
-				require.NoError(t, err)
-				require.NoError(t, os.WriteFile(stateFilePath, stateEntryYaml, 0644))
+			// Setup previous state file for test as necessary
+			stateFilePath := filepath.Join(em.UpdateDir(ext.FullName()), "state.yml")
+			if tt.previousStateEntry != nil {
+				require.NoError(t, setStateEntry(stateFilePath, tt.previousStateEntry.CheckedForUpdateAt, tt.previousStateEntry.LatestRelease))
 			}
 
-			actual, err := CheckForExtensionUpdate(em, ext, stateFilePath, now)
+			actual, err := CheckForExtensionUpdate(em, ext, now)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

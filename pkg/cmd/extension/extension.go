@@ -11,7 +11,6 @@ import (
 
 	"github.com/cli/cli/v2/git"
 	"github.com/cli/cli/v2/internal/ghrepo"
-	"github.com/cli/cli/v2/pkg/extensions"
 	"gopkg.in/yaml.v3"
 )
 
@@ -216,10 +215,6 @@ func (e *Extension) Owner() string {
 }
 
 func (e *Extension) UpdateAvailable() bool {
-	return UpdateAvailable(e)
-}
-
-func UpdateAvailable(e extensions.Extension) bool {
 	if e.IsLocal() ||
 		e.CurrentVersion() == "" ||
 		e.LatestVersion() == "" ||

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cli/cli/v2/pkg/cmd/extension"
 	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/stretchr/testify/require"
@@ -130,7 +131,7 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 		name                string
 		extCurrentVersion   string
 		extLatestVersion    string
-		extIsLocal          bool
+		extKind             extension.ExtensionKind
 		extURL              string
 		previousStateEntry  *StateEntry
 		expectedStateEntry  *StateEntry
@@ -138,10 +139,10 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 		wantErr             bool
 	}{
 		{
-			name:              "return latest release given extension is out of date and no state entry",
+			name:              "return latest release given git extension is out of date and no state entry",
 			extCurrentVersion: "v0.1.0",
 			extLatestVersion:  "v1.0.0",
-			extIsLocal:        false,
+			extKind:           extension.GitKind,
 			extURL:            "http://example.com",
 			expectedStateEntry: &StateEntry{
 				CheckedForUpdateAt: now,
@@ -156,10 +157,10 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			},
 		},
 		{
-			name:              "return latest release given extension is out of date and state entry is old enough",
+			name:              "return latest release given git extension is out of date and state entry is old enough",
 			extCurrentVersion: "v0.1.0",
 			extLatestVersion:  "v1.0.0",
-			extIsLocal:        false,
+			extKind:           extension.GitKind,
 			extURL:            "http://example.com",
 			previousStateEntry: &StateEntry{
 				CheckedForUpdateAt: previousOldEnough,
@@ -181,10 +182,10 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			},
 		},
 		{
-			name:              "return nothing given extension is out of date but state entry is too recent",
+			name:              "return nothing given git extension is out of date but state entry is too recent",
 			extCurrentVersion: "v0.1.0",
 			extLatestVersion:  "v1.0.0",
-			extIsLocal:        false,
+			extKind:           extension.GitKind,
 			extURL:            "http://example.com",
 			previousStateEntry: &StateEntry{
 				CheckedForUpdateAt: previousTooSoon,
@@ -202,8 +203,102 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			},
 			expectedReleaseInfo: nil,
 		},
-		// TODO: Local extension with no previous state entry
-		// TODO: Capture git and binary specific entries
+		{
+			name:              "return latest release given binary extension is out of date and no state entry",
+			extCurrentVersion: "v0.1.0",
+			extLatestVersion:  "v1.0.0",
+			extKind:           extension.BinaryKind,
+			extURL:            "http://example.com",
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: now,
+				LatestRelease: ReleaseInfo{
+					Version: "v1.0.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedReleaseInfo: &ReleaseInfo{
+				Version: "v1.0.0",
+				URL:     "http://example.com",
+			},
+		},
+		{
+			name:              "return latest release given binary extension is out of date and state entry is old enough",
+			extCurrentVersion: "v0.1.0",
+			extLatestVersion:  "v1.0.0",
+			extKind:           extension.BinaryKind,
+			extURL:            "http://example.com",
+			previousStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousOldEnough,
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: now,
+				LatestRelease: ReleaseInfo{
+					Version: "v1.0.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedReleaseInfo: &ReleaseInfo{
+				Version: "v1.0.0",
+				URL:     "http://example.com",
+			},
+		},
+		{
+			name:              "return nothing given binary extension is out of date but state entry is too recent",
+			extCurrentVersion: "v0.1.0",
+			extLatestVersion:  "v1.0.0",
+			extKind:           extension.BinaryKind,
+			extURL:            "http://example.com",
+			previousStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousTooSoon,
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousTooSoon,
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedReleaseInfo: nil,
+		},
+		{
+			name:                "return nothing given local extension with no state entry",
+			extCurrentVersion:   "v0.1.0",
+			extLatestVersion:    "v1.0.0",
+			extKind:             extension.LocalKind,
+			extURL:              "http://example.com",
+			expectedStateEntry:  nil,
+			expectedReleaseInfo: nil,
+		},
+		{
+			name:              "return nothing given local extension despite state entry is old enough",
+			extCurrentVersion: "v0.1.0",
+			extLatestVersion:  "v1.0.0",
+			extKind:           extension.LocalKind,
+			extURL:            "http://example.com",
+			previousStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousOldEnough,
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedStateEntry: &StateEntry{
+				CheckedForUpdateAt: previousOldEnough,
+				LatestRelease: ReleaseInfo{
+					Version: "v0.1.0",
+					URL:     "http://example.com",
+				},
+			},
+			expectedReleaseInfo: nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -226,7 +321,10 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 					return tt.extLatestVersion
 				},
 				IsLocalFunc: func() bool {
-					return tt.extIsLocal
+					return tt.extKind == extension.LocalKind
+				},
+				IsBinaryFunc: func() bool {
+					return tt.extKind == extension.BinaryKind
 				},
 				URLFunc: func() string {
 					return tt.extURL
@@ -254,9 +352,14 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 			actual, err := CheckForExtensionUpdate(em, ext, now)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.Equal(t, tt.expectedReleaseInfo, actual)
+				return
+			}
 
+			require.Equal(t, tt.expectedReleaseInfo, actual)
+
+			if tt.expectedStateEntry == nil {
+				require.NoFileExists(t, stateFilePath)
+			} else {
 				stateEntry, err := getStateEntry(stateFilePath)
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedStateEntry, stateEntry)

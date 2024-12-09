@@ -41,9 +41,8 @@ type CreateOptions struct {
 	Finder           shared.PRFinder
 	TitledEditSurvey func(string, string) (string, string, error)
 
-	TitleProvided      bool
-	BodyProvided       bool
-	BaseBranchProvided bool
+	TitleProvided bool
+	BodyProvided  bool
 
 	RootDirOverride string
 	RepoOverride    string
@@ -148,7 +147,6 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			opts.TitleProvided = cmd.Flags().Changed("title")
 			opts.RepoOverride, _ = cmd.Flags().GetString("repo")
-			opts.BaseBranchProvided = cmd.Flags().Changed("base")
 			// Workaround: Due to the way this command is implemented, we need to manually check GH_REPO.
 			// Commands should use the standard BaseRepoOverride functionality to handle this behavior instead.
 			if opts.RepoOverride == "" {
@@ -342,7 +340,7 @@ func createRun(opts *CreateOptions) (err error) {
 			ghrepo.FullName(ctx.BaseRepo))
 	}
 
-	if !opts.EditorMode && (opts.FillVerbose || opts.Autofill || opts.FillFirst || (opts.TitleProvided && opts.BodyProvided && ctx.BaseBranch != "")) {
+	if !opts.EditorMode && (opts.FillVerbose || opts.Autofill || opts.FillFirst || (opts.TitleProvided && opts.BodyProvided)) {
 		err = handlePush(*opts, *ctx)
 		if err != nil {
 			return
@@ -419,14 +417,6 @@ func createRun(opts *CreateOptions) (err error) {
 			}
 
 			err = shared.BodySurvey(opts.Prompter, state, templateContent)
-			if err != nil {
-				return
-			}
-		}
-
-		// Confirm the automatically-selected base branch.
-		if !opts.BaseBranchProvided {
-			err = confirmTrackingBranch(opts, ctx)
 			if err != nil {
 				return
 			}
@@ -564,14 +554,6 @@ func determineTrackingBranch(gitClient *git.Client, remotes ghContext.Remotes, h
 		}
 	}
 
-	return nil
-}
-
-func confirmTrackingBranch(opts *CreateOptions, ctx *CreateContext) (err error) {
-	ctx.BaseBranch, err = opts.Prompter.Input("Base branch", ctx.BaseBranch)
-	if err != nil {
-		return
-	}
 	return nil
 }
 

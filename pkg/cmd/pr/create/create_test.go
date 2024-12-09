@@ -1217,8 +1217,6 @@ func Test_createRun(t *testing.T) {
 				pm.InputFunc = func(p, d string) (string, error) {
 					if p == "Title (required)" {
 						return d, nil
-					} else if p == "Base branch" {
-						return d, nil
 					} else {
 						return "", prompter.NoSuchPromptErr(p)
 					}
@@ -1324,8 +1322,6 @@ func Test_createRun(t *testing.T) {
 
 				pm.InputFunc = func(p, d string) (string, error) {
 					if p == "Title (required)" {
-						return d, nil
-					} else if p == "Base branch" {
 						return d, nil
 					} else if p == "Body" {
 						return d, nil
@@ -1532,88 +1528,6 @@ func Test_createRun(t *testing.T) {
 			expectedOut:    "https://github.com/OWNER/REPO/pull/12\n",
 			expectedErrOut: "\nCreating pull request for monalisa:task1 into feature/feat2 in OWNER/REPO\n\n",
 		},
-		{
-			name: "non-default base branch prompt",
-			tty:  true,
-			setup: func(opts *CreateOptions, t *testing.T) func() {
-				opts.BodyProvided = true
-				opts.Body = "my body"
-				opts.Branch = func() (string, error) {
-					return "task1", nil
-				}
-				opts.Remotes = func() (context.Remotes, error) {
-					return context.Remotes{
-						{
-							Remote: &git.Remote{
-								Name:     "upstream",
-								Resolved: "base",
-							},
-							Repo: ghrepo.New("OWNER", "REPO"),
-						},
-						{
-							Remote: &git.Remote{
-								Name: "origin",
-							},
-							Repo: ghrepo.New("monalisa", "REPO"),
-						},
-					}, nil
-				}
-				return func() {}
-			},
-			httpStubs: func(reg *httpmock.Registry, t *testing.T) {
-				reg.Register(
-					httpmock.GraphQL(`mutation PullRequestCreate\b`),
-					httpmock.GraphQLMutation(`
-							{ "data": { "createPullRequest": { "pullRequest": {
-								"URL": "https://github.com/OWNER/REPO/pull/12"
-							} } } }
-							`, func(input map[string]interface{}) {
-						assert.Equal(t, "REPOID", input["repositoryId"].(string))
-						assert.Equal(t, "my title", input["title"].(string))
-						assert.Equal(t, "my body", input["body"].(string))
-						assert.Equal(t, "feature/feat3", input["baseRefName"].(string))
-						assert.Equal(t, "monalisa:task1", input["headRefName"].(string))
-					}))
-			},
-			customBranchConfig: true,
-			cmdStubs: func(cs *run.CommandStubber) {
-				cs.Register(`git config --get-regexp \^branch\\\.task1\\\.\(remote\|merge\|gh-merge-base\)\$`, 0, heredoc.Doc(`
-					branch.task1.remote origin
-					branch.task1.merge refs/heads/task1
-					branch.task1.gh-merge-base feature/feat2`)) // ReadBranchConfig
-				cs.Register(`git show-ref --verify`, 0, heredoc.Doc(`
-					deadbeef HEAD
-					deadb00f refs/remotes/upstream/feature/feat2
-					deadb01f refs/remotes/upstream/feature/feat3
-					deadbeef refs/remotes/origin/task1`)) // determineTrackingBranch
-				cs.Register(
-					"git -c log.ShowSignature=false log --pretty=format:%H%x00%s%x00%b%x00 --cherry upstream/feature/feat2...task1",
-					0,
-					"3a9b48085046d156c5acce8f3b3a0532cd706a4a\u0000my title\u0000my body\u0000\n") // initDefaultTitleBody from original base branch
-			},
-			promptStubs: func(pm *prompter.PrompterMock) {
-				pm.InputFunc = func(p, d string) (string, error) {
-					switch p {
-					case "Title (required)":
-						return "my title", nil
-					case "Base branch":
-						return "feature/feat3", nil
-					default:
-						return "", prompter.NoSuchPromptErr(p)
-					}
-				}
-				pm.SelectFunc = func(p, _ string, opts []string) (int, error) {
-					if p == "What's next?" {
-						return 0, nil
-					} else {
-						return -1, prompter.NoSuchPromptErr(p)
-					}
-				}
-			},
-			expectedOut: "https://github.com/OWNER/REPO/pull/12\n",
-			// Output message is created based on initial configuration; prompt will later override.
-			expectedErrOut: "\nCreating pull request for monalisa:task1 into feature/feat2 in OWNER/REPO\n\n",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1627,14 +1541,6 @@ func Test_createRun(t *testing.T) {
 			}
 
 			pm := &prompter.PrompterMock{}
-			pm.InputFunc = func(p, d string) (string, error) {
-				switch p {
-				case "Base branch":
-					return d, nil
-				default:
-					return "", prompter.NoSuchPromptErr(p)
-				}
-			}
 
 			if tt.promptStubs != nil {
 				tt.promptStubs(pm)

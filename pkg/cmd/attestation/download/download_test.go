@@ -26,7 +26,7 @@ var artifactPath = test.NormalizeRelativePath("../test/data/sigstore-js-2.1.0.tg
 func expectedFilePath(tempDir string, digestWithAlg string) string {
 	var filename string
 	if runtime.GOOS == "windows" {
-		filename = fmt.Sprintf("%s.jsonl", strings.Replace(digestWithAlg, ":", "-", 0))
+		filename = fmt.Sprintf("%s.jsonl", strings.ReplaceAll(digestWithAlg, ":", "-"))
 	} else {
 		filename = fmt.Sprintf("%s.jsonl", digestWithAlg)
 	}

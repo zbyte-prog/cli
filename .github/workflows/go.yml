@@ -51,7 +51,12 @@ jobs:
       - name: Build executable
         run: make
 
-      - name: Run attestation command integration Tests
+      - name: Run attestation command integration tests
         run: |
-          ./test/integration/attestation-cmd/download-and-verify-package-attestation.sh
-          ./test/integration/attestation-cmd/verify-sigstore-bundle-versions.sh
+          attestation_cmd_test_dir="test/integration/attestation-cmd"
+          for script in "$attestation_cmd_test_dir"/*.sh; do
+            if [ -f "$script" ]; then
+              echo "Running $script..."
+              bash "$script"
+            fi
+          done

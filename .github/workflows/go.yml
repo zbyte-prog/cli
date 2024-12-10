@@ -55,12 +55,12 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           attestation_cmd_test_dir="test/integration/attestation-cmd"
-          for (script in "$attestation_cmd_test_dir"/*.sh); do
+          for (script in "$attestation_cmd_test_dir"/*.sh) do (
             if [ -f "$script" ]; then
               echo "Running $script..."
               bash "$script"
             fi
-          done
+          )
       - name: Run attestation command integration tests - linux syntax
         if: ${{ matrix.os != 'windows-latest' }}
         run: |

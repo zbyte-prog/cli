@@ -109,29 +109,3 @@ func getAttestationDetail(tenant string, attr api.Attestation) (AttestationDetai
 		WorkflowID:     predicate.RunDetails.Metadata.InvocationID,
 	}, nil
 }
-
-// func getDetailsAsSlice(tenant string, results []*verification.AttestationProcessingResult) ([][]string, error) {
-// 	details := make([][]string, len(results))
-//
-// 	for i, result := range results {
-// 		detail, err := getAttestationDetail(tenant, *result.Attestation)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("failed to get attestation detail: %v", err)
-// 		}
-// 		details[i] = []string{detail.RepositoryName, detail.RepositoryID, detail.OrgName, detail.OrgID, detail.WorkflowID}
-// 	}
-// 	return details, nil
-// }
-
-// func getAttestationDetails(tenant string, results []*verification.AttestationProcessingResult) ([]AttestationDetail, error) {
-// 	details := make([]AttestationDetail, len(results))
-//
-// 	for i, result := range results {
-// 		detail, err := getAttestationDetail(tenant, *result.Attestation)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("failed to get attestation detail: %v", err)
-// 		}
-// 		details[i] = detail
-// 	}
-// 	return details, nil
-// }

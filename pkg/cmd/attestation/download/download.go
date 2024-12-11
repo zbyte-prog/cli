@@ -48,10 +48,10 @@ func NewDownloadCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Comman
 			current directory named after the artifact's digest. For example, if the
 			digest is "sha256:1234", the file will be named "sha256:1234.jsonl".
 
-			Because colons are special characters in Windows and cannot be used in
-			file names, the digest will be formatted with a dash separating the algorithm
-			from the digest. For example, if the digest is "sha256:1234", the file
-			will be named "sha256-1234.jsonl".
+			Colons are special characters on Windows and cannot be used in
+			file names. To accommodate, a dash will be used to separate the algorithm
+			from the digest in the attestations file name. For example, if the digest
+			is "sha256:1234", the file will be named "sha256-1234.jsonl".
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Download attestations for a local artifact linked with an organization

@@ -32,14 +32,11 @@ func TestCreateJSONLinesFilePath(t *testing.T) {
 	artifact, err := artifact.NewDigestedArtifact(oci.MockClient{}, "../test/data/sigstore-js-2.1.0.tgz", "sha512")
 	require.NoError(t, err)
 
-	expectedPosixFileName := fmt.Sprintf("%s.jsonl", artifact.DigestWithAlg())
-	expectedWindowsFileName := fmt.Sprintf("%s-%s.jsonl", artifact.Algorithm(), artifact.Digest())
-
 	var expectedFileName string
 	if runtime.GOOS == "windows" {
-		expectedFileName = expectedWindowsFileName
+		expectedFileName = fmt.Sprintf("%s.jsonl", artifact.DigestWithAlg())
 	} else {
-		expectedFileName = expectedPosixFileName
+		expectedFileName = fmt.Sprintf("%s.jsonl", artifact.DigestWithAlg())
 	}
 
 	testCases := []struct {

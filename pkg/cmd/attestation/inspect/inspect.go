@@ -39,7 +39,7 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 			associated with your artifact(s), see the %[1]sdownload%[1]s command.
 
 			Given a .json or .jsonl file, this command will:
-			- check the bundles' authenticity, i.e. whether it is possible to verify the bundle
+			- check the bundles' "authenticity", i.e. whether we _could_ verify the bundle
 			- summarize certificates, if any
 			- extract the bundle's statement and predicate
 

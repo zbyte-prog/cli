@@ -34,7 +34,7 @@ func TestCreateJSONLinesFilePath(t *testing.T) {
 
 	var expectedFileName string
 	if runtime.GOOS == "windows" {
-		expectedFileName = fmt.Sprintf("%s.jsonl", artifact.DigestWithAlg())
+		expectedFileName = fmt.Sprintf("%s-%s.jsonl", artifact.Algorithm(), artifact.Digest())
 	} else {
 		expectedFileName = fmt.Sprintf("%s.jsonl", artifact.DigestWithAlg())
 	}

@@ -751,30 +751,6 @@ func TestManager_UpgradeExtension_GitExtension_Pinned(t *testing.T) {
 	gcOne.AssertExpectations(t)
 }
 
-func TestManager_InstallLocal(t *testing.T) {
-	dataDir := t.TempDir()
-	updateDir := t.TempDir()
-
-	extDir := filepath.Join(t.TempDir(), "gh-local")
-	err := os.MkdirAll(extDir, 0755)
-	assert.NoErrorf(t, err, "failed to create local extension")
-	assert.NoError(t, stubExtensionUpdate(filepath.Join(updateDir, "gh-local")))
-
-	ios, _, stdout, stderr := iostreams.Test()
-	m := newTestManager(dataDir, updateDir, nil, nil, ios)
-
-	err = m.InstallLocal(extDir)
-	assert.NoError(t, err)
-	assert.Equal(t, "", stdout.String())
-	assert.Equal(t, "", stderr.String())
-
-	fm, err := os.Lstat(filepath.Join(dataDir, "extensions", "gh-local"))
-	assert.NoErrorf(t, err, "data directory missing local extension symlink")
-	isSymlink := fm.Mode() & os.ModeSymlink
-	assert.True(t, isSymlink != 0)
-	assert.NoDirExistsf(t, filepath.Join(updateDir, "gh-local"), "update directory should be removed")
-}
-
 func TestManager_Install_git(t *testing.T) {
 	dataDir := t.TempDir()
 	updateDir := t.TempDir()

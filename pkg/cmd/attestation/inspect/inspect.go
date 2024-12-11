@@ -10,6 +10,7 @@ import (
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
+	"github.com/cli/cli/v2/pkg/cmd/attestation/auth"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/io"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
 	"github.com/cli/cli/v2/pkg/cmdutil"
@@ -27,46 +28,36 @@ import (
 func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command {
 	opts := &Options{}
 	inspectCmd := &cobra.Command{
-		Use:    "inspect [<file path> | oci://<OCI image URI>] --bundle <path-to-bundle>",
-		Args:   cmdutil.ExactArgs(1, "must specify file path or container image URI, as well --bundle"),
+		Use:    "inspect <path-to-sigstore-bundle>",
+		Args:   cmdutil.ExactArgs(1, "must specify bundle file path"),
 		Hidden: true,
-		Short:  "Inspect a sigstore bundle",
+		Short:  "Inspect a Sigstore bundle",
 		Long: heredoc.Docf(`
 			### NOTE: This feature is currently in public preview, and subject to change.
 
-			Inspect a Sigstore bundle that has been downloaded to disk. See the %[1]sdownload%[1]s
-			command.
+			Inspect a Sigstore bundle that has been downloaded to disk. To download bundles
+			associated with your artifact(s), see the %[1]sdownload%[1]s command.
 
-			// The command requires either:
-			// * a relative path to a local artifact, or
-			// * a container image URI (e.g. %[1]soci://<my-OCI-image-URI>%[1]s)
+			Given a .json or .jsonl file, this command will:
+			- check the bundles' authenticity, i.e. whether it is possible to verify the bundle
+			- summarize certificates, if any
+			- extract the bundle's statement and predicate
 
-			// Note that if you provide an OCI URI for the artifact you must already
-			// be authenticated with a container registry.
-
-			// The command also requires the %[1]s--bundle%[1]s flag, which provides a file
-			// path to a previously downloaded Sigstore bundle. (See also the %[1]sdownload%[1]s
-			// command).
-
-			By default, the command will print information about the bundle in a table format.
-			If the %[1]s--json-result%[1]s flag is provided, the command will print the
-			information in JSON format.
+			By default, this command prints a condensed table. To see full results, provide the
+			%[1]s--format=json%[1]s flag.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Inspect a Sigstore bundle and print the results in table format
 			$ gh attestation inspect <path-to-bundle>
 
 			# Inspect a Sigstore bundle and print the results in JSON format
-			$ gh attestation inspect <path-to-bundle> --json-result
-
-			// # Inspect a Sigsore bundle for an OCI artifact, and print the results in table format
-			// $ gh attestation inspect oci://<my-OCI-image> --bundle <path-to-bundle>
+			$ gh attestation inspect <path-to-bundle> --format=json
 		`),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// Create a logger for use throughout the inspect command
 			opts.Logger = io.NewHandler(f.IOStreams)
 
-			// set the artifact path
+			// set the bundle path
 			opts.BundlePath = args[0]
 
 			// Clean file path options
@@ -75,24 +66,20 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// opts.OCIClient = oci.NewLiveClient()
-			// if opts.Hostname == "" {
-			// 	opts.Hostname, _ = ghauth.DefaultHost()
-			// }
-			//
-			// if err := auth.IsHostSupported(opts.Hostname); err != nil {
-			// 	return err
-			// }
-			//
-			if runF != nil {
-				return runF(opts)
+			// handle tenancy
+			if opts.Hostname == "" {
+				opts.Hostname, _ = ghauth.DefaultHost()
+			}
+
+			err := auth.IsHostSupported(opts.Hostname)
+			if err != nil {
+				return err
 			}
 
 			config := verification.SigstoreConfig{
 				Logger: opts.Logger,
 			}
 
-			// fetch the correct trust domain so we can verify the bundle
 			if ghauth.IsTenancy(opts.Hostname) {
 				hc, err := f.HttpClient()
 				if err != nil {
@@ -101,19 +88,22 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 				apiClient := api.NewLiveClient(hc, opts.Hostname, opts.Logger)
 				td, err := apiClient.GetTrustDomain()
 				if err != nil {
-					return err
+					return fmt.Errorf("error getting trust domain, make sure you are authenticated against the host: %w", err)
 				}
-				tenant, found := ghinstance.TenantName(opts.Hostname)
+				_, found := ghinstance.TenantName(opts.Hostname)
 				if !found {
-					return fmt.Errorf("Invalid hostname provided: '%s'",
+					return fmt.Errorf("invalid hostname provided: '%s'",
 						opts.Hostname)
 				}
 
 				config.TrustDomain = td
-				opts.Tenant = tenant
 			}
 
 			opts.SigstoreVerifier = verification.NewLiveSigstoreVerifier(config)
+
+			if runF != nil {
+				return runF(opts)
+			}
 
 			if err := runInspect(opts); err != nil {
 				return fmt.Errorf("Failed to inspect the artifact and bundle: %w", err)
@@ -123,7 +113,6 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 	}
 
 	inspectCmd.Flags().StringVarP(&opts.Hostname, "hostname", "", "", "Configure host to use")
-	cmdutil.StringEnumFlag(inspectCmd, &opts.DigestAlgorithm, "digest-alg", "d", "sha256", []string{"sha256", "sha512"}, "The algorithm used to compute a digest of the artifact")
 	cmdutil.AddFormatFlags(inspectCmd, &opts.exporter)
 
 	return inspectCmd
@@ -153,18 +142,27 @@ type TlogEntryInspection struct {
 }
 
 func runInspect(opts *Options) error {
+	// 1. Load the bundles
+	// 2. Parse & check the "authenticity" of the bundle
+	// 3. Summarize the certs
 	attestations, err := verification.GetLocalAttestations(opts.BundlePath)
 	if err != nil {
 		return fmt.Errorf("failed to read attestations")
 	}
 
 	inspectedBundles := []BundleInspection{}
-	sigstorePolicy := verify.NewPolicy(verify.WithoutArtifactUnsafe(), verify.WithoutIdentitiesUnsafe())
+	unsafeSigstorePolicy := verify.NewPolicy(verify.WithoutArtifactUnsafe(), verify.WithoutIdentitiesUnsafe())
 
 	for _, a := range attestations {
 		inspectedBundle := BundleInspection{}
 
-		_, err := opts.SigstoreVerifier.Verify([]*api.Attestation{a}, sigstorePolicy)
+		// we ditch the verificationResult to avoid even implying that it is "verified"
+		// you can't meaningfully "verify" a bundle with such an Unsafe policy!
+		_, err := opts.SigstoreVerifier.Verify([]*api.Attestation{a}, unsafeSigstorePolicy)
+
+		// TODO: if the err is present, we keep on going because we want to be able to
+		// inspect bundles we might not have trusted materials for. but maybe we should
+		// print the error?
 		if err == nil {
 			inspectedBundle.Authentic = true
 		}
@@ -175,6 +173,7 @@ func runInspect(opts *Options) error {
 			return fmt.Errorf("failed to fetch verification content: %w", err)
 		}
 
+		// summarize cert if present
 		if leafCert := verificationContent.GetCertificate(); leafCert != nil {
 
 			certSummary, err := certificate.SummarizeCertificate(leafCert)
@@ -190,6 +189,7 @@ func runInspect(opts *Options) error {
 
 		}
 
+		// parse the sig content and pop the statement
 		sigContent, err := entity.SignatureContent()
 		if err != nil {
 			return fmt.Errorf("failed to fetch signature content: %w", err)
@@ -204,6 +204,7 @@ func runInspect(opts *Options) error {
 			inspectedBundle.Statement = stmt
 		}
 
+		// fetch the observer timestamps
 		tlogTimestamps, err := dumpTlogs(entity)
 		if err != nil {
 			return fmt.Errorf("failed to dump tlog: %w", err)
@@ -223,7 +224,6 @@ func runInspect(opts *Options) error {
 
 	// If the user provides the --format=json flag, print the results in JSON format
 	if opts.exporter != nil {
-		// print the results to the terminal as an array of JSON objects
 		if err = opts.exporter.Write(opts.Logger.IO, inspectionResult); err != nil {
 			return fmt.Errorf("failed to write JSON output")
 		}
@@ -235,7 +235,7 @@ func runInspect(opts *Options) error {
 	return nil
 }
 
-var logo = `
+var heroHeader = `
    _                       __ 
   (_)__  ___ ___  ___ ____/ /_
  / / _ \(_-</ _ \/ -_) __/ __/
@@ -244,9 +244,9 @@ var logo = `
 `
 
 func printInspectionSummary(logger *io.Handler, bundles []BundleInspection) {
-	fmt.Printf("%s\n", logo)
+	logger.Println(heroHeader)
 
-	fmt.Printf("Found %s:\n---\n", text.Pluralize(len(bundles), "attestation"))
+	logger.Printf("Found %s:\n---\n", text.Pluralize(len(bundles), "attestation"))
 
 	bundleSummaries := make([][][]string, len(bundles))
 	for i, iB := range bundles {
@@ -260,14 +260,18 @@ func printInspectionSummary(logger *io.Handler, bundles []BundleInspection) {
 		}
 	}
 
+	// "SubjectAlternativeName" has 22 chars
+	maxNameLength := 22
+
 	scheme := logger.ColorScheme
 	for i, bundle := range bundleSummaries {
 		for _, pair := range bundle {
-			attr := fmt.Sprintf("%22s:", pair[0])
-			fmt.Printf("%s %s\n", scheme.Bold(attr), pair[1])
+			colName := pair[0]
+			dots := maxNameLength - len(colName)
+			logger.OutPrintf("%s:%s %s\n", scheme.Bold(colName), strings.Repeat(".", dots), pair[1])
 		}
 		if i < len(bundleSummaries)-1 {
-			fmt.Println("---")
+			logger.OutPrintln("---")
 		}
 	}
 }

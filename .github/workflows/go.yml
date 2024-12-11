@@ -51,6 +51,6 @@ jobs:
       - name: Build executable
         run: make
 
-      - name: Run attestation command integration tests - linux syntax
+      - name: Run attestation command set integration tests
         run: |
-          ./test/integration/attestation-cmd/run-all-tests.sh
+          ./test/integration/attestation-cmd/run-all-tests.sh "${{ matrix.os }}"

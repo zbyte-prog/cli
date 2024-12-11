@@ -22,8 +22,7 @@ if ! $ghBuildPath attestation download "$artifactPath" --owner=cli; then
     exit 1
 fi
 
-digest=$(shasum -a 256 $artifactPath | awk '{print ""$1""}')
-
+digest="5ddb1d4d013a44c2e5df027867c0d4161383eb7c16e569a86384af52bfe09a65"
 attestation_filename="sha256:$digest.jsonl"
 if [ "$os" == "windows-latest" ]; then
   echo "Running the test on Windows."

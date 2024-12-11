@@ -13,22 +13,22 @@ rootDir="$(git rev-parse --show-toplevel)"
 
 ghBuildPath="$rootDir/bin/gh"
 
-artifactPath="$rootDir/pkg/cmd/attestation/test/data/sigstore-js-2.1.0.tgz"
+artifactPath="$rootDir/pkg/cmd/attestation/test/data/gh_2.60.1_windows_arm64.zip"
 
 # Download attestations for the package
-if ! $ghBuildPath attestation download "$artifactPath" --owner=sigstore --digest-alg=sha512; then
+if ! $ghBuildPath attestation download "$artifactPath" --owner=cli; then
     # cleanup test data
     echo "Failed to download attestations"
     exit 1
 fi
 
-digest=$(shasum -a 512 sigstore-js-2.1.0.tgz.sha512 | awk '{print ""$1""}')
+digest=$(shasum -a 256 $artifactPath | awk '{print ""$1""}')
 
-attestation_filename="sha512:$digest.jsonl"
+attestation_filename="sha256:$digest.jsonl"
 if [ "$os" == "windows-latest" ]; then
   echo "Running the test on Windows."
   echo "Build the expected filename accordingly"
-  attestation_filename="sha512-$digest.jsonl"
+  attestation_filename="sha256-$digest.jsonl"
 fi
 
 if [ ! -f "$attestation_filename" ]; then

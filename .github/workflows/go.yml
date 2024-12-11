@@ -52,5 +52,6 @@ jobs:
         run: make
 
       - name: Run attestation command set integration tests
+        shell: bash
         run: |
           ./test/integration/attestation-cmd/run-all-tests.sh "${{ matrix.os }}"

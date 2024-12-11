@@ -27,8 +27,7 @@ const (
 )
 
 var (
-	artifactPath = test.NormalizeRelativePath("../test/data/sigstore-js-2.1.0.tgz")
-	bundlePath   = test.NormalizeRelativePath("../test/data/sigstore-js-2.1.0-bundle.json")
+	bundlePath = test.NormalizeRelativePath("../test/data/sigstore-js-2.1.0-bundle.json")
 )
 
 func TestNewInspectCmd(t *testing.T) {
@@ -51,45 +50,10 @@ func TestNewInspectCmd(t *testing.T) {
 		wantsExporter bool
 	}{
 		{
-			name: "Invalid digest-alg flag",
-			cli:  fmt.Sprintf("%s --digest-alg sha384", bundlePath),
-			wants: Options{
-				BundlePath:       bundlePath,
-				DigestAlgorithm:  "sha384",
-				OCIClient:        oci.MockClient{},
-				SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
-			},
-			wantsErr: true,
-		},
-		{
-			name: "Use default digest-alg value",
-			cli:  bundlePath,
-			wants: Options{
-				BundlePath:       bundlePath,
-				DigestAlgorithm:  "sha256",
-				OCIClient:        oci.MockClient{},
-				SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
-			},
-			wantsErr: false,
-		},
-		{
-			name: "Use custom digest-alg value",
-			cli:  fmt.Sprintf("%s --digest-alg sha512", bundlePath),
-			wants: Options{
-				BundlePath:       bundlePath,
-				DigestAlgorithm:  "sha512",
-				OCIClient:        oci.MockClient{},
-				SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
-			},
-			wantsErr: false,
-		},
-		{
 			name: "Prints output in JSON format",
 			cli:  fmt.Sprintf("%s --format json", bundlePath),
 			wants: Options{
 				BundlePath:       bundlePath,
-				DigestAlgorithm:  "sha256",
-				OCIClient:        oci.MockClient{},
 				SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
 			},
 			wantsExporter: true,
@@ -116,11 +80,8 @@ func TestNewInspectCmd(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			assert.Equal(t, tc.wants.ArtifactPath, opts.ArtifactPath)
 			assert.Equal(t, tc.wants.BundlePath, opts.BundlePath)
-			assert.Equal(t, tc.wants.DigestAlgorithm, opts.DigestAlgorithm)
 			assert.NotNil(t, opts.Logger)
-			// assert.NotNil(t, opts.OCIClient)
 			assert.Equal(t, tc.wantsExporter, opts.exporter != nil)
 		})
 	}
@@ -128,16 +89,20 @@ func TestNewInspectCmd(t *testing.T) {
 
 func TestRunInspect(t *testing.T) {
 	opts := Options{
-		ArtifactPath:     artifactPath,
 		BundlePath:       bundlePath,
-		DigestAlgorithm:  "sha512",
 		Logger:           io.NewTestHandler(),
 		OCIClient:        oci.MockClient{},
 		SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
 	}
 
-	t.Run("with valid artifact and bundle", func(t *testing.T) {
+	t.Run("with valid bundle and default output", func(t *testing.T) {
+		testIO, _, out, _ := iostreams.Test()
+		opts.Logger = io.NewHandler(testIO)
+
 		require.Nil(t, runInspect(&opts))
+		outputStr := string(out.Bytes()[:])
+
+		assert.Regexp(t, "PredicateType:......... https://slsa.dev/provenance/v1", outputStr)
 	})
 
 	t.Run("with missing bundle path", func(t *testing.T) {
@@ -150,11 +115,8 @@ func TestRunInspect(t *testing.T) {
 func TestJSONOutput(t *testing.T) {
 	testIO, _, out, _ := iostreams.Test()
 	opts := Options{
-		ArtifactPath:     artifactPath,
 		BundlePath:       bundlePath,
-		DigestAlgorithm:  "sha512",
 		Logger:           io.NewHandler(testIO),
-		OCIClient:        oci.MockClient{},
 		SigstoreVerifier: verification.NewMockSigstoreVerifier(t),
 		exporter:         cmdutil.NewJSONExporter(),
 	}
@@ -162,5 +124,8 @@ func TestJSONOutput(t *testing.T) {
 
 	var target BundleInspectResult
 	err := json.Unmarshal(out.Bytes(), &target)
+
+	assert.Equal(t, "https://github.com/sigstore/sigstore-js", target.InspectedBundles[0].Certificate.SourceRepositoryURI)
+	assert.Equal(t, "https://slsa.dev/provenance/v1", target.InspectedBundles[0].Statement.PredicateType)
 	require.NoError(t, err)
 }

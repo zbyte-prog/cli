@@ -239,17 +239,8 @@ func runInspect(opts *Options) error {
 	return nil
 }
 
-var heroHeader = `
-   _                       __ 
-  (_)__  ___ ___  ___ ____/ /_
- / / _ \(_-</ _ \/ -_) __/ __/
-/_/_//_/___/ .__/\__/\__/\__/ 
-          /_/                 
-`
-
 func printInspectionSummary(logger *io.Handler, bundles []BundleInspection) {
-	logger.Println(heroHeader)
-
+	logger.Printf("Inspecting bundles…\n")
 	logger.Printf("Found %s:\n---\n", text.Pluralize(len(bundles), "attestation"))
 
 	bundleSummaries := make([][][]string, len(bundles))

@@ -315,11 +315,11 @@ func NewCmdExtension(f *cmdutil.Factory) *cobra.Command {
 					For the list of available extensions, see <https://github.com/topics/gh-extension>.
 				`, "`"),
 				Example: heredoc.Doc(`
-					# Install an extension from a remote repository hosted on GitHub.com
+					# Install an extension from a remote repository hosted on GitHub
 					$ gh extension install owner/gh-extension
 
-					# Install an extension from a remote repository on a different GitHub host
-					$ gh extension install https://git.example.com/owner/gh-extension
+					# Install an extension from a remote repository via full URL
+					$ gh extension install https://my.ghes.com/owner/gh-extension
 
 					# Install an extension from a local repository in the current working directory
 					$ gh extension install .

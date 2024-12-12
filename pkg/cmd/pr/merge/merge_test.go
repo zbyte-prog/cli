@@ -659,6 +659,34 @@ func TestPrMerge_deleteBranch(t *testing.T) {
 	`), output.Stderr())
 }
 
+func TestPrMerge_deleteBranch_mergeQueue(t *testing.T) {
+	http := initFakeHTTP()
+	defer http.Verify(t)
+
+	shared.RunCommandFinder(
+		"",
+		&api.PullRequest{
+			ID:                  "PR_10",
+			Number:              10,
+			State:               "OPEN",
+			Title:               "Blueberries are a good fruit",
+			HeadRefName:         "blueberries",
+			BaseRefName:         "main",
+			MergeStateStatus:    "CLEAN",
+			IsMergeQueueEnabled: true,
+		},
+		baseRepo("OWNER", "REPO", "main"),
+	)
+
+	output, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
+	assert.ErrorIs(t, err, cmdutil.SilentError)
+
+	assert.Equal(t, "", output.String())
+	assert.Equal(t, heredoc.Docf(`
+		X Cannot use %[1]s-d%[1]s or %[1]s--delete-branch%[1]s when merge queue enabled
+	`, "`"), output.Stderr())
+}
+
 func TestPrMerge_deleteBranch_nonDefault(t *testing.T) {
 	http := initFakeHTTP()
 	defer http.Verify(t)

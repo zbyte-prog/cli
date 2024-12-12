@@ -246,8 +246,7 @@ func (m *mergeContext) canMerge() error {
 		// delete branches before merging, close the PR, and remove
 		// the PR from the merge queue.
 		if m.opts.DeleteBranch {
-			fmt.Fprintf(m.opts.IO.ErrOut, "%s Cannot use `-d` or `--delete-branch` when merge queue enabled\n", m.cs.FailureIcon())
-			return cmdutil.SilentError
+			return fmt.Errorf("%s Cannot use `-d` or `--delete-branch` when merge queue enabled", m.cs.FailureIcon())
 		}
 		// Otherwise, a pull request can always be added to the merge queue
 		return nil

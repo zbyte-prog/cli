@@ -678,13 +678,8 @@ func TestPrMerge_deleteBranch_mergeQueue(t *testing.T) {
 		baseRepo("OWNER", "REPO", "main"),
 	)
 
-	output, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
-	assert.ErrorIs(t, err, cmdutil.SilentError)
-
-	assert.Equal(t, "", output.String())
-	assert.Equal(t, heredoc.Docf(`
-		X Cannot use %[1]s-d%[1]s or %[1]s--delete-branch%[1]s when merge queue enabled
-	`, "`"), output.Stderr())
+	_, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
+	assert.Contains(t, err.Error(), "X Cannot use `-d` or `--delete-branch` when merge queue enabled")
 }
 
 func TestPrMerge_deleteBranch_nonDefault(t *testing.T) {

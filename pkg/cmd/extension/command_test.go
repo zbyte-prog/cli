@@ -301,14 +301,9 @@ func TestNewCmdExtension(t *testing.T) {
 				}
 				return nil
 			},
-			wantStderr: fmt.Sprintf(
-				"! %s",
-				(&ErrExtensionExecutableNotFound{
-					Dir:  tempDir,
-					Name: "gh-test",
-				}).Error()),
-			wantErr: false,
-			isTTY:   true,
+			wantStderr: fmt.Sprintf("! an extension has been installed but there is no executable: executable file named \"%s\" in %s is required to run the extension after install. Perhaps you need to build it?\n", "gh-test", tempDir),
+			wantErr:    false,
+			isTTY:      true,
 		},
 		{
 			name: "install local extension without executable with no TTY shows no warning",

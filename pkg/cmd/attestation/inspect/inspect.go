@@ -2,12 +2,12 @@ package inspect
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cli/cli/v2/internal/ghinstance"
+	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/auth"
@@ -33,14 +33,17 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 		Hidden: true,
 		Short:  "Inspect a Sigstore bundle",
 		Long: heredoc.Docf(`
-			### NOTE: This feature is currently in public preview, and subject to change.
-
 			Inspect a Sigstore bundle that has been downloaded to disk. To download bundles
 			associated with your artifact(s), see the %[1]sdownload%[1]s command.
 
 			Given a .json or .jsonl file, this command will:
-			- check the bundles' "authenticity", i.e. whether we _could_ verify the bundle
-			- summarize certificates, if any
+			- check the bundles' "authenticity", i.e. whether we have the trusted materials to
+			  verify the included certificates, transparency logs entries and signed timestamps,
+			  and whether the included signatures match the certificate's key.
+			- if a bundle contains a certificate, we also:
+			  - denote whether the certificate was issued by GitHub or by Sigstore's Public
+				  Good Instance (PGI)
+				- provide a certificate summary
 			- extract the bundle's statement and predicate
 
 			By default, this command prints a condensed table. To see full results, provide the
@@ -142,9 +145,6 @@ type TlogEntryInspection struct {
 }
 
 func runInspect(opts *Options) error {
-	// 1. Load the bundles
-	// 2. Parse & check the "authenticity" of the bundle
-	// 3. Summarize the certs
 	attestations, err := verification.GetLocalAttestations(opts.BundlePath)
 	if err != nil {
 		return fmt.Errorf("failed to read attestations")
@@ -160,9 +160,10 @@ func runInspect(opts *Options) error {
 		// you can't meaningfully "verify" a bundle with such an Unsafe policy!
 		_, err := opts.SigstoreVerifier.Verify([]*api.Attestation{a}, unsafeSigstorePolicy)
 
-		// TODO: if the err is present, we keep on going because we want to be able to
-		// inspect bundles we might not have trusted materials for. but maybe we should
-		// print the error?
+		// food for thought for later iterations:
+		// if the err is present, we keep on going because we want to be able to
+		// inspect bundles we might not have trusted materials for.
+		// but maybe we should print the error?
 		if err == nil {
 			inspectedBundle.Authentic = true
 		}
@@ -252,7 +253,7 @@ func printInspectionSummary(logger *io.Handler, bundles []BundleInspection) {
 	for i, iB := range bundles {
 		bundleSummaries[i] = [][]string{
 			{"Authentic", formatAuthentic(iB.Authentic, iB.Certificate.CertificateIssuer)},
-			{"Source NWO", formatNwo(iB.Certificate.SourceRepositoryURI)},
+			{"Source Repo", formatNwo(iB.Certificate.SourceRepositoryURI)},
 			{"PredicateType", iB.Statement.GetPredicateType()},
 			{"SubjectAlternativeName", iB.Certificate.SubjectAlternativeName},
 			{"RunInvocationURI", iB.Certificate.RunInvocationURI},
@@ -276,30 +277,24 @@ func printInspectionSummary(logger *io.Handler, bundles []BundleInspection) {
 	}
 }
 
-// formatNwo checks that longUrl is a valid URL and, if it is, extracts name/owner
-// from "https://githubinstance.com/name/owner/file/path@refs/heads/foo"
 func formatNwo(longUrl string) string {
-	parsedUrl, err := url.Parse(longUrl)
-
+	repo, err := ghrepo.FromFullName(longUrl)
 	if err != nil {
 		return longUrl
 	}
 
-	parts := strings.Split(parsedUrl.Path, "/")
-	if len(parts) > 2 {
-		return parts[1] + "/" + parts[2]
-	} else {
-		return parts[0]
-	}
+	return ghrepo.FullName(repo)
 }
 
 func formatAuthentic(authentic bool, certIssuer string) string {
 	printIssuer := certIssuer
 
 	if strings.HasSuffix(certIssuer, "O=GitHub\\, Inc.") {
-		printIssuer = "(GH)"
+		printIssuer = "(GitHub)"
 	} else if strings.HasSuffix(certIssuer, "O=sigstore.dev") {
-		printIssuer = "(PGI)"
+		printIssuer = "(Sigstore PGI)"
+	} else {
+		printIssuer = "(Unknown)"
 	}
 
 	return strconv.FormatBool(authentic) + " " + printIssuer

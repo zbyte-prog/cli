@@ -281,17 +281,15 @@ func formatNwo(longUrl string) string {
 }
 
 func formatAuthentic(authentic bool, certIssuer string) string {
-	printIssuer := certIssuer
-
 	if strings.HasSuffix(certIssuer, "O=GitHub\\, Inc.") {
-		printIssuer = "(GitHub)"
+		certIssuer = "(GitHub)"
 	} else if strings.HasSuffix(certIssuer, "O=sigstore.dev") {
-		printIssuer = "(Sigstore PGI)"
+		certIssuer = "(Sigstore PGI)"
 	} else {
-		printIssuer = "(Unknown)"
+		certIssuer = "(Unknown)"
 	}
 
-	return strconv.FormatBool(authentic) + " " + printIssuer
+	return strconv.FormatBool(authentic) + " " + certIssuer
 }
 
 func dumpTlogs(entity *bundle.Bundle) ([]TlogEntryInspection, error) {

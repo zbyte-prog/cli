@@ -37,14 +37,17 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 			associated with your artifact(s), see the %[1]sgh at download%[1]s command.
 
 			Given a .json or .jsonl file, this command will:
-			- check the bundles' "authenticity", i.e. whether we have the trusted materials to
-			  verify the included certificates, transparency logs entries and signed timestamps,
-			  and whether the included signatures match the certificate's key.
-			- if a bundle contains a certificate, we also:
-			  - denote whether the certificate was issued by GitHub or by Sigstore's Public
-				  Good Instance (PGI)
-				- provide a certificate summary
-			- extract the bundle's statement and predicate
+			- Extract the bundle's statement and predicate
+			- Provide a certificate summary, if present, and indicate whether the cert
+			  was issued by GitHub or by Sigstore's Public Good Instance (PGI)
+			- Check the bundles' "authenticity"
+
+			For our purposes, a bundle is authentic if we have the trusted materials to
+			verify the included certificate(s), transparency log entries, and signed
+			timestamps, and if the included signatures match the provided public key.
+
+			This command cannot be used to verify a bundle. To verify a bundle, see the
+		 %[1]sgh at verify%[1]s command.
 
 			By default, this command prints a condensed table. To see full results, provide the
 			%[1]s--format=json%[1]s flag.

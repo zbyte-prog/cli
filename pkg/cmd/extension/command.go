@@ -302,7 +302,7 @@ func NewCmdExtension(f *cmdutil.Factory) *cobra.Command {
 					value of the repository argument. Note the following:
 
 					- After installing an extension from a locally cloned repository, the GitHub CLI will
-					manage this extension as a symbolic link pointing to an executable file with the same
+					manage this extension as a symbolic link (or equivalent mechanism on Windows) pointing to an executable file with the same
 					name as the repository in the repository's root.
 						- For example, if the repository is named %[1]sgh-foobar%[1]s, the symbolic link will
 						point to %[1]sgh-foobar%[1]s in the extension repository's root.

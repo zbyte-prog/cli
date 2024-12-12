@@ -36,7 +36,7 @@ func NewInspectCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 			### NOTE: This feature is currently in public preview, and subject to change.
 
 			Inspect a Sigstore bundle that has been downloaded to disk. To download bundles
-			associated with your artifact(s), see the %[1]sdownload%[1]s command.
+			associated with your artifact(s), see the %[1]sgh at download%[1]s command.
 
 			Given a .json or .jsonl file, this command will:
 			- check the bundles' "authenticity", i.e. whether we _could_ verify the bundle

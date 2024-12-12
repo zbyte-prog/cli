@@ -215,11 +215,14 @@ func (m *Manager) InstallLocal(dir string) error {
 	// An error here doesn't indicate a failed extension installation, but
 	// it does indicate that the user will not be able to run the extension until
 	// the executable file is built or created manually somehow.
-	if _, err := os.Stat(filepath.Join(dir, name)); os.IsNotExist(err) {
-		return &ErrExtensionExecutableNotFound{
-			Dir:  dir,
-			Name: name,
+	if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+		if os.IsNotExist(err) {
+			return &ErrExtensionExecutableNotFound{
+				Dir:  dir,
+				Name: name,
+			}
 		}
+		return err
 	}
 	return nil
 }

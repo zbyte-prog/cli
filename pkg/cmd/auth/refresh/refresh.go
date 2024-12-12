@@ -56,7 +56,8 @@ func NewCmdRefresh(f *cmdutil.Factory, runF func(*RefreshOptions) error) *cobra.
 		Use:   "refresh",
 		Args:  cobra.ExactArgs(0),
 		Short: "Refresh stored authentication credentials",
-		Long: heredoc.Docf(`Expand or fix the permission scopes for stored credentials for active account.
+		Long: heredoc.Docf(`
+			Expand or fix the permission scopes for stored credentials for active account.
 
 			The %[1]s--scopes%[1]s flag accepts a comma separated list of scopes you want
 			your gh credentials to have. If no scopes are provided, the command
@@ -73,7 +74,7 @@ func NewCmdRefresh(f *cmdutil.Factory, runF func(*RefreshOptions) error) *cobra.
 			inactive account, you will have to use %[1]sgh auth switch%[1]s to that account first before using
 			this command, and then switch back when you are done.
 
-			Run %[1]sgh help scopes%[1]s to see information about auth scopes.
+			For more information on OAuth scopes, <https://docs.github.com/en/developers/apps/building-oauth-apps/scopes-for-oauth-apps/>.
 		`, "`"),
 		Example: heredoc.Doc(`
 			$ gh auth refresh --scopes write:org,read:public_key

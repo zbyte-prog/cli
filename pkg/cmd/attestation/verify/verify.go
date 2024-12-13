@@ -6,7 +6,6 @@ import (
 	"regexp"
 
 	"github.com/cli/cli/v2/internal/ghinstance"
-	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact/oci"
@@ -203,6 +202,17 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 }
 
 func runVerify(opts *Options) error {
+	ec, err := newEnforcementCriteria(opts)
+	if err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
+		return err
+	}
+
+	if err := ec.Valid(); err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Invalid verification policy"))
+		return err
+	}
+
 	artifact, err := artifact.NewDigestedArtifact(opts.OCIClient, opts.ArtifactPath, opts.DigestAlgorithm)
 	if err != nil {
 		opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ Loading digest for %s failed\n"), opts.ArtifactPath)
@@ -211,68 +221,34 @@ func runVerify(opts *Options) error {
 
 	opts.Logger.Printf("Loaded digest %s for %s\n", artifact.DigestWithAlg(), artifact.URL)
 
-	c := verification.FetchAttestationsConfig{
-		APIClient:             opts.APIClient,
-		BundlePath:            opts.BundlePath,
-		Digest:                artifact.DigestWithAlg(),
-		Limit:                 opts.Limit,
-		Owner:                 opts.Owner,
-		Repo:                  opts.Repo,
-		OCIClient:             opts.OCIClient,
-		UseBundleFromRegistry: opts.UseBundleFromRegistry,
-		NameRef:               artifact.NameRef(),
-	}
-	attestations, err := verification.GetAttestations(c)
+	attestations, logMsg, err := getAttestations(opts, *artifact)
 	if err != nil {
 		if ok := errors.Is(err, api.ErrNoAttestations{}); ok {
 			opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found for subject %s\n"), artifact.DigestWithAlg())
 			return err
 		}
-
-		if c.IsBundleProvided() {
-			opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ Loading attestations from %s failed\n"), artifact.URL)
-		} else if c.UseBundleFromRegistry {
-			opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Loading attestations from OCI registry failed"))
-		} else {
-			opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Loading attestations from GitHub API failed"))
-		}
+		// Print the message signifying failure fetching attestations
+		opts.Logger.Println(opts.Logger.ColorScheme.Red(logMsg))
 		return err
 	}
-
-	pluralAttestation := text.Pluralize(len(attestations), "attestation")
-	if c.IsBundleProvided() {
-		opts.Logger.Printf("Loaded %s from %s\n", pluralAttestation, opts.BundlePath)
-	} else if c.UseBundleFromRegistry {
-		opts.Logger.Printf("Loaded %s from %s\n", pluralAttestation, opts.ArtifactPath)
-	} else {
-		opts.Logger.Printf("Loaded %s from GitHub API\n", pluralAttestation)
-	}
+	// Print the message signifying success fetching attestations
+	opts.Logger.Println(logMsg)
 
 	// Apply predicate type filter to returned attestations
-	filteredAttestations := verification.FilterAttestations(opts.PredicateType, attestations)
+	filteredAttestations := verification.FilterAttestations(ec.PredicateType, attestations)
 	if len(filteredAttestations) == 0 {
 		opts.Logger.Printf(opts.Logger.ColorScheme.Red("✗ No attestations found with predicate type: %s\n"), opts.PredicateType)
 		return err
 	}
 	attestations = filteredAttestations
 
-	policy, err := buildVerifyPolicy(opts, *artifact)
+	// print information about the policy that will be enforced against attestations
+	opts.Logger.Println("\nThe following policy criteria will be enforced:")
+	opts.Logger.Println(ec.BuildPolicyInformation())
+
+	verified, errMsg, err := verifyAttestations(*artifact, attestations, opts.SigstoreVerifier, ec)
 	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to build verification policy"))
-		return err
-	}
-
-	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", opts.PredicateType)
-
-	sigstoreRes := opts.SigstoreVerifier.Verify(attestations, policy)
-	if sigstoreRes.Error != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
-		return sigstoreRes.Error
-	}
-
-	// Verify extensions
-	if err := verification.VerifyCertExtensions(sigstoreRes.VerifyResults, opts.Tenant, opts.Owner, opts.Repo, opts.OIDCIssuer); err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Verification failed"))
+		opts.Logger.Println(opts.Logger.ColorScheme.Red(errMsg))
 		return err
 	}
 
@@ -281,7 +257,7 @@ func runVerify(opts *Options) error {
 	// If an exporter is provided with the --json flag, write the results to the terminal in JSON format
 	if opts.exporter != nil {
 		// print the results to the terminal as an array of JSON objects
-		if err = opts.exporter.Write(opts.Logger.IO, sigstoreRes.VerifyResults); err != nil {
+		if err = opts.exporter.Write(opts.Logger.IO, verified); err != nil {
 			opts.Logger.Println(opts.Logger.ColorScheme.Red("✗ Failed to write JSON output"))
 			return err
 		}
@@ -291,7 +267,7 @@ func runVerify(opts *Options) error {
 	opts.Logger.Printf("%s was attested by:\n", artifact.DigestWithAlg())
 
 	// Otherwise print the results to the terminal in a table
-	tableContent, err := buildTableVerifyContent(opts.Tenant, sigstoreRes.VerifyResults)
+	tableContent, err := buildTableVerifyContent(opts.Tenant, verified)
 	if err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse results"))
 		return err

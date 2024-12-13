@@ -94,7 +94,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			To create a remote repository from an existing local repository, specify the source directory with %[1]s--source%[1]s.
 			By default, the remote repository name will be the name of the source directory.
 
-			Pass %[1]s--push%[1]s to push any local commits to the new repository.
+			Pass %[1]s--push%[1]s to push any local commits to the new repository. If the repo is bare, this will mirror all refs.
 
 			For language or platform .gitignore templates to use with %[1]s--gitignore%[1]s, <https://github.com/github/gitignore>.
 
@@ -556,11 +556,11 @@ func createFromLocal(opts *CreateOptions) error {
 		return err
 	}
 
-	isRepo, err := isLocalRepo(opts.GitClient)
+	repoType, err := localRepoType(opts.GitClient)
 	if err != nil {
 		return err
 	}
-	if !isRepo {
+	if repoType == unknown {
 		if repoPath == "." {
 			return fmt.Errorf("current directory is not a git repository. Run `git init` to initialize it")
 		}
@@ -652,22 +652,43 @@ func createFromLocal(opts *CreateOptions) error {
 
 	// don't prompt for push if there are no commits
 	if opts.Interactive && committed {
+		msg := fmt.Sprintf("Would you like to push commits from the current branch to %q?", baseRemote)
+		if repoType == bare {
+			msg = fmt.Sprintf("Would you like to mirror all refs to %q?", baseRemote)
+		}
+
 		var err error
-		opts.Push, err = opts.Prompter.Confirm(fmt.Sprintf("Would you like to push commits from the current branch to %q?", baseRemote), true)
+		opts.Push, err = opts.Prompter.Confirm(msg, true)
 		if err != nil {
 			return err
 		}
 	}
 
-	if opts.Push {
+	if opts.Push && repoType == working {
 		err := opts.GitClient.Push(context.Background(), baseRemote, "HEAD")
 		if err != nil {
 			return err
 		}
+
 		if isTTY {
 			fmt.Fprintf(stdout, "%s Pushed commits to %s\n", cs.SuccessIcon(), remoteURL)
 		}
 	}
+
+	if opts.Push && repoType == bare {
+		cmd, err := opts.GitClient.AuthenticatedCommand(context.Background(), git.AllMatchingCredentialsPattern, "push", baseRemote, "--mirror")
+		if err != nil {
+			return err
+		}
+		if err = cmd.Run(); err != nil {
+			return err
+		}
+
+		if isTTY {
+			fmt.Fprintf(stdout, "%s Mirrored all refs to %s\n", cs.SuccessIcon(), remoteURL)
+		}
+	}
+
 	return nil
 }
 
@@ -736,22 +757,34 @@ func hasCommits(gitClient *git.Client) (bool, error) {
 	return false, nil
 }
 
-// check if path is the top level directory of a git repo
-func isLocalRepo(gitClient *git.Client) (bool, error) {
+type repoType int
+
+const (
+	unknown repoType = iota
+	working
+	bare
+)
+
+func localRepoType(gitClient *git.Client) (repoType, error) {
 	projectDir, projectDirErr := gitClient.GitDir(context.Background())
 	if projectDirErr != nil {
-		var execError *exec.ExitError
+		var execError errWithExitCode
 		if errors.As(projectDirErr, &execError) {
 			if exitCode := int(execError.ExitCode()); exitCode == 128 {
-				return false, nil
+				return unknown, nil
 			}
-			return false, projectDirErr
+			return unknown, projectDirErr
 		}
 	}
-	if projectDir != ".git" {
-		return false, nil
+
+	switch projectDir {
+	case ".":
+		return bare, nil
+	case ".git":
+		return working, nil
+	default:
+		return unknown, nil
 	}
-	return true, nil
 }
 
 // clone the checkout branch to specified path

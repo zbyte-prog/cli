@@ -16,7 +16,8 @@ Install:
 ```bash
 (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
 	&& sudo mkdir -p -m 755 /etc/apt/keyrings \
-	&& wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+        && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
 	&& sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
 	&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
 	&& sudo apt update \
@@ -33,30 +34,38 @@ sudo apt install gh
 > [!NOTE]
 > If errors regarding GPG signatures occur, see [cli/cli#9569](https://github.com/cli/cli/issues/9569) for steps to fix this.
 
-### Fedora, CentOS, Red Hat Enterprise Linux (dnf5)
+### Fedora, CentOS, Red Hat Enterprise Linux (DNF4 & DNF5)
 
-Install from our package repository for immediate access to latest releases:
+Install from our package repository for immediate access to latest releases.
+
+#### DNF5
+
+> [!IMPORTANT]
+> **These commands apply to DNF5 only**. If you're using DNF4, please use [the DNF4 instructions](#dnf4).
 
 ```bash
+# DNF5 installation commands
 sudo dnf install dnf5-plugins
 sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
 sudo dnf install gh --repo gh-cli
 ```
 
-These commands apply for `dnf5`. If you're using `dnf4`, commands will vary slightly.
+#### DNF4
 
-<details>
-<summary>Show dnf4 commands</summary>
+> [!IMPORTANT]
+> **These commands apply to DNF4 only**. If you're using DNF5, please use [the DNF5 instructions](#dnf5).
 
 ```bash
-sudo dnf4 install 'dnf-command(config-manager)'
-sudo dnf4 config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-sudo dnf4 install gh --repo gh-cli
+# DNF4 installation commands
+sudo dnf install 'dnf-command(config-manager)'
+sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+sudo dnf install gh --repo gh-cli
 ```
-</details>
 
 > [!NOTE]
 > If errors regarding GPG signatures occur, see [cli/cli#9569](https://github.com/cli/cli/issues/9569) for steps to fix this.
+
+### Fedora, CentOS, Red Hat Enterprise Linux - Community repository
 
 Alternatively, install from the [community repository](https://packages.fedoraproject.org/pkgs/gh/gh/):
 

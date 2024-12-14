@@ -16,8 +16,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/safeexec"
 )
+
+// MergeBaseConfig is the configuration setting to keep track of the PR target branch.
+const MergeBaseConfig = "gh-merge-base"
 
 var remoteRE = regexp.MustCompile(`(.+)\s+(.+)\s+\((push|fetch)\)`)
 
@@ -94,16 +98,65 @@ func (c *Client) Command(ctx context.Context, args ...string) (*Command, error) 
 	return &Command{cmd}, nil
 }
 
+// CredentialPattern is used to inform AuthenticatedCommand which patterns Git should match
+// against when trying to find credentials. It is a little over-engineered as a type because we
+// want AuthenticatedCommand to have a clear compilation error when this is not provided,
+// as opposed to using a string which might compile with `client.AuthenticatedCommand(ctx, "fetch")`.
+//
+// It is only usable when constructed by another function in the package because the empty pattern,
+// without allMatching set to true, will result in an error in AuthenticatedCommand.
+//
+// Callers can currently opt-in to an slightly less secure mode for backwards compatibility by using
+// AllMatchingCredentialsPattern.
+type CredentialPattern struct {
+	allMatching bool // should only be constructable via AllMatchingCredentialsPattern
+	pattern     string
+}
+
+// AllMatchingCredentialsPattern allows for setting gh as credential helper for all hosts.
+// However, we should endeavour to remove it as it's less secure.
+var AllMatchingCredentialsPattern = CredentialPattern{allMatching: true, pattern: ""}
+var disallowedCredentialPattern = CredentialPattern{allMatching: false, pattern: ""}
+
+// CredentialPatternFromGitURL takes a git remote URL e.g. "https://github.com/cli/cli.git" or
+// "git@github.com:cli/cli.git" and returns the credential pattern that should be used for it.
+func CredentialPatternFromGitURL(gitURL string) (CredentialPattern, error) {
+	normalizedURL, err := ParseURL(gitURL)
+	if err != nil {
+		return CredentialPattern{}, fmt.Errorf("failed to parse remote URL: %w", err)
+	}
+	return CredentialPatternFromHost(normalizedURL.Host), nil
+}
+
+// CredentialPatternFromHost expects host to be in the form "github.com" and returns
+// the credential pattern that should be used for it.
+// It does not perform any canonicalisation e.g. "api.github.com" will not work as expected.
+func CredentialPatternFromHost(host string) CredentialPattern {
+	return CredentialPattern{
+		pattern: strings.TrimSuffix(ghinstance.HostPrefix(host), "/"),
+	}
+}
+
 // AuthenticatedCommand is a wrapper around Command that included configuration to use gh
 // as the credential helper for git.
-func (c *Client) AuthenticatedCommand(ctx context.Context, args ...string) (*Command, error) {
-	preArgs := []string{"-c", "credential.helper="}
+func (c *Client) AuthenticatedCommand(ctx context.Context, credentialPattern CredentialPattern, args ...string) (*Command, error) {
 	if c.GhPath == "" {
 		// Assumes that gh is in PATH.
 		c.GhPath = "gh"
 	}
 	credHelper := fmt.Sprintf("!%q auth git-credential", c.GhPath)
-	preArgs = append(preArgs, "-c", fmt.Sprintf("credential.helper=%s", credHelper))
+
+	var preArgs []string
+	if credentialPattern == disallowedCredentialPattern {
+		return nil, fmt.Errorf("empty credential pattern is not allowed unless provided explicitly")
+	} else if credentialPattern == AllMatchingCredentialsPattern {
+		preArgs = []string{"-c", "credential.helper="}
+		preArgs = append(preArgs, "-c", fmt.Sprintf("credential.helper=%s", credHelper))
+	} else {
+		preArgs = []string{"-c", fmt.Sprintf("credential.%s.helper=", credentialPattern.pattern)}
+		preArgs = append(preArgs, "-c", fmt.Sprintf("credential.%s.helper=%s", credentialPattern.pattern, credHelper))
+	}
+
 	args = append(preArgs, args...)
 	return c.Command(ctx, args...)
 }
@@ -323,10 +376,10 @@ func (c *Client) lookupCommit(ctx context.Context, sha, format string) ([]byte, 
 	return out, nil
 }
 
-// ReadBranchConfig parses the `branch.BRANCH.(remote|merge)` part of git config.
+// ReadBranchConfig parses the `branch.BRANCH.(remote|merge|gh-merge-base)` part of git config.
 func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (cfg BranchConfig) {
 	prefix := regexp.QuoteMeta(fmt.Sprintf("branch.%s.", branch))
-	args := []string{"config", "--get-regexp", fmt.Sprintf("^%s(remote|merge)$", prefix)}
+	args := []string{"config", "--get-regexp", fmt.Sprintf("^%s(remote|merge|%s)$", prefix, MergeBaseConfig)}
 	cmd, err := c.Command(ctx, args...)
 	if err != nil {
 		return
@@ -335,6 +388,8 @@ func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (cfg Branc
 	if err != nil {
 		return
 	}
+
+	cfg.LocalName = branch
 	for _, line := range outputLines(out) {
 		parts := strings.SplitN(line, " ", 2)
 		if len(parts) < 2 {
@@ -354,9 +409,24 @@ func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (cfg Branc
 			}
 		case "merge":
 			cfg.MergeRef = parts[1]
+		case MergeBaseConfig:
+			cfg.MergeBase = parts[1]
 		}
 	}
 	return
+}
+
+// SetBranchConfig sets the named value on the given branch.
+func (c *Client) SetBranchConfig(ctx context.Context, branch, name, value string) error {
+	name = fmt.Sprintf("branch.%s.%s", branch, name)
+	args := []string{"config", name, value}
+	cmd, err := c.Command(ctx, args...)
+	if err != nil {
+		return err
+	}
+	// No output expected but check for any printed git error.
+	_, err = cmd.Output()
+	return err
 }
 
 func (c *Client) DeleteLocalTag(ctx context.Context, tag string) error {
@@ -549,7 +619,7 @@ func (c *Client) Fetch(ctx context.Context, remote string, refspec string, mods 
 	if refspec != "" {
 		args = append(args, refspec)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, AllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}
@@ -564,7 +634,7 @@ func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...Comman
 	if remote != "" && branch != "" {
 		args = append(args, remote, branch)
 	}
-	cmd, err := c.AuthenticatedCommand(ctx, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, AllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}
@@ -576,7 +646,7 @@ func (c *Client) Pull(ctx context.Context, remote, branch string, mods ...Comman
 
 func (c *Client) Push(ctx context.Context, remote string, ref string, mods ...CommandModifier) error {
 	args := []string{"push", "--set-upstream", remote, ref}
-	cmd, err := c.AuthenticatedCommand(ctx, args...)
+	cmd, err := c.AuthenticatedCommand(ctx, AllMatchingCredentialsPattern, args...)
 	if err != nil {
 		return err
 	}
@@ -587,6 +657,13 @@ func (c *Client) Push(ctx context.Context, remote string, ref string, mods ...Co
 }
 
 func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods ...CommandModifier) (string, error) {
+	// Note that even if this is an SSH clone URL, we are setting the pattern anyway.
+	// We could write some code to prevent this, but it also doesn't seem harmful.
+	pattern, err := CredentialPatternFromGitURL(cloneURL)
+	if err != nil {
+		return "", err
+	}
+
 	cloneArgs, target := parseCloneArgs(args)
 	cloneArgs = append(cloneArgs, cloneURL)
 	// If the args contain an explicit target, pass it to clone otherwise,
@@ -601,7 +678,7 @@ func (c *Client) Clone(ctx context.Context, cloneURL string, args []string, mods
 		}
 	}
 	cloneArgs = append([]string{"clone"}, cloneArgs...)
-	cmd, err := c.AuthenticatedCommand(ctx, cloneArgs...)
+	cmd, err := c.AuthenticatedCommand(ctx, pattern, cloneArgs...)
 	if err != nil {
 		return "", err
 	}

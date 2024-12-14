@@ -298,7 +298,7 @@ func TestRepoFork(t *testing.T) {
 					return true, nil
 				})
 			},
-			wantErrOut: "✓ Created fork someone/REPO\n✓ Added remote origin\n",
+			wantErrOut: "✓ Created fork someone/REPO\n✓ Renamed remote origin to upstream\n✓ Added remote origin\n",
 		},
 		{
 			name: "implicit tty reuse existing remote",
@@ -370,7 +370,7 @@ func TestRepoFork(t *testing.T) {
 				cs.Register("git remote rename origin upstream", 0, "")
 				cs.Register(`git remote add origin https://github.com/someone/REPO.git`, 0, "")
 			},
-			wantErrOut: "✓ Created fork someone/REPO\n✓ Added remote origin\n",
+			wantErrOut: "✓ Created fork someone/REPO\n✓ Renamed remote origin to upstream\n✓ Added remote origin\n",
 		},
 		{
 			name: "implicit nontty reuse existing remote",

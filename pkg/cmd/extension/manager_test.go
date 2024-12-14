@@ -756,7 +756,7 @@ func TestManager_Install_local(t *testing.T) {
 	updateDir := t.TempDir()
 	ios, _, stdout, stderr := iostreams.Test()
 	m := newTestManager(dataDir, updateDir, nil, nil, ios)
-	fakeExtensionName := "local-ext"
+	fakeExtensionName := "gh-local-ext"
 
 	// Create a temporary directory to simulate the local extension repo
 	extensionLocalPath := filepath.Join(dataDir, fakeExtensionName)
@@ -800,7 +800,7 @@ func TestManager_Install_local_no_executable_found(t *testing.T) {
 	updateDir := t.TempDir()
 	ios, _, stdout, stderr := iostreams.Test()
 	m := newTestManager(dataDir, updateDir, nil, nil, ios)
-	fakeExtensionName := "local-ext"
+	fakeExtensionName := "gh-local-ext"
 
 	// Create a temporary directory to simulate the local extension repo
 	localDir := filepath.Join(dataDir, fakeExtensionName)

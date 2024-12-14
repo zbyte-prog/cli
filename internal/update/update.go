@@ -33,7 +33,7 @@ type StateEntry struct {
 	LatestRelease      ReleaseInfo `yaml:"latest_release"`
 }
 
-func ShouldCheckForExtensionUpdate() bool {
+func ShouldCheckForUpdate() bool {
 	if os.Getenv("GH_NO_UPDATE_NOTIFIER") != "" {
 		return false
 	}
@@ -44,6 +44,7 @@ func ShouldCheckForExtensionUpdate() bool {
 }
 
 func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension, now time.Time) (*ReleaseInfo, error) {
+	// local extensions cannot have updates, so avoid work that ultimately returns nothing.
 	if ext.IsLocal() {
 		return nil, nil
 	}
@@ -69,16 +70,6 @@ func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Exte
 	}
 
 	return nil, nil
-}
-
-func ShouldCheckForUpdate(updaterEnabled string) bool {
-	if os.Getenv("GH_NO_UPDATE_NOTIFIER") != "" {
-		return false
-	}
-	if os.Getenv("CODESPACES") != "" {
-		return false
-	}
-	return updaterEnabled != "" && !IsCI() && IsTerminal(os.Stdout) && IsTerminal(os.Stderr)
 }
 
 // CheckForUpdate checks whether this software has had a newer release on GitHub

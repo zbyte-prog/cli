@@ -18,12 +18,12 @@ type ExternalCommandExitError struct {
 	*exec.ExitError
 }
 
-func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ext extensions.Extension, checkFunc func(extensions.ExtensionManager, extensions.Extension) (*update.ReleaseInfo, error)) *cobra.Command {
+func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ext extensions.Extension, checkExtensionReleaseInfo func(extensions.ExtensionManager, extensions.Extension) (*update.ReleaseInfo, error)) *cobra.Command {
 	updateMessageChan := make(chan *update.ReleaseInfo)
 	cs := io.ColorScheme()
 	hasDebug, _ := utils.IsDebugEnabled()
-	if checkFunc == nil {
-		checkFunc = checkForExtensionUpdate
+	if checkExtensionReleaseInfo == nil {
+		checkExtensionReleaseInfo = checkForExtensionUpdate
 	}
 
 	return &cobra.Command{
@@ -32,11 +32,11 @@ func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ex
 		// PreRun handles looking up whether extension has a latest version only when the command is ran.
 		PreRun: func(c *cobra.Command, args []string) {
 			go func() {
-				rel, err := checkFunc(em, ext)
+				releaseInfo, err := checkExtensionReleaseInfo(em, ext)
 				if err != nil && hasDebug {
 					fmt.Fprintf(io.ErrOut, "warning: checking for update failed: %v", err)
 				}
-				updateMessageChan <- rel
+				updateMessageChan <- releaseInfo
 			}()
 		},
 		RunE: func(c *cobra.Command, args []string) error {
@@ -77,7 +77,7 @@ func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ex
 }
 
 func checkForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension) (*update.ReleaseInfo, error) {
-	if !update.ShouldCheckForExtensionUpdate() {
+	if !update.ShouldCheckForUpdate() {
 		return nil, nil
 	}
 

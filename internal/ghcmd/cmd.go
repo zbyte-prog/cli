@@ -29,6 +29,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// updaterEnabled is a statically linked build property set in gh formula within homebrew/homebrew-core
+// used to control whether users are notified of newer GitHub CLI releases.
+// Development builds leave this empty as impossible to determine if newer or not.
+// For more information, <https://github.com/Homebrew/homebrew-core/blob/master/Formula/g/gh.rb>.
 var updaterEnabled = ""
 
 type exitCode int
@@ -216,7 +220,7 @@ func printError(out io.Writer, err error, cmd *cobra.Command, debug bool) {
 }
 
 func checkForUpdate(ctx context.Context, f *cmdutil.Factory, currentVersion string) (*update.ReleaseInfo, error) {
-	if !update.ShouldCheckForUpdate(updaterEnabled) {
+	if updaterEnabled == "" || !update.ShouldCheckForUpdate() {
 		return nil, nil
 	}
 	httpClient, err := f.HttpClient()

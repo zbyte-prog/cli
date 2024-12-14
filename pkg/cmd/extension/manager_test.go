@@ -752,18 +752,23 @@ func TestManager_UpgradeExtension_GitExtension_Pinned(t *testing.T) {
 }
 
 func TestManager_Install_local(t *testing.T) {
-	extManagerDir := t.TempDir()
+	dataDir := t.TempDir()
+	updateDir := t.TempDir()
 	ios, _, stdout, stderr := iostreams.Test()
-	m := newTestManager(extManagerDir, nil, nil, ios)
+	m := newTestManager(dataDir, updateDir, nil, nil, ios)
 	fakeExtensionName := "local-ext"
 
 	// Create a temporary directory to simulate the local extension repo
-	extensionLocalPath := filepath.Join(extManagerDir, fakeExtensionName)
+	extensionLocalPath := filepath.Join(dataDir, fakeExtensionName)
 	require.NoError(t, os.MkdirAll(extensionLocalPath, 0755))
 
 	// Create a fake executable in the local extension directory
 	fakeExtensionExecutablePath := filepath.Join(extensionLocalPath, fakeExtensionName)
 	require.NoError(t, stubExtension(fakeExtensionExecutablePath))
+
+	// Create a temporary directory to simulate the local extension update state
+	extensionUpdatePath := filepath.Join(updateDir, fakeExtensionName)
+	require.NoError(t, stubExtensionUpdate(extensionUpdatePath))
 
 	err := m.InstallLocal(extensionLocalPath)
 	require.NoError(t, err)
@@ -771,7 +776,7 @@ func TestManager_Install_local(t *testing.T) {
 	// This is the path to a file:
 	// on windows this is a file whose contents is a string describing the path to the local extension dir.
 	// on other platforms this file is a real symlink to the local extension dir.
-	extensionLinkFile := filepath.Join(extManagerDir, "extensions", fakeExtensionName)
+	extensionLinkFile := filepath.Join(dataDir, "extensions", fakeExtensionName)
 
 	if runtime.GOOS == "windows" {
 		// We don't create true symlinks on Windows, so check if we made a
@@ -787,17 +792,23 @@ func TestManager_Install_local(t *testing.T) {
 	}
 	assert.Equal(t, "", stdout.String())
 	assert.Equal(t, "", stderr.String())
+	require.NoDirExistsf(t, extensionUpdatePath, "update directory should be removed")
 }
 
 func TestManager_Install_local_no_executable_found(t *testing.T) {
-	tempDir := t.TempDir()
+	dataDir := t.TempDir()
+	updateDir := t.TempDir()
 	ios, _, stdout, stderr := iostreams.Test()
-	m := newTestManager(tempDir, nil, nil, ios)
+	m := newTestManager(dataDir, updateDir, nil, nil, ios)
 	fakeExtensionName := "local-ext"
 
 	// Create a temporary directory to simulate the local extension repo
-	localDir := filepath.Join(tempDir, fakeExtensionName)
+	localDir := filepath.Join(dataDir, fakeExtensionName)
 	require.NoError(t, os.MkdirAll(localDir, 0755))
+
+	// Create a temporary directory to simulate the local extension update state
+	extensionUpdatePath := filepath.Join(updateDir, fakeExtensionName)
+	require.NoError(t, stubExtensionUpdate(extensionUpdatePath))
 
 	// Intentionally not creating an executable in the local extension repo
 	// to simulate an attempt to install a local extension without an executable
@@ -806,6 +817,7 @@ func TestManager_Install_local_no_executable_found(t *testing.T) {
 	require.ErrorAs(t, err, new(*ErrExtensionExecutableNotFound))
 	assert.Equal(t, "", stdout.String())
 	assert.Equal(t, "", stderr.String())
+	require.NoDirExistsf(t, extensionUpdatePath, "update directory should be removed")
 }
 
 func TestManager_Install_git(t *testing.T) {
@@ -818,10 +830,14 @@ func TestManager_Install_git(t *testing.T) {
 
 	ios, _, stdout, stderr := iostreams.Test()
 
-	extensionDir := filepath.Join(dataDir, "extensions", "gh-some-ext")
+	fakeExtensionName := "gh-some-ext"
+	extensionDir := filepath.Join(dataDir, "extensions", fakeExtensionName)
 	gc := &mockGitClient{}
 	gc.On("Clone", "https://github.com/owner/gh-some-ext.git", []string{extensionDir}).Return("", nil).Once()
-	assert.NoError(t, stubExtensionUpdate(filepath.Join(updateDir, "gh-some-ext")))
+
+	// Create a temporary directory to simulate the local extension update state
+	extensionUpdatePath := filepath.Join(updateDir, fakeExtensionName)
+	require.NoError(t, stubExtensionUpdate(extensionUpdatePath))
 
 	m := newTestManager(dataDir, updateDir, &client, gc, ios)
 
@@ -840,7 +856,7 @@ func TestManager_Install_git(t *testing.T) {
 		httpmock.REST("GET", "repos/owner/gh-some-ext/contents/gh-some-ext"),
 		httpmock.StringResponse("script"))
 
-	repo := ghrepo.New("owner", "gh-some-ext")
+	repo := ghrepo.New("owner", fakeExtensionName)
 
 	err := m.Install(repo, "")
 	assert.NoError(t, err)
@@ -848,7 +864,7 @@ func TestManager_Install_git(t *testing.T) {
 	assert.Equal(t, "", stderr.String())
 	gc.AssertExpectations(t)
 
-	assert.NoDirExistsf(t, filepath.Join(updateDir, "gh-some-ext"), "update directory should be removed")
+	assert.NoDirExistsf(t, extensionUpdatePath, "update directory should be removed")
 }
 
 func TestManager_Install_git_pinned(t *testing.T) {
@@ -1062,7 +1078,8 @@ func TestManager_Install_rosetta_fallback_not_found(t *testing.T) {
 }
 
 func TestManager_Install_binary(t *testing.T) {
-	repo := ghrepo.NewWithHost("owner", "gh-bin-ext", "example.com")
+	fakeExtensionName := "gh-bin-ext"
+	repo := ghrepo.NewWithHost("owner", fakeExtensionName, "example.com")
 
 	reg := httpmock.Registry{}
 	defer reg.Verify(t)
@@ -1097,7 +1114,10 @@ func TestManager_Install_binary(t *testing.T) {
 	ios, _, stdout, stderr := iostreams.Test()
 	dataDir := t.TempDir()
 	updateDir := t.TempDir()
-	assert.NoError(t, stubExtensionUpdate(filepath.Join(updateDir, "gh-bin-ext")))
+
+	// Create a temporary directory to simulate the local extension update state
+	extensionUpdatePath := filepath.Join(updateDir, fakeExtensionName)
+	require.NoError(t, stubExtensionUpdate(extensionUpdatePath))
 
 	m := newTestManager(dataDir, updateDir, &http.Client{Transport: &reg}, nil, ios)
 
@@ -1112,7 +1132,7 @@ func TestManager_Install_binary(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, binManifest{
-		Name:  "gh-bin-ext",
+		Name:  fakeExtensionName,
 		Owner: "owner",
 		Host:  "example.com",
 		Tag:   "v1.0.1",
@@ -1125,8 +1145,7 @@ func TestManager_Install_binary(t *testing.T) {
 
 	assert.Equal(t, "", stdout.String())
 	assert.Equal(t, "", stderr.String())
-
-	assert.NoDirExistsf(t, filepath.Join(updateDir, "gh-bin-ext"), "update directory should be removed")
+	require.NoDirExistsf(t, extensionUpdatePath, "update directory should be removed")
 }
 
 func TestManager_Install_amd64_when_supported(t *testing.T) {

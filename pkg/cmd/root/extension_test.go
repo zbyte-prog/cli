@@ -17,7 +17,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 	tests := []struct {
 		name               string
 		extCurrentVersion  string
-		extFullName        string
 		extIsPinned        bool
 		extLatestVersion   string
 		extName            string
@@ -28,7 +27,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "no update available",
 			extName:            "no-update",
-			extFullName:        "gh-no-update",
 			extUpdateAvailable: false,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.0",
@@ -37,7 +35,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "major update",
 			extName:            "major-update",
-			extFullName:        "gh-major-update",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "2.0.0",
@@ -51,7 +48,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "major update, pinned",
 			extName:            "major-update-pin",
-			extFullName:        "gh-major-update-pin",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "2.0.0",
@@ -66,7 +62,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "minor update",
 			extName:            "minor-update",
-			extFullName:        "gh-minor-update",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.1.0",
@@ -80,7 +75,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "minor update, pinned",
 			extName:            "minor-update-pin",
-			extFullName:        "gh-minor-update-pin",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.1.0",
@@ -95,7 +89,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "patch update",
 			extName:            "patch-update",
-			extFullName:        "gh-patch-update",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.1",
@@ -109,7 +102,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		{
 			name:               "patch update, pinned",
 			extName:            "patch-update-pin",
-			extFullName:        "gh-patch-update-pin",
 			extUpdateAvailable: true,
 			extCurrentVersion:  "1.0.0",
 			extLatestVersion:   "1.0.1",

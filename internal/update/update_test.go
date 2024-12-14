@@ -368,7 +368,7 @@ func TestCheckForExtensionUpdate(t *testing.T) {
 	}
 }
 
-func TestShouldCheckForExtensionUpdate(t *testing.T) {
+func TestShouldCheckForUpdate(t *testing.T) {
 	tests := []struct {
 		name     string
 		env      map[string]string
@@ -419,7 +419,7 @@ func TestShouldCheckForExtensionUpdate(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			actual := ShouldCheckForExtensionUpdate()
+			actual := ShouldCheckForUpdate()
 			require.Equal(t, tt.expected, actual)
 		})
 	}

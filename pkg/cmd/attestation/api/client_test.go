@@ -22,7 +22,7 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 
 	if hasNextPage {
 		return &LiveClient{
-			api: mockAPIClient{
+			githubAPI: mockAPIClient{
 				OnRESTWithNext: fetcher.OnRESTSuccessWithNextPage,
 			},
 			logger: l,
@@ -30,7 +30,7 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 	}
 
 	return &LiveClient{
-		api: mockAPIClient{
+		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTSuccess,
 		},
 		logger: l,
@@ -50,7 +50,7 @@ func TestGetURL(t *testing.T) {
 	}
 
 	for _, data := range testData {
-		s := c.BuildRepoAndDigestURL(data.repo, data.digest)
+		s := c.buildRepoAndDigestURL(data.repo, data.digest)
 		require.Equal(t, data.expected, s)
 	}
 }
@@ -135,7 +135,7 @@ func TestGetByDigest_NoAttestationsFound(t *testing.T) {
 	}
 
 	c := LiveClient{
-		api: mockAPIClient{
+		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTWithNextNoAttestations,
 		},
 		logger: io.NewTestHandler(),
@@ -158,7 +158,7 @@ func TestGetByDigest_Error(t *testing.T) {
 	}
 
 	c := LiveClient{
-		api: mockAPIClient{
+		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTWithNextError,
 		},
 		logger: io.NewTestHandler(),
@@ -180,7 +180,7 @@ func TestGetTrustDomain(t *testing.T) {
 
 	t.Run("with returned trust domain", func(t *testing.T) {
 		c := LiveClient{
-			api: mockAPIClient{
+			githubAPI: mockAPIClient{
 				OnREST: fetcher.OnREST,
 			},
 			logger: io.NewTestHandler(),
@@ -193,7 +193,7 @@ func TestGetTrustDomain(t *testing.T) {
 
 	t.Run("with error", func(t *testing.T) {
 		c := LiveClient{
-			api: mockAPIClient{
+			githubAPI: mockAPIClient{
 				OnREST: fetcher.OnRESTError,
 			},
 			logger: io.NewTestHandler(),
@@ -213,7 +213,7 @@ func TestGetAttestationsRetries(t *testing.T) {
 	}
 
 	c := &LiveClient{
-		api: mockAPIClient{
+		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.FlakyOnRESTSuccessWithNextPageHandler(),
 		},
 		logger: io.NewTestHandler(),
@@ -252,7 +252,7 @@ func TestGetAttestationsMaxRetries(t *testing.T) {
 	}
 
 	c := &LiveClient{
-		api: mockAPIClient{
+		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnREST500ErrorHandler(),
 		},
 		logger: io.NewTestHandler(),

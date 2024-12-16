@@ -88,7 +88,11 @@ func (c *LiveClient) GetByOwnerAndDigest(owner, digest string, limit int) ([]*At
 	url := c.buildOwnerAndDigestURL(owner, digest)
 	attestations, err := c.getAttestations(url, owner, digest, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
+		return nil, err
+	}
+
+	if len(attestations) == 0 {
+		return nil, newErrNoAttestations(owner, digest)
 	}
 
 	bundles, err := c.fetchBundlesByURL(attestations)

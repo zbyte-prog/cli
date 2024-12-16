@@ -144,6 +144,9 @@ func TestGetByDigest_NoAttestationsFound(t *testing.T) {
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTWithNextNoAttestations,
 		},
+		httpClient: mockHttpClient{
+			OnGet: fetcher.OnGetSuccess,
+		},
 		logger: io.NewTestHandler(),
 	}
 
@@ -221,6 +224,9 @@ func TestGetAttestationsRetries(t *testing.T) {
 	c := &LiveClient{
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.FlakyOnRESTSuccessWithNextPageHandler(),
+		},
+		httpClient: mockHttpClient{
+			OnGet: fetcher.OnGetSuccess,
 		},
 		logger: io.NewTestHandler(),
 	}

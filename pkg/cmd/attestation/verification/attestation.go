@@ -104,7 +104,7 @@ func GetRemoteAttestations(client api.Client, params FetchRemoteAttestationsPara
 	if params.Repo != "" {
 		bundles, err := client.GetByRepoAndDigest(params.Repo, params.Digest, params.Limit)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch attestation bundles from %s: %w", params.Repo, err)
+			return nil, fmt.Errorf("failed to fetch attestations from %s: %w", params.Repo, err)
 		}
 
 		return bundles, nil

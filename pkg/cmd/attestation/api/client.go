@@ -181,24 +181,24 @@ func (c *LiveClient) fetchBundleWithSASURL(a *Attestation) (*bundle.Bundle, erro
 
 	c.logger.VerbosePrintf("Fetching attestation bundle\n\n")
 
-	r, err := c.httpClient.Get(a.BundleURL)
+	resp, err := c.httpClient.Get(a.BundleURL)
 	if err != nil {
 		return nil, err
 	}
 
-	defer r.Body.Close()
-	if r.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", r.StatusCode)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	// parse the URL to get the host and path
-	resp, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read blob storage response body: %w", err)
 	}
 
 	var out []byte
-	decompressed, err := snappy.Decode(out, resp)
+	decompressed, err := snappy.Decode(out, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress with snappy: %w", err)
 	}

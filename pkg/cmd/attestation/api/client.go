@@ -70,9 +70,9 @@ func (c *LiveClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Atte
 		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
 	}
 
-	bundles, err := c.fetchBundlesWithSASURL(attestations)
+	bundles, err := c.fetchBundlesByURL(attestations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
+		return nil, fmt.Errorf("failed to fetch bundle with URL: %w", err)
 	}
 
 	return bundles, nil
@@ -91,9 +91,9 @@ func (c *LiveClient) GetByOwnerAndDigest(owner, digest string, limit int) ([]*At
 		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
 	}
 
-	bundles, err := c.fetchBundlesWithSASURL(attestations)
+	bundles, err := c.fetchBundlesByURL(attestations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
+		return nil, fmt.Errorf("failed to fetch bundle with URL: %w", err)
 	}
 
 	return bundles, nil
@@ -160,12 +160,12 @@ func (c *LiveClient) getAttestations(url, name, digest string, limit int) ([]*At
 	return attestations, nil
 }
 
-func (c *LiveClient) fetchBundlesWithSASURL(attestations []*Attestation) ([]*Attestation, error) {
+func (c *LiveClient) fetchBundlesByURL(attestations []*Attestation) ([]*Attestation, error) {
 	fetched := make([]*Attestation, len(attestations))
 	for i, a := range attestations {
-		b, err := c.fetchBundleWithSASURL(a)
+		b, err := c.fetchBundleByURL(a)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch bundle with SAS URL: %w", err)
+			return nil, fmt.Errorf("failed to fetch bundle with URL: %w", err)
 		}
 		fetched[i] = &Attestation{
 			Bundle: b,
@@ -174,7 +174,7 @@ func (c *LiveClient) fetchBundlesWithSASURL(attestations []*Attestation) ([]*Att
 	return fetched, nil
 }
 
-func (c *LiveClient) fetchBundleWithSASURL(a *Attestation) (*bundle.Bundle, error) {
+func (c *LiveClient) fetchBundleByURL(a *Attestation) (*bundle.Bundle, error) {
 	if a.BundleURL == "" {
 		return nil, fmt.Errorf("bundle URL is empty")
 	}

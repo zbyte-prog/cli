@@ -32,7 +32,6 @@ type apiClient interface {
 }
 
 type Client interface {
-	// FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error)
 	GetByRepoAndDigest(repo, digest string, limit int) ([]*Attestation, error)
 	GetByOwnerAndDigest(owner, digest string, limit int) ([]*Attestation, error)
 	GetTrustDomain() (string, error)
@@ -65,35 +64,33 @@ func (c *LiveClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Atte
 		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
 	}
 
-	compressedBundles, err := c.fetchBundlesWithSASURL(attestations)
+	bundles, err := c.fetchBundlesWithSASURL(attestations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
 	}
 
-	// decompress before returning
-	return compressedBundles, nil
+	return bundles, nil
 }
 
-func (c *LiveClient) BuildOwnerAndDigestURL(owner, digest string) string {
+func (c *LiveClient) buildOwnerAndDigestURL(owner, digest string) string {
 	owner = strings.Trim(owner, "/")
 	return fmt.Sprintf(GetAttestationByOwnerAndSubjectDigestPath, owner, digest)
 }
 
 // GetByOwnerAndDigest fetches attestation by owner and digest
 func (c *LiveClient) GetByOwnerAndDigest(owner, digest string, limit int) ([]*Attestation, error) {
-	url := c.BuildOwnerAndDigestURL(owner, digest)
+	url := c.buildOwnerAndDigestURL(owner, digest)
 	attestations, err := c.getAttestations(url, owner, digest, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
 	}
 
-	compressedBundles, err := c.fetchBundlesWithSASURL(attestations)
+	bundles, err := c.fetchBundlesWithSASURL(attestations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
 	}
 
-	// decompress before returning
-	return compressedBundles, nil
+	return bundles, nil
 }
 
 // GetTrustDomain returns the current trust domain. If the default is used

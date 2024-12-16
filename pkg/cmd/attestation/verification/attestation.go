@@ -102,29 +102,19 @@ func GetRemoteAttestations(client api.Client, params FetchRemoteAttestationsPara
 	// check if Repo is set first because if Repo has been set, Owner will be set using the value of Repo.
 	// If Repo is not set, the field will remain empty. It will not be populated using the value of Owner.
 	if params.Repo != "" {
-		attestations, err := client.GetByRepoAndDigest(params.Repo, params.Digest, params.Limit)
+		bundles, err := client.GetByRepoAndDigest(params.Repo, params.Digest, params.Limit)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch attestations from %s: %w", params.Repo, err)
+			return nil, fmt.Errorf("failed to fetch attestation bundles from %s: %w", params.Repo, err)
 		}
 
-		fetched, err := client.FetchAttestationsWithSASURL(attestations)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch bundles from SAS URL: %w", err)
-		}
-
-		return fetched, nil
+		return bundles, nil
 	} else if params.Owner != "" {
-		attestations, err := client.GetByOwnerAndDigest(params.Owner, params.Digest, params.Limit)
+		bundles, err := client.GetByOwnerAndDigest(params.Owner, params.Digest, params.Limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch attestations from %s: %w", params.Owner, err)
 		}
 
-		fetched, err := client.FetchAttestationsWithSASURL(attestations)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch bundles from SAS URL: %w", err)
-		}
-
-		return fetched, nil
+		return bundles, nil
 	}
 	return nil, fmt.Errorf("owner or repo must be provided")
 }

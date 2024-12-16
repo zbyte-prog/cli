@@ -7,9 +7,10 @@ import (
 )
 
 type MockClient struct {
-	OnGetByRepoAndDigest  func(repo, digest string, limit int) ([]*Attestation, error)
-	OnGetByOwnerAndDigest func(owner, digest string, limit int) ([]*Attestation, error)
-	OnGetTrustDomain      func() (string, error)
+	OnGetByRepoAndDigest          func(repo, digest string, limit int) ([]*Attestation, error)
+	OnGetByOwnerAndDigest         func(owner, digest string, limit int) ([]*Attestation, error)
+	OnGetTrustDomain              func() (string, error)
+	OnFetchAttestationsWithSASURL func(attestations []*Attestation) ([]*Attestation, error)
 }
 
 func (m MockClient) FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error) {

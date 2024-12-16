@@ -1,12 +1,10 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/golang/snappy"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
@@ -24,13 +23,16 @@ const (
 	maxLimitForFetch = 100
 )
 
+// Allow injecting backoff interval in tests.
+var getAttestationRetryInterval = time.Millisecond * 200
+
 type apiClient interface {
 	REST(hostname, method, p string, body io.Reader, data interface{}) error
 	RESTWithNext(hostname, method, p string, body io.Reader, data interface{}) (string, error)
 }
 
 type Client interface {
-	FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error)
+	// FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error)
 	GetByRepoAndDigest(repo, digest string, limit int) ([]*Attestation, error)
 	GetByOwnerAndDigest(owner, digest string, limit int) ([]*Attestation, error)
 	GetTrustDomain() (string, error)
@@ -58,7 +60,18 @@ func (c *LiveClient) BuildRepoAndDigestURL(repo, digest string) string {
 // GetByRepoAndDigest fetches the attestation by repo and digest
 func (c *LiveClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Attestation, error) {
 	url := c.BuildRepoAndDigestURL(repo, digest)
-	return c.getAttestations(url, repo, digest, limit)
+	attestations, err := c.getAttestations(url, repo, digest, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
+	}
+
+	compressedBundles, err := c.fetchBundlesWithSASURL(attestations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
+	}
+
+	// decompress before returning
+	return compressedBundles, nil
 }
 
 func (c *LiveClient) BuildOwnerAndDigestURL(owner, digest string) string {
@@ -69,7 +82,18 @@ func (c *LiveClient) BuildOwnerAndDigestURL(owner, digest string) string {
 // GetByOwnerAndDigest fetches attestation by owner and digest
 func (c *LiveClient) GetByOwnerAndDigest(owner, digest string, limit int) ([]*Attestation, error) {
 	url := c.BuildOwnerAndDigestURL(owner, digest)
-	return c.getAttestations(url, owner, digest, limit)
+	attestations, err := c.getAttestations(url, owner, digest, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
+	}
+
+	compressedBundles, err := c.fetchBundlesWithSASURL(attestations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
+	}
+
+	// decompress before returning
+	return compressedBundles, nil
 }
 
 // GetTrustDomain returns the current trust domain. If the default is used
@@ -77,9 +101,6 @@ func (c *LiveClient) GetByOwnerAndDigest(owner, digest string, limit int) ([]*At
 func (c *LiveClient) GetTrustDomain() (string, error) {
 	return c.getTrustDomain(MetaPath)
 }
-
-// Allow injecting backoff interval in tests.
-var getAttestationRetryInterval = time.Millisecond * 200
 
 func (c *LiveClient) getAttestations(url, name, digest string, limit int) ([]*Attestation, error) {
 	c.logger.VerbosePrintf("Fetching attestations for artifact digest %s\n\n", digest)
@@ -136,12 +157,12 @@ func (c *LiveClient) getAttestations(url, name, digest string, limit int) ([]*At
 	return attestations, nil
 }
 
-func (c *LiveClient) FetchAttestationsWithSASURL(attestations []*Attestation) ([]*Attestation, error) {
+func (c *LiveClient) fetchBundlesWithSASURL(attestations []*Attestation) ([]*Attestation, error) {
 	fetched := make([]*Attestation, len(attestations))
 	for i, a := range attestations {
-		b, err := c.fetchAttestationWithSASURL(a)
+		b, err := c.fetchBundleWithSASURL(a)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch attestation with SAS URL: %w", err)
+			return nil, fmt.Errorf("failed to fetch bundle with SAS URL: %w", err)
 		}
 		fetched[i] = &Attestation{
 			Bundle: b,
@@ -150,33 +171,45 @@ func (c *LiveClient) FetchAttestationsWithSASURL(attestations []*Attestation) ([
 	return fetched, nil
 }
 
-func (c *LiveClient) fetchAttestationWithSASURL(a *Attestation) (*bundle.Bundle, error) {
-	if a.SASUrl == "" {
-		return a.Bundle, nil
+func (c *LiveClient) fetchBundleWithSASURL(a *Attestation) (*bundle.Bundle, error) {
+	if a.BundleURL == "" {
+		//return a.Bundle, nil
+		return nil, fmt.Errorf("SAS URL is empty")
 	}
 
-	parsed, err := url.Parse(a.SASUrl)
+	c.logger.VerbosePrintf("Fetching attestation bundle\n\n")
+
+	httpClient := http.DefaultClient
+	r, err := httpClient.Get(a.BundleURL)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp []byte
-	if err = c.api.REST(parsed.Host, http.MethodGet, parsed.Path, nil, &resp); err != nil {
-		return nil, err
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", r.StatusCode)
 	}
 
-	var decompressedBytes []byte
-	_, err = snappy.Decode(decompressedBytes, resp)
+	// parse the URL to get the host and path
+	resp, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read blob storage response body: %w", err)
 	}
 
-	var pbBundle *v1.Bundle
-	if err = json.Unmarshal(decompressedBytes, pbBundle); err != nil {
-		return nil, err
+	var out []byte
+	decompressed, err := snappy.Decode(out, resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress with snappy: %w", err)
 	}
 
-	return bundle.NewBundle(pbBundle)
+	var pbBundle v1.Bundle
+	if err = protojson.Unmarshal(decompressed, &pbBundle); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal to bundle: %w", err)
+	}
+
+	c.logger.VerbosePrintf("Successfully fetched bundle\n\n")
+
+	return bundle.NewBundle(&pbBundle)
 }
 
 func shouldRetry(err error) bool {

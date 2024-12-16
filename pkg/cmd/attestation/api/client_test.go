@@ -25,6 +25,9 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 			githubAPI: mockAPIClient{
 				OnRESTWithNext: fetcher.OnRESTSuccessWithNextPage,
 			},
+			httpClient: mockHttpClient{
+				OnGet: fetcher.OnGetSuccess,
+			},
 			logger: l,
 		}
 	}
@@ -32,6 +35,9 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 	return &LiveClient{
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTSuccess,
+		},
+		httpClient: mockHttpClient{
+			OnGet: fetcher.OnGetSuccess,
 		},
 		logger: l,
 	}

@@ -17,9 +17,14 @@ const hostRegex = `^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+.*$`
 
 func expandToGitHubURL(tenant, ownerOrRepo string) string {
 	if tenant == "" {
-		return fmt.Sprintf("(?i)^https://github.com/%s/", ownerOrRepo)
+		return fmt.Sprintf("https://github.com/%s", ownerOrRepo)
 	}
-	return fmt.Sprintf("(?i)^https://%s.ghe.com/%s/", tenant, ownerOrRepo)
+	return fmt.Sprintf("https://%s.ghe.com/%s", tenant, ownerOrRepo)
+}
+
+func expandToGitHubURLRegex(tenant, ownerOrRepo string) string {
+	url := expandToGitHubURL(tenant, ownerOrRepo)
+	return fmt.Sprintf("(?i)^%s/", url)
 }
 
 func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, error) {
@@ -43,7 +48,7 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 
 	// Set SANRegex using either the opts.SignerRepo or opts.SignerWorkflow values
 	if opts.SignerRepo != "" {
-		signedRepoRegex := expandToGitHubURL(opts.Tenant, opts.SignerRepo)
+		signedRepoRegex := expandToGitHubURLRegex(opts.Tenant, opts.SignerRepo)
 		c.SANRegex = signedRepoRegex
 	} else if opts.SignerWorkflow != "" {
 		validatedWorkflowRegex, err := validateSignerWorkflow(opts)
@@ -59,9 +64,9 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 	} else if opts.Repo != "" {
 		// if the user has not provided the SAN, SANRegex, SignerRepo, or SignerWorkflow options
 		// then we default to the repo and owner options
-		c.SANRegex = expandToGitHubURL(opts.Tenant, opts.Repo)
+		c.SANRegex = expandToGitHubURLRegex(opts.Tenant, opts.Repo)
 	} else {
-		c.SANRegex = expandToGitHubURL(opts.Tenant, owner)
+		c.SANRegex = expandToGitHubURLRegex(opts.Tenant, owner)
 	}
 
 	// if the DenySelfHostedRunner option is set to true, set the
@@ -77,22 +82,11 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 
 	// If the Repo option is provided, set the SourceRepositoryURI extension
 	if opts.Repo != "" {
-		// If the Tenant options is also provided, set the SourceRepositoryURI extension
-		// using the specific URI format
-		if opts.Tenant != "" {
-			c.Certificate.SourceRepositoryURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, opts.Repo)
-		} else {
-			c.Certificate.SourceRepositoryURI = fmt.Sprintf("https://github.com/%s", opts.Repo)
-		}
+		c.Certificate.SourceRepositoryURI = expandToGitHubURL(opts.Tenant, opts.Repo)
 	}
 
-	// If the tenant option is provided, set the SourceRepositoryOwnerURI extension
-	// using the specific URI format
-	if opts.Tenant != "" {
-		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://%s.ghe.com/%s", opts.Tenant, owner)
-	} else {
-		c.Certificate.SourceRepositoryOwnerURI = fmt.Sprintf("https://github.com/%s", owner)
-	}
+	// Set the SourceRepositoryOwnerURI extension using owner and tenant if provided
+	c.Certificate.SourceRepositoryOwnerURI = expandToGitHubURL(opts.Tenant, owner)
 
 	// if the tenant is provided and OIDC issuer provided matches the default
 	// use the tenant-specific issuer

@@ -46,8 +46,13 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		owner = opts.Owner
 	}
 
-	// Set SANRegex using either the opts.SignerRepo or opts.SignerWorkflow values
-	if opts.SignerRepo != "" {
+	// Set the SANRegex and SAN values using the provided options
+	// First check if the opts.SANRegex or opts.SAN values are provided
+	if opts.SANRegex != "" || opts.SAN != "" {
+		c.SANRegex = opts.SANRegex
+		c.SAN = opts.SAN
+	} else if opts.SignerRepo != "" {
+		// next check if opts.SignerRepo was provided
 		signedRepoRegex := expandToGitHubURLRegex(opts.Tenant, opts.SignerRepo)
 		c.SANRegex = signedRepoRegex
 	} else if opts.SignerWorkflow != "" {
@@ -55,17 +60,13 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 		if err != nil {
 			return verification.EnforcementCriteria{}, err
 		}
-
 		c.SANRegex = validatedWorkflowRegex
-	} else if opts.SANRegex != "" || opts.SAN != "" {
-		// If neither of those values were set, default to the provided SANRegex and SAN values
-		c.SANRegex = opts.SANRegex
-		c.SAN = opts.SAN
 	} else if opts.Repo != "" {
 		// if the user has not provided the SAN, SANRegex, SignerRepo, or SignerWorkflow options
-		// then we default to the repo and owner options
+		// then we default to the repo option
 		c.SANRegex = expandToGitHubURLRegex(opts.Tenant, opts.Repo)
 	} else {
+		// if opts.Repo was not provided, we fallback to the opts.Owner value
 		c.SANRegex = expandToGitHubURLRegex(opts.Tenant, owner)
 	}
 

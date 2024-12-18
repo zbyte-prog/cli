@@ -6,7 +6,6 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
-	ghContext "github.com/cli/cli/v2/context"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/secret/shared"
@@ -20,15 +19,12 @@ type DeleteOptions struct {
 	IO         *iostreams.IOStreams
 	Config     func() (gh.Config, error)
 	BaseRepo   func() (ghrepo.Interface, error)
-	Remotes    func() (ghContext.Remotes, error)
 
 	SecretName  string
 	OrgName     string
 	EnvName     string
 	UserSecrets bool
 	Application string
-
-	HasRepoOverride bool
 }
 
 func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
@@ -36,7 +32,6 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		IO:         f.IOStreams,
 		Config:     f.Config,
 		HttpClient: f.HttpClient,
-		Remotes:    f.Remotes,
 	}
 
 	cmd := &cobra.Command{
@@ -51,14 +46,23 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		`),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// support `-R, --repo` override
+			// If the user specified a repo directly, then we're using the OverrideBaseRepoFunc set by EnableRepoOverride
+			// So there's no reason to use the specialised BaseRepoFunc that requires remote disambiguation.
 			opts.BaseRepo = f.BaseRepo
+			if !cmd.Flags().Changed("repo") {
+				// If they haven't specified a repo directly, then we will wrap the BaseRepoFunc in one that error if
+				// there might be multiple valid remotes.
+				opts.BaseRepo = shared.RequireNoAmbiguityBaseRepoFunc(opts.BaseRepo, f.Remotes)
+				// But if we are able to prompt, then we will wrap that up in a BaseRepoFunc that can prompt the user to
+				// resolve the ambiguity.
+				if opts.IO.CanPrompt() {
+					opts.BaseRepo = shared.PromptWhenMultipleRemotesBaseRepoFunc(opts.BaseRepo, f.Prompter)
+				}
+			}
 
 			if err := cmdutil.MutuallyExclusive("specify only one of `--org`, `--env`, or `--user`", opts.OrgName != "", opts.EnvName != "", opts.UserSecrets); err != nil {
 				return err
 			}
-
-			opts.HasRepoOverride = cmd.Flags().Changed("repo")
 
 			opts.SecretName = args[0]
 
@@ -107,11 +111,6 @@ func removeRun(opts *DeleteOptions) error {
 	var baseRepo ghrepo.Interface
 	if secretEntity == shared.Repository || secretEntity == shared.Environment {
 		baseRepo, err = opts.BaseRepo()
-		if err != nil {
-			return err
-		}
-
-		err = shared.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes)
 		if err != nil {
 			return err
 		}

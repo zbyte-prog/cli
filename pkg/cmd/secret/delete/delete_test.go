@@ -2,6 +2,7 @@ package delete
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
+	"github.com/cli/cli/v2/internal/prompter"
+	"github.com/cli/cli/v2/pkg/cmd/secret/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -118,6 +121,108 @@ func TestNewCmdDelete(t *testing.T) {
 			assert.Equal(t, tt.wants.SecretName, gotOpts.SecretName)
 			assert.Equal(t, tt.wants.OrgName, gotOpts.OrgName)
 			assert.Equal(t, tt.wants.EnvName, gotOpts.EnvName)
+		})
+	}
+}
+
+func TestNewCmdDeleteBaseRepoFuncs(t *testing.T) {
+	remotes := ghContext.Remotes{
+		&ghContext.Remote{
+			Remote: &git.Remote{
+				Name: "origin",
+			},
+			Repo: ghrepo.New("owner", "fork"),
+		},
+		&ghContext.Remote{
+			Remote: &git.Remote{
+				Name: "upstream",
+			},
+			Repo: ghrepo.New("owner", "repo"),
+		},
+	}
+
+	tests := []struct {
+		name          string
+		args          string
+		prompterStubs func(*prompter.MockPrompter)
+		wantRepo      ghrepo.Interface
+		wantErr       error
+	}{
+		{
+			name:     "when there is a repo flag provided, the factory base repo func is used",
+			args:     "SECRET_NAME --repo owner/repo",
+			wantRepo: ghrepo.New("owner", "repo"),
+		},
+		{
+			name: "when there is no repo flag provided, and no prompting, the base func requiring no ambiguity is used",
+			args: "SECRET_NAME",
+			wantErr: shared.MultipleRemotesError{
+				Remotes: remotes,
+			},
+		},
+		{
+			name: "when there is no repo flag provided, and can prompt, the base func resolving ambiguity is used",
+			args: "SECRET_NAME",
+			prompterStubs: func(pm *prompter.MockPrompter) {
+				pm.RegisterSelect(
+					"Select a base repo",
+					[]string{"owner/fork", "owner/repo"},
+					func(_, _ string, opts []string) (int, error) {
+						return prompter.IndexFor(opts, "owner/fork")
+					},
+				)
+			},
+			wantRepo: ghrepo.New("owner", "fork"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ios, _, _, _ := iostreams.Test()
+			var pm *prompter.MockPrompter
+			if tt.prompterStubs != nil {
+				ios.SetStdinTTY(true)
+				ios.SetStdoutTTY(true)
+				ios.SetStderrTTY(true)
+				pm = prompter.NewMockPrompter(t)
+				tt.prompterStubs(pm)
+			}
+
+			f := &cmdutil.Factory{
+				IOStreams: ios,
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.FromFullName("owner/repo")
+				},
+				Prompter: pm,
+				Remotes: func() (ghContext.Remotes, error) {
+					return remotes, nil
+				},
+			}
+
+			argv, err := shlex.Split(tt.args)
+			assert.NoError(t, err)
+
+			var gotOpts *DeleteOptions
+			cmd := NewCmdDelete(f, func(opts *DeleteOptions) error {
+				gotOpts = opts
+				return nil
+			})
+			// Require to support --repo flag
+			cmdutil.EnableRepoOverride(cmd, f)
+			cmd.SetArgs(argv)
+			cmd.SetIn(&bytes.Buffer{})
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+
+			_, err = cmd.ExecuteC()
+			require.NoError(t, err)
+
+			baseRepo, err := gotOpts.BaseRepo()
+			if tt.wantErr != nil {
+				require.Equal(t, tt.wantErr, err)
+				return
+			}
+			require.True(t, ghrepo.IsSame(tt.wantRepo, baseRepo))
 		})
 	}
 }
@@ -352,120 +457,4 @@ func Test_removeRun_user(t *testing.T) {
 	assert.NoError(t, err)
 
 	reg.Verify(t)
-}
-
-func Test_removeRun_remote_validation(t *testing.T) {
-	tests := []struct {
-		name     string
-		opts     *DeleteOptions
-		wantPath string
-		wantErr  bool
-		errMsg   string
-	}{
-		{
-			name: "single repo detected",
-			opts: &DeleteOptions{
-				Application: "actions",
-				SecretName:  "cool_secret",
-				Remotes: func() (ghContext.Remotes, error) {
-					remote := &ghContext.Remote{
-						Remote: &git.Remote{
-							Name: "origin",
-						},
-						Repo: ghrepo.New("owner", "repo"),
-					}
-
-					return ghContext.Remotes{
-						remote,
-					}, nil
-				}},
-			wantPath: "repos/owner/repo/actions/secrets/cool_secret",
-		},
-		{
-			name: "multi repo detected",
-			opts: &DeleteOptions{
-				Application: "actions",
-				SecretName:  "cool_secret",
-				Remotes: func() (ghContext.Remotes, error) {
-					remote := &ghContext.Remote{
-						Remote: &git.Remote{
-							Name: "origin",
-						},
-						Repo: ghrepo.New("owner", "repo"),
-					}
-					remote2 := &ghContext.Remote{
-						Remote: &git.Remote{
-							Name: "upstream",
-						},
-						Repo: ghrepo.New("owner", "repo"),
-					}
-
-					return ghContext.Remotes{
-						remote,
-						remote2,
-					}, nil
-				}},
-			wantErr: true,
-			errMsg:  "multiple remotes detected [origin upstream]. please specify which repo to use by providing the -R or --repo argument",
-		},
-		{
-			name: "multi repo detected - single repo given",
-			opts: &DeleteOptions{
-				Application:     "actions",
-				SecretName:      "cool_secret",
-				HasRepoOverride: true,
-				Remotes: func() (ghContext.Remotes, error) {
-					remote := &ghContext.Remote{
-						Remote: &git.Remote{
-							Name: "origin",
-						},
-						Repo: ghrepo.New("owner", "repo"),
-					}
-					remote2 := &ghContext.Remote{
-						Remote: &git.Remote{
-							Name: "upstream",
-						},
-						Repo: ghrepo.New("owner", "repo"),
-					}
-
-					return ghContext.Remotes{
-						remote,
-						remote2,
-					}, nil
-				}},
-			wantPath: "repos/owner/repo/actions/secrets/cool_secret",
-		},
-	}
-
-	for _, tt := range tests {
-		reg := &httpmock.Registry{}
-
-		if tt.wantPath != "" {
-			reg.Register(
-				httpmock.REST("DELETE", tt.wantPath),
-				httpmock.StatusStringResponse(204, "No Content"))
-		}
-
-		ios, _, _, _ := iostreams.Test()
-
-		tt.opts.IO = ios
-		tt.opts.HttpClient = func() (*http.Client, error) {
-			return &http.Client{Transport: reg}, nil
-		}
-		tt.opts.Config = func() (gh.Config, error) {
-			return config.NewBlankConfig(), nil
-		}
-		tt.opts.BaseRepo = func() (ghrepo.Interface, error) {
-			return ghrepo.FromFullName("owner/repo")
-		}
-
-		err := removeRun(tt.opts)
-		if tt.wantErr {
-			assert.EqualError(t, err, tt.errMsg)
-		} else {
-			assert.NoError(t, err)
-		}
-
-		reg.Verify(t)
-	}
 }

@@ -13,7 +13,6 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
-	ghContext "github.com/cli/cli/v2/context"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/secret/shared"
@@ -30,7 +29,6 @@ type SetOptions struct {
 	IO         *iostreams.IOStreams
 	Config     func() (gh.Config, error)
 	BaseRepo   func() (ghrepo.Interface, error)
-	Remotes    func() (ghContext.Remotes, error)
 	Prompter   prompter.Prompter
 
 	RandomOverride func() io.Reader
@@ -45,9 +43,6 @@ type SetOptions struct {
 	RepositoryNames []string
 	EnvFile         string
 	Application     string
-
-	HasRepoOverride bool
-	CanPrompt       bool
 }
 
 func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command {
@@ -55,7 +50,6 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		IO:         f.IOStreams,
 		Config:     f.Config,
 		HttpClient: f.HttpClient,
-		Remotes:    f.Remotes,
 		Prompter:   f.Prompter,
 	}
 
@@ -110,8 +104,19 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// support `-R, --repo` override
+			// If the user specified a repo directly, then we're using the OverrideBaseRepoFunc set by EnableRepoOverride
+			// So there's no reason to use the specialised BaseRepoFunc that requires remote disambiguation.
 			opts.BaseRepo = f.BaseRepo
+			if !cmd.Flags().Changed("repo") {
+				// If they haven't specified a repo directly, then we will wrap the BaseRepoFunc in one that error if
+				// there might be multiple valid remotes.
+				opts.BaseRepo = shared.RequireNoAmbiguityBaseRepoFunc(opts.BaseRepo, f.Remotes)
+				// But if we are able to prompt, then we will wrap that up in a BaseRepoFunc that can prompt the user to
+				// resolve the ambiguity.
+				if opts.IO.CanPrompt() {
+					opts.BaseRepo = shared.PromptWhenMultipleRemotesBaseRepoFunc(opts.BaseRepo, f.Prompter)
+				}
+			}
 
 			if err := cmdutil.MutuallyExclusive("specify only one of `--org`, `--env`, or `--user`", opts.OrgName != "", opts.EnvName != "", opts.UserSecrets); err != nil {
 				return err
@@ -150,9 +155,6 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 					opts.Visibility = shared.Selected
 				}
 			}
-
-			opts.HasRepoOverride = cmd.Flags().Changed("repo")
-			opts.CanPrompt = opts.IO.CanPrompt()
 
 			if runF != nil {
 				return runF(opts)
@@ -196,19 +198,6 @@ func setRun(opts *SetOptions) error {
 		baseRepo, err = opts.BaseRepo()
 		if err != nil {
 			return err
-		}
-
-		if err = shared.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes); err != nil {
-			if !opts.CanPrompt {
-				return err
-			}
-
-			selectedRepo, errSelectingRepo := shared.PromptForRepo(baseRepo, opts.Remotes, opts.Prompter)
-			if errSelectingRepo != nil {
-				return errSelectingRepo
-			}
-
-			baseRepo = selectedRepo
 		}
 
 		host = baseRepo.RepoHost()

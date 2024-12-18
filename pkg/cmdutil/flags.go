@@ -180,11 +180,3 @@ func isIncluded(value string, opts []string) bool {
 	}
 	return false
 }
-
-func CountSetFlags(flags *pflag.FlagSet) int {
-	count := 0
-	flags.Visit(func(f *pflag.Flag) {
-		count++
-	})
-	return count
-}

@@ -9,9 +9,9 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
-	ghContext "github.com/cli/cli/v2/context"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
+	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/pkg/cmd/secret/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
@@ -24,16 +24,15 @@ type ListOptions struct {
 	IO         *iostreams.IOStreams
 	Config     func() (gh.Config, error)
 	BaseRepo   func() (ghrepo.Interface, error)
-	Remotes    func() (ghContext.Remotes, error)
-	Now        func() time.Time
-	Exporter   cmdutil.Exporter
+	Prompter   prompter.Prompter
+
+	Now      func() time.Time
+	Exporter cmdutil.Exporter
 
 	OrgName     string
 	EnvName     string
 	UserSecrets bool
 	Application string
-
-	HasRepoOverride bool
 }
 
 var secretFields = []string{
@@ -51,8 +50,8 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		IO:         f.IOStreams,
 		Config:     f.Config,
 		HttpClient: f.HttpClient,
-		Remotes:    f.Remotes,
 		Now:        time.Now,
+		Prompter:   f.Prompter,
 	}
 
 	cmd := &cobra.Command{
@@ -68,14 +67,23 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// support `-R, --repo` override
+			// If the user specified a repo directly, then we're using the OverrideBaseRepoFunc set by EnableRepoOverride
+			// So there's no reason to use the specialised BaseRepoFunc that requires remote disambiguation.
 			opts.BaseRepo = f.BaseRepo
+			if !cmd.Flags().Changed("repo") {
+				// If they haven't specified a repo directly, then we will wrap the BaseRepoFunc in one that error if
+				// there might be multiple valid remotes.
+				opts.BaseRepo = shared.RequireNoAmbiguityBaseRepoFunc(opts.BaseRepo, f.Remotes)
+				// But if we are able to prompt, then we will wrap that up in a BaseRepoFunc that can prompt the user to
+				// resolve the ambiguity.
+				if opts.IO.CanPrompt() {
+					opts.BaseRepo = shared.PromptWhenMultipleRemotesBaseRepoFunc(opts.BaseRepo, f.Prompter)
+				}
+			}
 
 			if err := cmdutil.MutuallyExclusive("specify only one of `--org`, `--env`, or `--user`", opts.OrgName != "", opts.EnvName != "", opts.UserSecrets); err != nil {
 				return err
 			}
-
-			opts.HasRepoOverride = cmd.Flags().Changed("repo")
 
 			if runF != nil {
 				return runF(opts)
@@ -105,11 +113,6 @@ func listRun(opts *ListOptions) error {
 	var baseRepo ghrepo.Interface
 	if orgName == "" && !opts.UserSecrets {
 		baseRepo, err = opts.BaseRepo()
-		if err != nil {
-			return err
-		}
-
-		err = shared.ValidateHasOnlyOneRemote(opts.HasRepoOverride, opts.Remotes)
 		if err != nil {
 			return err
 		}

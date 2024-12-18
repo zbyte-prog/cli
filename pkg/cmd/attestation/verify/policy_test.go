@@ -149,6 +149,22 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		require.Equal(t, "https://github.com/foo/bar", c.Certificate.SourceRepositoryURI)
 	})
 
+	t.Run("sets SANRegex and SAN using SANRegex and SAN, sets Extensions.SourceRepositoryURI using opts.Repo", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath: artifactPath,
+			Owner:        "baz",
+			Repo:         "baz/xyz",
+			SAN:          "https://github/foo/bar/.github/workflows/attest.yml",
+			SANRegex:     "(?i)^https://github/foo",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.SAN)
+		require.Equal(t, "(?i)^https://github/foo", c.SANRegex)
+		require.Equal(t, "https://github.com/baz/xyz", c.Certificate.SourceRepositoryURI)
+	})
+
 	t.Run("sets Extensions.SourceRepositoryOwnerURI using opts.Owner and opts.Tenant", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,

@@ -32,8 +32,8 @@ func TestNewEnforcementCriteria(t *testing.T) {
 	t.Run("sets SANRegex using SignerRepo", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath:   artifactPath,
-			Owner:          "foo",
-			Repo:           "foo/bar",
+			Owner:          "wrong",
+			Repo:           "wrong/value",
 			SignerRepo:     "foo/bar",
 			SignerWorkflow: "wrong/value/.github/workflows/attest.yml",
 		}
@@ -44,11 +44,27 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		require.Zero(t, c.SAN)
 	})
 
+	t.Run("sets SANRegex using SignerRepo and Tenant", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:   artifactPath,
+			Owner:          "wrong",
+			Repo:           "wrong/value",
+			SignerRepo:     "foo/bar",
+			SignerWorkflow: "wrong/value/.github/workflows/attest.yml",
+			Tenant:         "baz",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "(?i)^https://baz.ghe.com/foo/bar/", c.SANRegex)
+		require.Zero(t, c.SAN)
+	})
+
 	t.Run("sets SANRegex using SignerWorkflow matching host regex", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath:   artifactPath,
-			Owner:          "foo",
-			Repo:           "foo/bar",
+			Owner:          "wrong",
+			Repo:           "wrong/value",
 			SignerWorkflow: "foo/bar/.github/workflows/attest.yml",
 			Hostname:       "github.com",
 		}
@@ -62,7 +78,7 @@ func TestNewEnforcementCriteria(t *testing.T) {
 	t.Run("sets SANRegex using opts.Repo", func(t *testing.T) {
 		opts := &Options{
 			ArtifactPath: artifactPath,
-			Owner:        "foo",
+			Owner:        "wrong",
 			Repo:         "foo/bar",
 		}
 

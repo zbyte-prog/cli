@@ -12,12 +12,30 @@ import (
 func TestNewEnforcementCriteria(t *testing.T) {
 	artifactPath := "../test/data/sigstore-js-2.1.0.tgz"
 
+	t.Run("sets SANRegex and SAN using SANRegex and SAN", func(t *testing.T) {
+		opts := &Options{
+			ArtifactPath:   artifactPath,
+			Owner:          "foo",
+			Repo:           "foo/bar",
+			SAN:            "https://github/foo/bar/.github/workflows/attest.yml",
+			SANRegex:       "(?i)^https://github/foo",
+			SignerRepo:     "wrong/value",
+			SignerWorkflow: "wrong/value/.github/workflows/attest.yml",
+		}
+
+		c, err := newEnforcementCriteria(opts)
+		require.NoError(t, err)
+		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.SAN)
+		require.Equal(t, "(?i)^https://github/foo", c.SANRegex)
+	})
+
 	t.Run("sets SANRegex using SignerRepo", func(t *testing.T) {
 		opts := &Options{
-			ArtifactPath: artifactPath,
-			Owner:        "foo",
-			Repo:         "foo/bar",
-			SignerRepo:   "foo/bar",
+			ArtifactPath:   artifactPath,
+			Owner:          "foo",
+			Repo:           "foo/bar",
+			SignerRepo:     "foo/bar",
+			SignerWorkflow: "wrong/value/.github/workflows/attest.yml",
 		}
 
 		c, err := newEnforcementCriteria(opts)
@@ -39,21 +57,6 @@ func TestNewEnforcementCriteria(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "^https://github.com/foo/bar/.github/workflows/attest.yml", c.SANRegex)
 		require.Zero(t, c.SAN)
-	})
-
-	t.Run("sets SANRegex and SAN using SANRegex and SAN", func(t *testing.T) {
-		opts := &Options{
-			ArtifactPath: artifactPath,
-			Owner:        "foo",
-			Repo:         "foo/bar",
-			SAN:          "https://github/foo/bar/.github/workflows/attest.yml",
-			SANRegex:     "(?i)^https://github/foo",
-		}
-
-		c, err := newEnforcementCriteria(opts)
-		require.NoError(t, err)
-		require.Equal(t, "https://github/foo/bar/.github/workflows/attest.yml", c.SAN)
-		require.Equal(t, "(?i)^https://github/foo", c.SANRegex)
 	})
 
 	t.Run("sets SANRegex using opts.Repo", func(t *testing.T) {

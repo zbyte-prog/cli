@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/cli/cli/v2/internal/ghinstance"
+	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact/oci"
@@ -261,7 +262,7 @@ func runVerify(opts *Options) error {
 		return nil
 	}
 
-	opts.Logger.Printf("%s was attested by:\n", artifact.DigestWithAlg())
+	opts.Logger.Printf("%s was attested by %s with the following attributes:\n\n", artifact.DigestWithAlg(), text.Pluralize(len(verified), "attestation"))
 
 	// Otherwise print the results to the terminal in a table
 	tableContent, err := buildTableVerifyContent(opts.Tenant, verified)
@@ -270,7 +271,7 @@ func runVerify(opts *Options) error {
 		return err
 	}
 
-	headers := []string{"repo", "predicate_type", "workflow"}
+	headers := []string{"signer repo", "signer workflow", "build repo", "build workflow"}
 	if err = opts.Logger.PrintTable(headers, tableContent); err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to print attestation details to table"))
 		return err
@@ -304,13 +305,13 @@ func extractAttestationDetail(tenant, builderSignerURI string) (string, string, 
 
 	match := orgAndRepoRegexp.FindStringSubmatch(builderSignerURI)
 	if len(match) < 2 {
-		return "", "", fmt.Errorf("no match found for org and repo")
+		return "", "", fmt.Errorf("no match found for org and repo: %s", builderSignerURI)
 	}
 	orgAndRepo := match[1]
 
 	match = workflowRegexp.FindStringSubmatch(builderSignerURI)
 	if len(match) < 2 {
-		return "", "", fmt.Errorf("no match found for workflow")
+		return "", "", fmt.Errorf("no match found for workflow: %s", builderSignerURI)
 	}
 	workflow := match[1]
 
@@ -327,15 +328,19 @@ func buildTableVerifyContent(tenant string, results []*verification.AttestationP
 			return nil, fmt.Errorf("bundle missing verification result fields")
 		}
 		builderSignerURI := res.VerificationResult.Signature.Certificate.Extensions.BuildSignerURI
-		repoAndOrg, workflow, err := extractAttestationDetail(tenant, builderSignerURI)
+		buildRepoAndOrg, buildWorkflow, err := extractAttestationDetail(tenant, builderSignerURI)
 		if err != nil {
 			return nil, err
 		}
-		if res.VerificationResult.Statement == nil {
-			return nil, fmt.Errorf("bundle missing attestation statement (bundle must originate from GitHub Artifact Attestations)")
+
+		//sourceRepoURI := res.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryURI
+		buildConfigURI := res.VerificationResult.Signature.Certificate.Extensions.BuildConfigURI
+		sourceRepoAndOrg, sourceWorkflow, err := extractAttestationDetail(tenant, buildConfigURI)
+		if err != nil {
+			return nil, err
 		}
-		predicateType := res.VerificationResult.Statement.PredicateType
-		content[i] = []string{repoAndOrg, predicateType, workflow}
+
+		content[i] = []string{buildRepoAndOrg, buildWorkflow, sourceRepoAndOrg, sourceWorkflow}
 	}
 
 	return content, nil

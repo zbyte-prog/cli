@@ -8,28 +8,27 @@ import (
 	"github.com/cli/cli/v2/internal/prompter"
 )
 
-type MultipleRemotesError struct {
+type AmbiguousBaseRepoError struct {
 	Remotes ghContext.Remotes
 }
 
-func (e MultipleRemotesError) Error() string {
+func (e AmbiguousBaseRepoError) Error() string {
 	return "multiple remotes detected. please specify which repo to use by providing the -R or --repo argument"
 }
 
 type baseRepoFn func() (ghrepo.Interface, error)
 type remotesFn func() (ghContext.Remotes, error)
 
-func PromptWhenMultipleRemotesBaseRepoFunc(baseRepoFn baseRepoFn, prompter prompter.Prompter) baseRepoFn {
+func PromptWhenAmbiguousBaseRepoFunc(baseRepoFn baseRepoFn, prompter prompter.Prompter) baseRepoFn {
 	return func() (ghrepo.Interface, error) {
 		baseRepo, err := baseRepoFn()
 		if err != nil {
-			var multipleRemotesError MultipleRemotesError
-			if !errors.As(err, &multipleRemotesError) {
+			var ambiguousBaseRepoErr AmbiguousBaseRepoError
+			if !errors.As(err, &ambiguousBaseRepoErr) {
 				return nil, err
 			}
 
-			// prompt for the base repo
-			baseRepo, err = promptForRepo(baseRepo, multipleRemotesError.Remotes, prompter)
+			baseRepo, err = promptForRepo(baseRepo, ambiguousBaseRepoErr.Remotes, prompter)
 			if err != nil {
 				return nil, err
 			}
@@ -40,7 +39,7 @@ func PromptWhenMultipleRemotesBaseRepoFunc(baseRepoFn baseRepoFn, prompter promp
 }
 
 // RequireNoAmbiguityBaseRepoFunc returns a function to resolve the base repo, ensuring that
-// there was only one remote.
+// there was only one option, regardless of whether the base repo had been set.
 func RequireNoAmbiguityBaseRepoFunc(baseRepo baseRepoFn, remotes remotesFn) baseRepoFn {
 	return func() (ghrepo.Interface, error) {
 		// TODO: Is this really correct? Some remotes may not be in the same network. We probably need to resolve the
@@ -51,7 +50,7 @@ func RequireNoAmbiguityBaseRepoFunc(baseRepo baseRepoFn, remotes remotesFn) base
 		}
 
 		if remotes.Len() > 1 {
-			return nil, MultipleRemotesError{Remotes: remotes}
+			return nil, AmbiguousBaseRepoError{Remotes: remotes}
 		}
 
 		return baseRepo()

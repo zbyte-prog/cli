@@ -136,7 +136,7 @@ func TestNewCmdListBaseRepoFuncs(t *testing.T) {
 		{
 			name: "when there is no repo flag provided, and no prompting, the base func requiring no ambiguity is used",
 			args: "",
-			wantErr: shared.MultipleRemotesError{
+			wantErr: shared.AmbiguousBaseRepoError{
 				Remotes: remotes,
 			},
 		},

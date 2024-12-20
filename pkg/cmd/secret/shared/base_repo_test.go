@@ -40,7 +40,7 @@ func TestRequireNoAmbiguityBaseRepoFunc(t *testing.T) {
 		_, err := baseRepoFn()
 
 		// It succeeds and returns the inner base repo
-		var multipleRemotesError shared.MultipleRemotesError
+		var multipleRemotesError shared.AmbiguousBaseRepoError
 		require.ErrorAs(t, err, &multipleRemotesError)
 		require.Equal(t, ghContext.Remotes{
 			{
@@ -92,7 +92,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		t.Parallel()
 
 		// Given the base repo function succeeds
-		baseRepoFn := shared.PromptWhenMultipleRemotesBaseRepoFunc(baseRepoStubFn, nil)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(baseRepoStubFn, nil)
 
 		// When fetching the base repo
 		baseRepo, err := baseRepoFn()
@@ -117,7 +117,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		)
 
 		// Given the wrapped base repo func returns a specific error
-		baseRepoFn := shared.PromptWhenMultipleRemotesBaseRepoFunc(errMultipleRemotesStubFn, pm)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errMultipleRemotesStubFn, pm)
 
 		// When fetching the base repo
 		baseRepo, err := baseRepoFn()
@@ -141,7 +141,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		)
 
 		// Given the wrapped base repo func returns a specific error
-		baseRepoFn := shared.PromptWhenMultipleRemotesBaseRepoFunc(errMultipleRemotesStubFn, pm)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errMultipleRemotesStubFn, pm)
 
 		// When fetching the base repo
 		_, err := baseRepoFn()
@@ -154,7 +154,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		t.Parallel()
 
 		// Given the wrapped base repo func returns a non-specific error
-		baseRepoFn := shared.PromptWhenMultipleRemotesBaseRepoFunc(errBaseRepoStubFn, nil)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errBaseRepoStubFn, nil)
 
 		// When fetching the base repo
 		_, err := baseRepoFn()
@@ -165,8 +165,8 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 }
 
 func TestMultipleRemotesErrorMessage(t *testing.T) {
-	err := shared.MultipleRemotesError{}
-	require.EqualError(t, err, "multiple remotes detected. please specify which repo to use by providing the -R or --repo argument")
+	err := shared.AmbiguousBaseRepoError{}
+	require.EqualError(t, err, "multiple remotes detected. please specify which repo to use by providing the -R, --repo argument")
 }
 
 func errMultipleRemotesStubFn() (ghrepo.Interface, error) {
@@ -185,7 +185,7 @@ func errMultipleRemotesStubFn() (ghrepo.Interface, error) {
 		Repo: ghrepo.New("owner", "repo"),
 	}
 
-	return nil, shared.MultipleRemotesError{
+	return nil, shared.AmbiguousBaseRepoError{
 		Remotes: ghContext.Remotes{
 			remote1,
 			remote2,

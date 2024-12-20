@@ -44,6 +44,31 @@ func New(appVersion string) *cmdutil.Factory {
 	return f
 }
 
+// BaseRepoFunc requests a list of Remotes, and selects the first one.
+// Although Remotes is injected via the factory so it looks like the function might
+// be configurable, in practice, it's calling readRemotes, and the injection is indirection.
+//
+// readRemotes makes use of the remoteResolver, which is responsible for requesting the list
+// of remotes for the current working directory from git. It then does some filtering to
+// only retain remotes for hosts that we have authenticated against; keep in mind this may
+// be the single value of GH_HOST.
+//
+// That list of remotes is sorted by their remote name, in the following order:
+//  1. upstream
+//  2. github
+//  3. origin
+//  4. other remotes, no ordering guaratanteed because the sort function is not stable
+//
+// Given that list, this function chooses the first one.
+//
+// Here's a common example of when this might matter: when we clone a fork, by default we add
+// the parent as a remote named upstream. So the remotes may look like this:
+// upstream  https://github.com/cli/cli.git (fetch)
+// upstream https://github.com/cli/cli.git (push)
+// origin  https://github.com/cli/cli-fork.git (fetch)
+// origin  https://github.com/cli/cli-fork.git (push)
+//
+// With this resolution function, the upstream will always be chosen (assuming we have authenticated with github.com).
 func BaseRepoFunc(f *cmdutil.Factory) func() (ghrepo.Interface, error) {
 	return func() (ghrepo.Interface, error) {
 		remotes, err := f.Remotes()

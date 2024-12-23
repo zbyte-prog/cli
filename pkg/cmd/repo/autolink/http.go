@@ -11,7 +11,17 @@ import (
 	"github.com/cli/cli/v2/internal/ghrepo"
 )
 
-func repoAutolinks(httpClient *http.Client, repo ghrepo.Interface) ([]autolink, error) {
+type AutolinkGetter struct {
+	HttpClient *http.Client
+}
+
+func NewAutolinkGetter(httpClient *http.Client) *AutolinkGetter {
+	return &AutolinkGetter{
+		HttpClient: httpClient,
+	}
+}
+
+func (a *AutolinkGetter) Get(repo ghrepo.Interface) ([]autolink, error) {
 	path := fmt.Sprintf("repos/%s/%s/autolinks", repo.RepoOwner(), repo.RepoName())
 	url := ghinstance.RESTPrefix(repo.RepoHost()) + path
 	req, err := http.NewRequest("GET", url, nil)
@@ -19,7 +29,7 @@ func repoAutolinks(httpClient *http.Client, repo ghrepo.Interface) ([]autolink, 
 		return nil, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := a.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

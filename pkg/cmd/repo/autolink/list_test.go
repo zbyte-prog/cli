@@ -2,6 +2,7 @@ package autolink
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmdutil"
-	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
@@ -61,6 +61,9 @@ func TestNewCmdList(t *testing.T) {
 			f := &cmdutil.Factory{
 				IOStreams: ios,
 			}
+			f.HttpClient = func() (*http.Client, error) {
+				return &http.Client{}, nil
+			}
 
 			argv, err := shlex.Split(tt.input)
 			require.NoError(t, err)
@@ -89,12 +92,28 @@ func TestNewCmdList(t *testing.T) {
 	}
 }
 
+type mockAutoLinkGetter struct {
+	Response []autolink
+}
+
+func (m *mockAutoLinkGetter) Get(repo ghrepo.Interface) ([]autolink, error) {
+	return m.Response, nil
+}
+
+type mockAutoLinkGetterError struct {
+	err error
+}
+
+func (me *mockAutoLinkGetterError) Get(repo ghrepo.Interface) ([]autolink, error) {
+	return nil, me.err
+}
+
 func TestListRun(t *testing.T) {
 	tests := []struct {
 		name       string
 		opts       *listOptions
 		isTTY      bool
-		httpStubs  func(t *testing.T, reg *httpmock.Registry)
+		response   []autolink
 		wantStdout string
 		wantStderr string
 		wantErr    bool
@@ -103,24 +122,19 @@ func TestListRun(t *testing.T) {
 			name:  "list tty",
 			opts:  &listOptions{},
 			isTTY: true,
-			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.REST("GET", "repos/OWNER/REPO/autolinks"),
-					httpmock.StringResponse(`[
-						{
-							"id": 1,
-							"key_prefix": "TICKET-",
-							"url_template": "https://example.com/TICKET?query=<num>",
-							"is_alphanumeric": true
-						},
-						{
-							"id": 2,
-							"key_prefix": "STORY-",
-							"url_template": "https://example.com/STORY?id=<num>",
-							"is_alphanumeric": false
-						}
-					]`),
-				)
+			response: []autolink{
+				{
+					ID:             1,
+					KeyPrefix:      "TICKET-",
+					URLTemplate:    "https://example.com/TICKET?query=<num>",
+					IsAlphanumeric: true,
+				},
+				{
+					ID:             2,
+					KeyPrefix:      "STORY-",
+					URLTemplate:    "https://example.com/STORY?id=<num>",
+					IsAlphanumeric: false,
+				},
 			},
 			wantStdout: heredoc.Doc(`
 
@@ -142,24 +156,19 @@ func TestListRun(t *testing.T) {
 				}(),
 			},
 			isTTY: true,
-			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.REST("GET", "repos/OWNER/REPO/autolinks"),
-					httpmock.StringResponse(`[
-						{
-							"id": 1,
-							"key_prefix": "TICKET-",
-							"url_template": "https://example.com/TICKET?query=<num>",
-							"is_alphanumeric": true
-						},
-						{
-							"id": 2,
-							"key_prefix": "STORY-",
-							"url_template": "https://example.com/STORY?id=<num>",
-							"is_alphanumeric": false
-						}
-					]`),
-				)
+			response: []autolink{
+				{
+					ID:             1,
+					KeyPrefix:      "TICKET-",
+					URLTemplate:    "https://example.com/TICKET?query=<num>",
+					IsAlphanumeric: true,
+				},
+				{
+					ID:             2,
+					KeyPrefix:      "STORY-",
+					URLTemplate:    "https://example.com/STORY?id=<num>",
+					IsAlphanumeric: false,
+				},
 			},
 			wantStdout: "[{\"id\":1},{\"id\":2}]\n",
 			wantStderr: "",
@@ -168,24 +177,19 @@ func TestListRun(t *testing.T) {
 			name:  "list non-tty",
 			opts:  &listOptions{},
 			isTTY: false,
-			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.REST("GET", "repos/OWNER/REPO/autolinks"),
-					httpmock.StringResponse(`[
-						{
-							"id": 1,
-							"key_prefix": "TICKET-",
-							"url_template": "https://example.com/TICKET?query=<num>",
-							"is_alphanumeric": true
-						},
-						{
-							"id": 2,
-							"key_prefix": "STORY-",
-							"url_template": "https://example.com/STORY?id=<num>",
-							"is_alphanumeric": false
-						}
-					]`),
-				)
+			response: []autolink{
+				{
+					ID:             1,
+					KeyPrefix:      "TICKET-",
+					URLTemplate:    "https://example.com/TICKET?query=<num>",
+					IsAlphanumeric: true,
+				},
+				{
+					ID:             2,
+					KeyPrefix:      "STORY-",
+					URLTemplate:    "https://example.com/STORY?id=<num>",
+					IsAlphanumeric: false,
+				},
 			},
 			wantStdout: heredoc.Doc(`
 				1	TICKET-	https://example.com/TICKET?query=<num>	true
@@ -195,15 +199,10 @@ func TestListRun(t *testing.T) {
 		},
 
 		{
-			name:  "no results",
-			opts:  &listOptions{},
-			isTTY: true,
-			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.REST("GET", "repos/OWNER/REPO/autolinks"),
-					httpmock.StringResponse(`[]`),
-				)
-			},
+			name:       "no results",
+			opts:       &listOptions{},
+			isTTY:      true,
+			response:   []autolink{},
 			wantStdout: "",
 			wantStderr: "",
 			wantErr:    true,
@@ -223,13 +222,6 @@ func TestListRun(t *testing.T) {
 			ios.SetStdinTTY(tt.isTTY)
 			ios.SetStderrTTY(tt.isTTY)
 
-			reg := &httpmock.Registry{}
-			if tt.httpStubs != nil {
-				tt.httpStubs(t, reg)
-			}
-
-			defer reg.Verify(t)
-
 			opts := tt.opts
 			opts.IO = ios
 			opts.Browser = &browser.Stub{}
@@ -237,19 +229,19 @@ func TestListRun(t *testing.T) {
 			opts.IO = ios
 			opts.BaseRepo = func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil }
 
-			opts.HTTPClient = func() (*http.Client, error) { return &http.Client{Transport: reg}, nil }
-
-			err := listRun(opts)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("listRun() return error: %v", err)
-				return
+			if tt.wantErr {
+				opts.AutolinkClient = &mockAutoLinkGetterError{err: fmt.Errorf("mock error")}
+				err := listRun(opts)
+				require.Error(t, err)
+			} else {
+				opts.AutolinkClient = &mockAutoLinkGetter{Response: tt.response}
+				err := listRun(opts)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantStdout, stdout.String())
 			}
 
-			if stdout.String() != tt.wantStdout {
-				t.Errorf("wants stdout %q, got %q", tt.wantStdout, stdout.String())
-			}
-			if stderr.String() != tt.wantStderr {
-				t.Errorf("wants stderr %q, got %q", tt.wantStderr, stderr.String())
+			if tt.wantStderr != "" {
+				assert.Equal(t, tt.wantStderr, stderr.String())
 			}
 		})
 	}

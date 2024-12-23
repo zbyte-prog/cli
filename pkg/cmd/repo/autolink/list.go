@@ -2,7 +2,6 @@ package autolink
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/MakeNowJust/heredoc"
@@ -23,20 +22,23 @@ var autolinkFields = []string{
 }
 
 type listOptions struct {
-	BaseRepo   func() (ghrepo.Interface, error)
-	Browser    browser.Browser
-	HTTPClient func() (*http.Client, error)
-	IO         *iostreams.IOStreams
+	BaseRepo       func() (ghrepo.Interface, error)
+	Browser        browser.Browser
+	AutolinkClient AutolinkClient
+	IO             *iostreams.IOStreams
 
 	Exporter cmdutil.Exporter
 	WebMode  bool
 }
 
+type AutolinkClient interface {
+	Get(repo ghrepo.Interface) ([]autolink, error)
+}
+
 func newCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Command {
 	opts := &listOptions{
-		Browser:    f.Browser,
-		HTTPClient: f.HttpClient,
-		IO:         f.IOStreams,
+		Browser: f.Browser,
+		IO:      f.IOStreams,
 	}
 
 	cmd := &cobra.Command{
@@ -51,6 +53,12 @@ func newCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Comman
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.BaseRepo = f.BaseRepo
+
+			httpClient, err := f.HttpClient()
+			if err != nil {
+				return err
+			}
+			opts.AutolinkClient = NewAutolinkGetter(httpClient)
 
 			if runF != nil {
 				return runF(opts)
@@ -67,10 +75,6 @@ func newCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Comman
 }
 
 func listRun(opts *listOptions) error {
-	client, err := opts.HTTPClient()
-	if err != nil {
-		return err
-	}
 
 	repo, err := opts.BaseRepo()
 	if err != nil {
@@ -87,7 +91,7 @@ func listRun(opts *listOptions) error {
 		return opts.Browser.Browse(autolinksListURL)
 	}
 
-	autolinks, err := repoAutolinks(client, repo)
+	autolinks, err := opts.AutolinkClient.Get(repo)
 	if err != nil {
 		return err
 	}

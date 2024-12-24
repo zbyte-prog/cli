@@ -201,6 +201,36 @@ func Test_editRun(t *testing.T) {
 					}))
 			},
 		},
+		{
+			name: "enable/disable security and analysis settings",
+			opts: EditOptions{
+				Repository: ghrepo.NewWithHost("OWNER", "REPO", "github.com"),
+				Edits: EditRepositoryInput{
+					SecurityAndAnalysis: &SecurityAndAnalysisInput{
+						EnableAdvancedSecurity: &SecurityAndAnalysisStatus{
+							Status: sp("enabled"),
+						},
+						EnableSecretScanning: &SecurityAndAnalysisStatus{
+							Status: sp("enabled"),
+						},
+						EnableSecretScanningPushProtection: &SecurityAndAnalysisStatus{
+							Status: sp("disabled"),
+						},
+					},
+				},
+			},
+			httpStubs: func(t *testing.T, r *httpmock.Registry) {
+				r.Register(
+					httpmock.REST("PATCH", "repos/OWNER/REPO"),
+					httpmock.RESTPayload(200, `{}`, func(payload map[string]interface{}) {
+						assert.Equal(t, 1, len(payload))
+						securityAndAnalysis := payload["security_and_analysis"].(map[string]interface{})
+						assert.Equal(t, "enabled", securityAndAnalysis["advanced_security"].(map[string]interface{})["status"])
+						assert.Equal(t, "enabled", securityAndAnalysis["secret_scanning"].(map[string]interface{})["status"])
+						assert.Equal(t, "disabled", securityAndAnalysis["secret_scanning_push_protection"].(map[string]interface{})["status"])
+					}))
+			},
+		},
 	}
 
 	for _, tt := range tests {

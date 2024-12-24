@@ -82,12 +82,11 @@ func TestNewCmdList(t *testing.T) {
 			_, err = cmd.ExecuteC()
 			if tt.wantErr {
 				require.EqualError(t, err, tt.errMsg)
-				return
-			}
-
-			require.NoError(t, err)
-			assert.Equal(t, tt.output.WebMode, gotOpts.WebMode)
-			assert.Equal(t, tt.wantExporter, gotOpts.Exporter != nil)
+			} else {
+			        require.NoError(t, err)
+			        assert.Equal(t, tt.output.WebMode, gotOpts.WebMode)
+			        assert.Equal(t, tt.wantExporter, gotOpts.Exporter != nil)
+		        }
 		})
 	}
 }

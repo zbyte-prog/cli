@@ -1,4 +1,4 @@
-package autolink
+package list
 
 import (
 	"encoding/json"

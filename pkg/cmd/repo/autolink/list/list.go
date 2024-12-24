@@ -1,4 +1,4 @@
-package autolink
+package list
 
 import (
 	"fmt"
@@ -21,6 +21,17 @@ var autolinkFields = []string{
 	"urlTemplate",
 }
 
+type autolink struct {
+	ID             int    `json:"id"`
+	IsAlphanumeric bool   `json:"is_alphanumeric"`
+	KeyPrefix      string `json:"key_prefix"`
+	URLTemplate    string `json:"url_template"`
+}
+
+func (s *autolink) ExportData(fields []string) map[string]interface{} {
+	return cmdutil.StructExportData(s, fields)
+}
+
 type listOptions struct {
 	BaseRepo       func() (ghrepo.Interface, error)
 	Browser        browser.Browser
@@ -35,7 +46,7 @@ type AutolinkClient interface {
 	Get(repo ghrepo.Interface) ([]autolink, error)
 }
 
-func newCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Command {
+func NewCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Command {
 	opts := &listOptions{
 		Browser: f.Browser,
 		IO:      f.IOStreams,

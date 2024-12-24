@@ -1,4 +1,4 @@
-package autolink
+package list
 
 import (
 	"bytes"
@@ -69,7 +69,7 @@ func TestNewCmdList(t *testing.T) {
 			require.NoError(t, err)
 
 			var gotOpts *listOptions
-			cmd := newCmdList(f, func(opts *listOptions) error {
+			cmd := NewCmdList(f, func(opts *listOptions) error {
 				gotOpts = opts
 				return nil
 			})

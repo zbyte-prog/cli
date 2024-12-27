@@ -89,16 +89,6 @@ type EditRepositoryInput struct {
 	Visibility          *string                   `json:"visibility,omitempty"`
 }
 
-type SecurityAndAnalysisInput struct {
-	EnableAdvancedSecurity             *SecurityAndAnalysisStatus `json:"advanced_security,omitempty"`
-	EnableSecretScanning               *SecurityAndAnalysisStatus `json:"secret_scanning,omitempty"`
-	EnableSecretScanningPushProtection *SecurityAndAnalysisStatus `json:"secret_scanning_push_protection,omitempty"`
-}
-
-type SecurityAndAnalysisStatus struct {
-	Status *string `json:"status,omitempty"`
-}
-
 func NewCmdEdit(f *cmdutil.Factory, runF func(options *EditOptions) error) *cobra.Command {
 	opts := &EditOptions{
 		IO:       f.IOStreams,
@@ -170,6 +160,18 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(options *EditOptions) error) *cobr
 
 			if opts.Edits.Visibility != nil && !opts.AcceptVisibilityChangeConsequences {
 				return cmdutil.FlagErrorf("use of --visibility flag requires --accept-visibility-change-consequences flag")
+			}
+
+			if hasSecurityEdits(opts.Edits) {
+				apiClient := api.NewClientFromHTTP(opts.HTTPClient)
+				repo, err := api.FetchRepository(apiClient, opts.Repository, []string{"viewerCanAdminister"})
+				if err != nil {
+					return err
+				}
+				if !repo.ViewerCanAdminister {
+					return fmt.Errorf("you do not have sufficient permissions to edit repository security and analysis features")
+				}
+				opts.Edits.SecurityAndAnalysis = transformSecurityAndAnalysisOpts(opts)
 			}
 
 			if runF != nil {
@@ -255,34 +257,6 @@ func editRun(ctx context.Context, opts *EditOptions) error {
 		err = interactiveRepoEdit(opts, fetchedRepo)
 		if err != nil {
 			return err
-		}
-	}
-
-	if hasSecurityEdits(opts.Edits) {
-		apiClient := api.NewClientFromHTTP(opts.HTTPClient)
-		repo, err := api.FetchRepository(apiClient, opts.Repository, []string{"viewerCanAdminister"})
-		if err != nil {
-			return err
-		}
-		if !repo.ViewerCanAdminister {
-			return fmt.Errorf("you do not have sufficient permissions to edit repository security and analysis features")
-		}
-
-		opts.Edits.SecurityAndAnalysis = &SecurityAndAnalysisInput{}
-		if opts.Edits.enableAdvancedSecurity != nil {
-			opts.Edits.SecurityAndAnalysis.EnableAdvancedSecurity = &SecurityAndAnalysisStatus{
-				Status: boolToStatus(*opts.Edits.enableAdvancedSecurity),
-			}
-		}
-		if opts.Edits.enableSecretScanning != nil {
-			opts.Edits.SecurityAndAnalysis.EnableSecretScanning = &SecurityAndAnalysisStatus{
-				Status: boolToStatus(*opts.Edits.enableSecretScanning),
-			}
-		}
-		if opts.Edits.enableSecretScanningPushProtection != nil {
-			opts.Edits.SecurityAndAnalysis.EnableSecretScanningPushProtection = &SecurityAndAnalysisStatus{
-				Status: boolToStatus(*opts.Edits.enableSecretScanningPushProtection),
-			}
 		}
 	}
 
@@ -619,4 +593,36 @@ func boolToStatus(status bool) *string {
 
 func hasSecurityEdits(edits EditRepositoryInput) bool {
 	return edits.enableAdvancedSecurity != nil || edits.enableSecretScanning != nil || edits.enableSecretScanningPushProtection != nil
+}
+
+type SecurityAndAnalysisInput struct {
+	EnableAdvancedSecurity             *SecurityAndAnalysisStatus `json:"advanced_security,omitempty"`
+	EnableSecretScanning               *SecurityAndAnalysisStatus `json:"secret_scanning,omitempty"`
+	EnableSecretScanningPushProtection *SecurityAndAnalysisStatus `json:"secret_scanning_push_protection,omitempty"`
+}
+
+type SecurityAndAnalysisStatus struct {
+	Status *string `json:"status,omitempty"`
+}
+
+// Transform security and analysis parameters to properly serialize EditRepositoryInput
+// See API Docs: https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#update-a-repository
+func transformSecurityAndAnalysisOpts(opts *EditOptions) *SecurityAndAnalysisInput {
+	securityOptions := &SecurityAndAnalysisInput{}
+	if opts.Edits.enableAdvancedSecurity != nil {
+		securityOptions.EnableAdvancedSecurity = &SecurityAndAnalysisStatus{
+			Status: boolToStatus(*opts.Edits.enableAdvancedSecurity),
+		}
+	}
+	if opts.Edits.enableSecretScanning != nil {
+		securityOptions.EnableSecretScanning = &SecurityAndAnalysisStatus{
+			Status: boolToStatus(*opts.Edits.enableSecretScanning),
+		}
+	}
+	if opts.Edits.enableSecretScanningPushProtection != nil {
+		securityOptions.EnableSecretScanningPushProtection = &SecurityAndAnalysisStatus{
+			Status: boolToStatus(*opts.Edits.enableSecretScanningPushProtection),
+		}
+	}
+	return securityOptions
 }

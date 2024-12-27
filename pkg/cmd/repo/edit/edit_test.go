@@ -700,6 +700,95 @@ func Test_editRun_interactive(t *testing.T) {
 	}
 }
 
+func Test_transformSecurityAndAnalysisOpts(t *testing.T) {
+	tests := []struct {
+		name string
+		opts EditOptions
+		want *SecurityAndAnalysisInput
+	}{
+		{
+			name: "Enable all security and analysis settings",
+			opts: EditOptions{
+				Edits: EditRepositoryInput{
+					enableAdvancedSecurity:             bp(true),
+					enableSecretScanning:               bp(true),
+					enableSecretScanningPushProtection: bp(true),
+				},
+			},
+			want: &SecurityAndAnalysisInput{
+				EnableAdvancedSecurity: &SecurityAndAnalysisStatus{
+					Status: sp("enabled"),
+				},
+				EnableSecretScanning: &SecurityAndAnalysisStatus{
+					Status: sp("enabled"),
+				},
+				EnableSecretScanningPushProtection: &SecurityAndAnalysisStatus{
+					Status: sp("enabled"),
+				},
+			},
+		},
+		{
+			name: "Disable all security and analysis settings",
+			opts: EditOptions{
+				Edits: EditRepositoryInput{
+					enableAdvancedSecurity:             bp(false),
+					enableSecretScanning:               bp(false),
+					enableSecretScanningPushProtection: bp(false),
+				},
+			},
+			want: &SecurityAndAnalysisInput{
+				EnableAdvancedSecurity: &SecurityAndAnalysisStatus{
+					Status: sp("disabled"),
+				},
+				EnableSecretScanning: &SecurityAndAnalysisStatus{
+					Status: sp("disabled"),
+				},
+				EnableSecretScanningPushProtection: &SecurityAndAnalysisStatus{
+					Status: sp("disabled"),
+				},
+			},
+		},
+		{
+			name: "Enable only advanced security",
+			opts: EditOptions{
+				Edits: EditRepositoryInput{
+					enableAdvancedSecurity: bp(true),
+				},
+			},
+			want: &SecurityAndAnalysisInput{
+				EnableAdvancedSecurity: &SecurityAndAnalysisStatus{
+					Status: sp("enabled"),
+				},
+				EnableSecretScanning:               nil,
+				EnableSecretScanningPushProtection: nil,
+			},
+		},
+		{
+			name: "Disable only secret scanning",
+			opts: EditOptions{
+				Edits: EditRepositoryInput{
+					enableSecretScanning: bp(false),
+				},
+			},
+			want: &SecurityAndAnalysisInput{
+				EnableAdvancedSecurity: nil,
+				EnableSecretScanning: &SecurityAndAnalysisStatus{
+					Status: sp("disabled"),
+				},
+				EnableSecretScanningPushProtection: nil,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &tt.opts
+			transformed := transformSecurityAndAnalysisOpts(opts)
+			assert.Equal(t, tt.want, transformed)
+		})
+	}
+}
+
 func sp(v string) *string {
 	return &v
 }

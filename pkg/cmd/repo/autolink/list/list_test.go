@@ -2,7 +2,6 @@ package list
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -51,6 +50,13 @@ func TestNewCmdList(t *testing.T) {
 			output:       listOptions{},
 			wantExporter: true,
 		},
+		{
+			name:    "invalid json flag",
+			input:   "--json invalid",
+			output:  listOptions{},
+			wantErr: true,
+			errMsg:  "Unknown JSON field: \"invalid\"\nAvailable fields:\n  id\n  isAlphanumeric\n  keyPrefix\n  urlTemplate",
+		},
 	}
 
 	for _, tt := range tests {
@@ -89,48 +95,34 @@ func TestNewCmdList(t *testing.T) {
 	}
 }
 
-type mockAutoLinkGetter struct {
-	Response []autolink
-}
-
-func (m *mockAutoLinkGetter) List(repo ghrepo.Interface) ([]autolink, error) {
-	return m.Response, nil
-}
-
-type mockAutoLinkGetterError struct {
-	err error
-}
-
-func (me *mockAutoLinkGetterError) List(repo ghrepo.Interface) ([]autolink, error) {
-	return nil, me.err
-}
-
 func TestListRun(t *testing.T) {
 	tests := []struct {
-		name       string
-		opts       *listOptions
-		isTTY      bool
-		response   []autolink
-		wantStdout string
-		wantStderr string
-		wantErr    bool
+		name        string
+		opts        *listOptions
+		isTTY       bool
+		stubLister  stubAutoLinkLister
+		expectedErr error
+		wantStdout  string
+		wantStderr  string
 	}{
 		{
 			name:  "list tty",
 			opts:  &listOptions{},
 			isTTY: true,
-			response: []autolink{
-				{
-					ID:             1,
-					KeyPrefix:      "TICKET-",
-					URLTemplate:    "https://example.com/TICKET?query=<num>",
-					IsAlphanumeric: true,
-				},
-				{
-					ID:             2,
-					KeyPrefix:      "STORY-",
-					URLTemplate:    "https://example.com/STORY?id=<num>",
-					IsAlphanumeric: false,
+			stubLister: stubAutoLinkLister{
+				autolinks: []autolink{
+					{
+						ID:             1,
+						KeyPrefix:      "TICKET-",
+						URLTemplate:    "https://example.com/TICKET?query=<num>",
+						IsAlphanumeric: true,
+					},
+					{
+						ID:             2,
+						KeyPrefix:      "STORY-",
+						URLTemplate:    "https://example.com/STORY?id=<num>",
+						IsAlphanumeric: false,
+					},
 				},
 			},
 			wantStdout: heredoc.Doc(`
@@ -153,18 +145,20 @@ func TestListRun(t *testing.T) {
 				}(),
 			},
 			isTTY: true,
-			response: []autolink{
-				{
-					ID:             1,
-					KeyPrefix:      "TICKET-",
-					URLTemplate:    "https://example.com/TICKET?query=<num>",
-					IsAlphanumeric: true,
-				},
-				{
-					ID:             2,
-					KeyPrefix:      "STORY-",
-					URLTemplate:    "https://example.com/STORY?id=<num>",
-					IsAlphanumeric: false,
+			stubLister: stubAutoLinkLister{
+				autolinks: []autolink{
+					{
+						ID:             1,
+						KeyPrefix:      "TICKET-",
+						URLTemplate:    "https://example.com/TICKET?query=<num>",
+						IsAlphanumeric: true,
+					},
+					{
+						ID:             2,
+						KeyPrefix:      "STORY-",
+						URLTemplate:    "https://example.com/STORY?id=<num>",
+						IsAlphanumeric: false,
+					},
 				},
 			},
 			wantStdout: "[{\"id\":1},{\"id\":2}]\n",
@@ -174,18 +168,20 @@ func TestListRun(t *testing.T) {
 			name:  "list non-tty",
 			opts:  &listOptions{},
 			isTTY: false,
-			response: []autolink{
-				{
-					ID:             1,
-					KeyPrefix:      "TICKET-",
-					URLTemplate:    "https://example.com/TICKET?query=<num>",
-					IsAlphanumeric: true,
-				},
-				{
-					ID:             2,
-					KeyPrefix:      "STORY-",
-					URLTemplate:    "https://example.com/STORY?id=<num>",
-					IsAlphanumeric: false,
+			stubLister: stubAutoLinkLister{
+				autolinks: []autolink{
+					{
+						ID:             1,
+						KeyPrefix:      "TICKET-",
+						URLTemplate:    "https://example.com/TICKET?query=<num>",
+						IsAlphanumeric: true,
+					},
+					{
+						ID:             2,
+						KeyPrefix:      "STORY-",
+						URLTemplate:    "https://example.com/STORY?id=<num>",
+						IsAlphanumeric: false,
+					},
 				},
 			},
 			wantStdout: heredoc.Doc(`
@@ -194,15 +190,26 @@ func TestListRun(t *testing.T) {
 			`),
 			wantStderr: "",
 		},
-
 		{
-			name:       "no results",
-			opts:       &listOptions{},
-			isTTY:      true,
-			response:   []autolink{},
-			wantStdout: "",
-			wantStderr: "",
-			wantErr:    true,
+			name:  "no results",
+			opts:  &listOptions{},
+			isTTY: true,
+			stubLister: stubAutoLinkLister{
+				autolinks: []autolink{},
+			},
+			expectedErr: cmdutil.NewNoResultsError("no autolinks found in OWNER/REPO"),
+			wantStderr:  "",
+		},
+		{
+			name:  "client error",
+			opts:  &listOptions{},
+			isTTY: true,
+			stubLister: stubAutoLinkLister{
+				autolinks: []autolink{},
+				err:       testAutolinkClientListError{},
+			},
+			expectedErr: testAutolinkClientListError{},
+			wantStderr:  "",
 		},
 		{
 			name:       "web mode",
@@ -226,13 +233,13 @@ func TestListRun(t *testing.T) {
 			opts.IO = ios
 			opts.BaseRepo = func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil }
 
-			if tt.wantErr {
-				opts.AutolinkClient = &mockAutoLinkGetterError{err: fmt.Errorf("mock error")}
-				err := listRun(opts)
+			opts.AutolinkClient = &tt.stubLister
+			err := listRun(opts)
+
+			if tt.expectedErr != nil {
 				require.Error(t, err)
+				require.ErrorIs(t, err, tt.expectedErr)
 			} else {
-				opts.AutolinkClient = &mockAutoLinkGetter{Response: tt.response}
-				err := listRun(opts)
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantStdout, stdout.String())
 			}
@@ -242,4 +249,21 @@ func TestListRun(t *testing.T) {
 			}
 		})
 	}
+}
+
+type (
+	testAutolinkClientListError struct{}
+
+	stubAutoLinkLister struct {
+		autolinks []autolink
+		err       error
+	}
+)
+
+func (g stubAutoLinkLister) List(repo ghrepo.Interface) ([]autolink, error) {
+	return g.autolinks, g.err
+}
+
+func (e testAutolinkClientListError) Error() string {
+	return "autolink client list error"
 }

@@ -86,7 +86,6 @@ func NewCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Comman
 }
 
 func listRun(opts *listOptions) error {
-
 	repo, err := opts.BaseRepo()
 	if err != nil {
 		return err

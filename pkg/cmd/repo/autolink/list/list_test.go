@@ -11,10 +11,20 @@ import (
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
+	"github.com/cli/cli/v2/pkg/jsonfieldstest"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestJSONFields(t *testing.T) {
+	jsonfieldstest.ExpectCommandToSupportJSONFields(t, NewCmdList, []string{
+		"id",
+		"isAlphanumeric",
+		"keyPrefix",
+		"urlTemplate",
+	})
+}
 
 func TestNewCmdList(t *testing.T) {
 	tests := []struct {
@@ -40,18 +50,6 @@ func TestNewCmdList(t *testing.T) {
 			input:        "--json id",
 			output:       listOptions{},
 			wantExporter: true,
-		},
-		{
-			name:    "invalid json flag",
-			input:   "--json invalid",
-			wantErr: true,
-			errMsg: heredoc.Doc(`
-				Unknown JSON field: "invalid"
-				Available fields:
-				  id
-				  isAlphanumeric
-				  keyPrefix
-				  urlTemplate`),
 		},
 	}
 

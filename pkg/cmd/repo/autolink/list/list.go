@@ -69,7 +69,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			opts.AutolinkClient = NewAutolinkGetter(httpClient)
+			opts.AutolinkClient = &AutolinkGetter{HTTPClient: httpClient}
 
 			if runF != nil {
 				return runF(opts)

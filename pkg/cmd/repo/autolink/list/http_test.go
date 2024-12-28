@@ -13,7 +13,7 @@ import (
 
 func TestNewAutolinkGetter(t *testing.T) {
 	httpClient := &http.Client{}
-	autolinkGetter := NewAutolinkGetter(httpClient)
+	autolinkGetter := &AutolinkGetter{HTTPClient: httpClient}
 	assert.NotNil(t, autolinkGetter)
 }
 
@@ -65,7 +65,9 @@ func TestAutoLinkGetter_Get(t *testing.T) {
 			)
 			defer reg.Verify(t)
 
-			autolinkGetter := NewAutolinkGetter(&http.Client{Transport: reg})
+			autolinkGetter := &AutolinkGetter{
+				HTTPClient: &http.Client{Transport: reg},
+			}
 			autolinks, err := autolinkGetter.Get(tt.repo)
 			if tt.status == 404 {
 				require.Error(t, err)

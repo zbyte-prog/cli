@@ -12,13 +12,7 @@ import (
 )
 
 type AutolinkGetter struct {
-	HttpClient *http.Client
-}
-
-func NewAutolinkGetter(httpClient *http.Client) *AutolinkGetter {
-	return &AutolinkGetter{
-		HttpClient: httpClient,
-	}
+	HTTPClient *http.Client
 }
 
 func (a *AutolinkGetter) Get(repo ghrepo.Interface) ([]autolink, error) {
@@ -29,7 +23,7 @@ func (a *AutolinkGetter) Get(repo ghrepo.Interface) ([]autolink, error) {
 		return nil, err
 	}
 
-	resp, err := a.HttpClient.Do(req)
+	resp, err := a.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

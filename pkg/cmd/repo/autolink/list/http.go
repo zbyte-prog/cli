@@ -3,7 +3,6 @@ package list
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/cli/cli/v2/api"
@@ -34,14 +33,8 @@ func (a *AutolinkLister) List(repo ghrepo.Interface) ([]autolink, error) {
 	} else if resp.StatusCode > 299 {
 		return nil, api.HandleHTTPError(resp)
 	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var autolinks []autolink
-	err = json.Unmarshal(b, &autolinks)
+	err = json.NewDecoder(resp.Body).Decode(&autolinks)
 	if err != nil {
 		return nil, err
 	}

@@ -35,8 +35,8 @@ func (a *AutolinkGetter) Get(repo ghrepo.Interface) ([]autolink, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
-		return nil, fmt.Errorf("error getting autolinks: HTTP 404: Must have admin rights to Repository. (https://api.github.com/%s)", path)
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("error getting autolinks: HTTP 404: Perhaps you are missing admin rights to the repository? (https://api.github.com/%s)", path)
 	} else if resp.StatusCode > 299 {
 		return nil, api.HandleHTTPError(resp)
 	}

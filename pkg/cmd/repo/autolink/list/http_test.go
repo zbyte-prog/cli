@@ -69,7 +69,7 @@ func TestAutoLinkGetter_Get(t *testing.T) {
 			autolinks, err := autolinkGetter.Get(tt.repo)
 			if tt.status == 404 {
 				require.Error(t, err)
-				assert.Equal(t, "error getting autolinks: HTTP 404: Must have admin rights to Repository. (https://api.github.com/repos/OWNER/REPO/autolinks)", err.Error())
+				assert.Equal(t, "error getting autolinks: HTTP 404: Perhaps you are missing admin rights to the repository? (https://api.github.com/repos/OWNER/REPO/autolinks)", err.Error())
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.resp, autolinks)

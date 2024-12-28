@@ -43,7 +43,7 @@ type listOptions struct {
 }
 
 type AutolinkClient interface {
-	Get(repo ghrepo.Interface) ([]autolink, error)
+	List(repo ghrepo.Interface) ([]autolink, error)
 }
 
 func NewCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Command {
@@ -69,7 +69,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			opts.AutolinkClient = &AutolinkGetter{HTTPClient: httpClient}
+			opts.AutolinkClient = &AutolinkLister{HTTPClient: httpClient}
 
 			if runF != nil {
 				return runF(opts)
@@ -102,7 +102,7 @@ func listRun(opts *listOptions) error {
 		return opts.Browser.Browse(autolinksListURL)
 	}
 
-	autolinks, err := opts.AutolinkClient.Get(repo)
+	autolinks, err := opts.AutolinkClient.List(repo)
 	if err != nil {
 		return err
 	}

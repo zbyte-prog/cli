@@ -93,7 +93,7 @@ type mockAutoLinkGetter struct {
 	Response []autolink
 }
 
-func (m *mockAutoLinkGetter) Get(repo ghrepo.Interface) ([]autolink, error) {
+func (m *mockAutoLinkGetter) List(repo ghrepo.Interface) ([]autolink, error) {
 	return m.Response, nil
 }
 
@@ -101,7 +101,7 @@ type mockAutoLinkGetterError struct {
 	err error
 }
 
-func (me *mockAutoLinkGetterError) Get(repo ghrepo.Interface) ([]autolink, error) {
+func (me *mockAutoLinkGetterError) List(repo ghrepo.Interface) ([]autolink, error) {
 	return nil, me.err
 }
 

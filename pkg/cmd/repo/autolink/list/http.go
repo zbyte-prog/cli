@@ -11,11 +11,11 @@ import (
 	"github.com/cli/cli/v2/internal/ghrepo"
 )
 
-type AutolinkGetter struct {
+type AutolinkLister struct {
 	HTTPClient *http.Client
 }
 
-func (a *AutolinkGetter) Get(repo ghrepo.Interface) ([]autolink, error) {
+func (a *AutolinkLister) List(repo ghrepo.Interface) ([]autolink, error) {
 	path := fmt.Sprintf("repos/%s/%s/autolinks", repo.RepoOwner(), repo.RepoName())
 	url := ghinstance.RESTPrefix(repo.RepoHost()) + path
 	req, err := http.NewRequest("GET", url, nil)

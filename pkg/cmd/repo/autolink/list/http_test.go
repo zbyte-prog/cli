@@ -11,13 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewAutolinkGetter(t *testing.T) {
-	httpClient := &http.Client{}
-	autolinkGetter := &AutolinkLister{HTTPClient: httpClient}
-	assert.NotNil(t, autolinkGetter)
-}
-
-func TestAutoLinkGetter_Get(t *testing.T) {
+func TestAutoLinkLister_List(t *testing.T) {
 	tests := []struct {
 		name   string
 		repo   ghrepo.Interface
@@ -65,10 +59,10 @@ func TestAutoLinkGetter_Get(t *testing.T) {
 			)
 			defer reg.Verify(t)
 
-			autolinkGetter := &AutolinkLister{
+			autolinkLister := &AutolinkLister{
 				HTTPClient: &http.Client{Transport: reg},
 			}
-			autolinks, err := autolinkGetter.List(tt.repo)
+			autolinks, err := autolinkLister.List(tt.repo)
 			if tt.status == 404 {
 				require.Error(t, err)
 				assert.Equal(t, "error getting autolinks: HTTP 404: Perhaps you are missing admin rights to the repository? (https://api.github.com/repos/OWNER/REPO/autolinks)", err.Error())

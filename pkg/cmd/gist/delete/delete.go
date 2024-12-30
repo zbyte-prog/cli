@@ -8,6 +8,7 @@ import (
 
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/gh"
+	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/pkg/cmd/gist/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -18,6 +19,7 @@ type DeleteOptions struct {
 	IO         *iostreams.IOStreams
 	Config     func() (gh.Config, error)
 	HttpClient func() (*http.Client, error)
+	Prompter   prompter.Prompter
 
 	Selector string
 }
@@ -27,14 +29,17 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		IO:         f.IOStreams,
 		Config:     f.Config,
 		HttpClient: f.HttpClient,
+		Prompter:   f.Prompter,
 	}
 
 	cmd := &cobra.Command{
 		Use:   "delete {<id> | <url>}",
 		Short: "Delete a gist",
-		Args:  cmdutil.ExactArgs(1, "cannot delete: gist argument required"),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			opts.Selector = args[0]
+			if len(args) == 1 {
+				opts.Selector = args[0]
+			}
 			if runF != nil {
 				return runF(&opts)
 			}
@@ -46,14 +51,6 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 func deleteRun(opts *DeleteOptions) error {
 	gistID := opts.Selector
-
-	if strings.Contains(gistID, "/") {
-		id, err := shared.GistIDFromURL(gistID)
-		if err != nil {
-			return err
-		}
-		gistID = id
-	}
 	client, err := opts.HttpClient()
 	if err != nil {
 		return err
@@ -65,6 +62,27 @@ func deleteRun(opts *DeleteOptions) error {
 	}
 
 	host, _ := cfg.Authentication().DefaultHost()
+
+	cs := opts.IO.ColorScheme()
+	if gistID == "" {
+		gistID, err = shared.PromptGists(opts.Prompter, client, host, cs)
+		if err != nil {
+			return err
+		}
+
+		if gistID == "" {
+			fmt.Fprintln(opts.IO.Out, "No gists found.")
+			return nil
+		}
+	}
+
+	if strings.Contains(gistID, "/") {
+		id, err := shared.GistIDFromURL(gistID)
+		if err != nil {
+			return err
+		}
+		gistID = id
+	}
 
 	apiClient := api.NewClientFromHTTP(client)
 	if err := deleteGist(apiClient, host, gistID); err != nil {

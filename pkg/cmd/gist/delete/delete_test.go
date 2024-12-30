@@ -2,11 +2,14 @@ package delete
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/gh"
+	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -25,6 +28,13 @@ func TestNewCmdDelete(t *testing.T) {
 			cli:  "123",
 			wants: DeleteOptions{
 				Selector: "123",
+			},
+		},
+		{
+			name: "no ID supplied",
+			cli:  "",
+			wants: DeleteOptions{
+				Selector: "",
 			},
 		},
 	}
@@ -56,12 +66,13 @@ func TestNewCmdDelete(t *testing.T) {
 
 func Test_deleteRun(t *testing.T) {
 	tests := []struct {
-		name       string
-		opts       DeleteOptions
-		httpStubs  func(*httpmock.Registry)
-		wantErr    bool
-		wantStdout string
-		wantStderr string
+		name         string
+		opts         DeleteOptions
+		httpStubs    func(*httpmock.Registry)
+		wantErr      bool
+		wantStdout   string
+		wantStderr   string
+		mockGistList bool
 	}{
 		{
 			name: "successfully delete",
@@ -75,6 +86,20 @@ func Test_deleteRun(t *testing.T) {
 			wantErr:    false,
 			wantStdout: "",
 			wantStderr: "",
+		},
+		{
+			name: "successfully delete with prompt",
+			opts: DeleteOptions{
+				Selector: "",
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(httpmock.REST("DELETE", "gists/1234"),
+					httpmock.StatusStringResponse(200, "{}"))
+			},
+			mockGistList: true,
+			wantErr:      false,
+			wantStdout:   "",
+			wantStderr:   "",
 		},
 		{
 			name: "not found",
@@ -95,6 +120,32 @@ func Test_deleteRun(t *testing.T) {
 		reg := &httpmock.Registry{}
 		if tt.httpStubs != nil {
 			tt.httpStubs(reg)
+		}
+
+		if tt.mockGistList {
+			sixHours, _ := time.ParseDuration("6h")
+			sixHoursAgo := time.Now().Add(-sixHours)
+			reg.Register(
+				httpmock.GraphQL(`query GistList\b`),
+				httpmock.StringResponse(fmt.Sprintf(
+					`{ "data": { "viewer": { "gists": { "nodes": [
+							{
+								"name": "1234",
+								"files": [{ "name": "cool.txt" }],
+								"description": "",
+								"updatedAt": "%s",
+								"isPublic": true
+							}
+						] } } } }`,
+					sixHoursAgo.Format(time.RFC3339),
+				)),
+			)
+
+			pm := prompter.NewMockPrompter(t)
+			pm.RegisterSelect("Select a gist", []string{"cool.txt  about 6 hours ago"}, func(_, _ string, opts []string) (int, error) {
+				return 0, nil
+			})
+			tt.opts.Prompter = pm
 		}
 
 		tt.opts.HttpClient = func() (*http.Client, error) {

@@ -69,10 +69,10 @@ func Test_deleteRun(t *testing.T) {
 		name         string
 		opts         DeleteOptions
 		httpStubs    func(*httpmock.Registry)
+		mockGistList bool
 		wantErr      bool
 		wantStdout   string
 		wantStderr   string
-		mockGistList bool
 	}{
 		{
 			name: "successfully delete",

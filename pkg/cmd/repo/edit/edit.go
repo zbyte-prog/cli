@@ -163,14 +163,6 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(options *EditOptions) error) *cobr
 			}
 
 			if hasSecurityEdits(opts.Edits) {
-				apiClient := api.NewClientFromHTTP(opts.HTTPClient)
-				repo, err := api.FetchRepository(apiClient, opts.Repository, []string{"viewerCanAdminister"})
-				if err != nil {
-					return err
-				}
-				if !repo.ViewerCanAdminister {
-					return fmt.Errorf("you do not have sufficient permissions to edit repository security and analysis features")
-				}
 				opts.Edits.SecurityAndAnalysis = transformSecurityAndAnalysisOpts(opts)
 			}
 
@@ -257,6 +249,17 @@ func editRun(ctx context.Context, opts *EditOptions) error {
 		err = interactiveRepoEdit(opts, fetchedRepo)
 		if err != nil {
 			return err
+		}
+	}
+
+	if hasSecurityEdits(opts.Edits) {
+		apiClient := api.NewClientFromHTTP(opts.HTTPClient)
+		repo, err := api.FetchRepository(apiClient, opts.Repository, []string{"viewerCanAdminister"})
+		if err != nil {
+			return err
+		}
+		if !repo.ViewerCanAdminister {
+			return fmt.Errorf("you do not have sufficient permissions to edit repository security and analysis features")
 		}
 	}
 

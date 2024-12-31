@@ -51,6 +51,14 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 func deleteRun(opts *DeleteOptions) error {
 	gistID := opts.Selector
+
+	if strings.Contains(gistID, "/") {
+		id, err := shared.GistIDFromURL(gistID)
+		if err != nil {
+			return err
+		}
+		gistID = id
+	}
 	client, err := opts.HttpClient()
 	if err != nil {
 		return err
@@ -74,14 +82,6 @@ func deleteRun(opts *DeleteOptions) error {
 			fmt.Fprintln(opts.IO.Out, "No gists found.")
 			return nil
 		}
-	}
-
-	if strings.Contains(gistID, "/") {
-		id, err := shared.GistIDFromURL(gistID)
-		if err != nil {
-			return err
-		}
-		gistID = id
 	}
 
 	apiClient := api.NewClientFromHTTP(client)

@@ -63,7 +63,7 @@ func NewCmdLogin(f *cmdutil.Factory, runF func(*LoginOptions) error) *cobra.Comm
 			flag.
 
 			The default authentication mode is a web-based browser flow. After completion, an
-			authentication token will be stored securely in the system credential store.
+			authentication token (classic) will be stored securely in the system credential store.
 			If a credential store is not found or there is an issue using it gh will fallback
 			to writing the token to a plain text file. See %[1]sgh auth status%[1]s for its
 			stored location.

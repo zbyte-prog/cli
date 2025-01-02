@@ -100,7 +100,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			For license keywords to use with %[1]s--license%[1]s, run %[1]sgh repo license list%[1]s or visit <https://choosealicense.com>.
 
-			The repo is created with the configured repository default branch, see <https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/changing-the-default-branch>.
+			The repo is created with the configured repository default branch, see <https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-user-account-settings/managing-the-default-branch-name-for-your-repositories>.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# create a repository interactively

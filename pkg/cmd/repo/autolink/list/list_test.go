@@ -95,6 +95,21 @@ func TestNewCmdList(t *testing.T) {
 	}
 }
 
+type stubAutoLinkLister struct {
+	autolinks []autolink
+	err       error
+}
+
+func (g stubAutoLinkLister) List(repo ghrepo.Interface) ([]autolink, error) {
+	return g.autolinks, g.err
+}
+
+type testAutolinkClientListError struct{}
+
+func (e testAutolinkClientListError) Error() string {
+	return "autolink client list error"
+}
+
 func TestListRun(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -249,21 +264,4 @@ func TestListRun(t *testing.T) {
 			}
 		})
 	}
-}
-
-type (
-	testAutolinkClientListError struct{}
-
-	stubAutoLinkLister struct {
-		autolinks []autolink
-		err       error
-	}
-)
-
-func (g stubAutoLinkLister) List(repo ghrepo.Interface) ([]autolink, error) {
-	return g.autolinks, g.err
-}
-
-func (e testAutolinkClientListError) Error() string {
-	return "autolink client list error"
 }

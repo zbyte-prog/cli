@@ -222,7 +222,7 @@ func forkRun(opts *ForkOptions) error {
 		if connectedToTerminal {
 			fmt.Fprintf(stderr, "%s Created fork %s\n", cs.SuccessIconWithColor(cs.Green), cs.Bold(ghrepo.FullName(forkedRepo)))
 		} else {
-			fmt.Fprintf(stderr, "Created fork %s\n", ghrepo.FullName(forkedRepo))
+			fmt.Fprintln(opts.IO.Out, ghrepo.GenerateRepoURL(forkedRepo, ""))
 		}
 	}
 

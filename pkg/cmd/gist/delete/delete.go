@@ -94,12 +94,8 @@ func deleteRun(opts *DeleteOptions) error {
 		if err != nil {
 			return err
 		}
-
-		if gistID == "" {
-			fmt.Fprintln(opts.IO.Out, "No gists found.")
-			return nil
-		}
 	}
+
 	if !opts.Confirmed {
 		err = opts.Prompter.ConfirmDeletion("delete")
 

@@ -84,8 +84,7 @@ func Test_deleteRun(t *testing.T) {
 		{
 			name: "successfully delete",
 			opts: &DeleteOptions{
-				Selector:  "1234",
-				Confirmed: false,
+				Selector: "1234",
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
@@ -98,8 +97,7 @@ func Test_deleteRun(t *testing.T) {
 		{
 			name: "successfully delete with prompt",
 			opts: &DeleteOptions{
-				Selector:  "",
-				Confirmed: false,
+				Selector: "",
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
@@ -142,8 +140,7 @@ func Test_deleteRun(t *testing.T) {
 		{
 			name: "not found",
 			opts: &DeleteOptions{
-				Selector:  "1234",
-				Confirmed: false,
+				Selector: "1234",
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),

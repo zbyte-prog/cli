@@ -8,16 +8,17 @@ import (
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/ghrepo"
+	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/domain"
 )
 
 type AutolinkLister struct {
 	HTTPClient *http.Client
 }
 
-func (a *AutolinkLister) List(repo ghrepo.Interface) ([]autolink, error) {
+func (a *AutolinkLister) List(repo ghrepo.Interface) ([]domain.Autolink, error) {
 	path := fmt.Sprintf("repos/%s/%s/autolinks", repo.RepoOwner(), repo.RepoName())
 	url := ghinstance.RESTPrefix(repo.RepoHost()) + path
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,7 @@ func (a *AutolinkLister) List(repo ghrepo.Interface) ([]autolink, error) {
 	} else if resp.StatusCode > 299 {
 		return nil, api.HandleHTTPError(resp)
 	}
-	var autolinks []autolink
+	var autolinks []domain.Autolink
 	err = json.NewDecoder(resp.Body).Decode(&autolinks)
 	if err != nil {
 		return nil, err

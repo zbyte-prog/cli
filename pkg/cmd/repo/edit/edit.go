@@ -252,7 +252,7 @@ func editRun(ctx context.Context, opts *EditOptions) error {
 		}
 	}
 
-	if hasSecurityEdits(opts.Edits) {
+	if opts.Edits.SecurityAndAnalysis != nil {
 		apiClient := api.NewClientFromHTTP(opts.HTTPClient)
 		repo, err := api.FetchRepository(apiClient, opts.Repository, []string{"viewerCanAdminister"})
 		if err != nil {

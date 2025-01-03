@@ -37,6 +37,13 @@ func TestNewCmdDelete(t *testing.T) {
 				Selector: "",
 			},
 		},
+		{
+			name: "yes flag",
+			cli:  "123 --yes",
+			wants: DeleteOptions{
+				Selector: "123",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -67,7 +74,7 @@ func TestNewCmdDelete(t *testing.T) {
 func Test_deleteRun(t *testing.T) {
 	tests := []struct {
 		name         string
-		opts         DeleteOptions
+		opts         *DeleteOptions
 		httpStubs    func(*httpmock.Registry)
 		mockGistList bool
 		wantErr      bool
@@ -76,21 +83,23 @@ func Test_deleteRun(t *testing.T) {
 	}{
 		{
 			name: "successfully delete",
-			opts: DeleteOptions{
-				Selector: "1234",
+			opts: &DeleteOptions{
+				Selector:  "1234",
+				Confirmed: false,
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "",
+			wantStdout: "✓ Deleted gist 1234\n",
 			wantStderr: "",
 		},
 		{
 			name: "successfully delete with prompt",
-			opts: DeleteOptions{
-				Selector: "",
+			opts: &DeleteOptions{
+				Selector:  "",
+				Confirmed: false,
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
@@ -98,13 +107,43 @@ func Test_deleteRun(t *testing.T) {
 			},
 			mockGistList: true,
 			wantErr:      false,
-			wantStdout:   "",
+			wantStdout:   "✓ Deleted gist 1234\n",
+			wantStderr:   "",
+		},
+		{
+			name: "successfully delete with --yes",
+			opts: &DeleteOptions{
+				Selector:  "1234",
+				Confirmed: true,
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(httpmock.REST("DELETE", "gists/1234"),
+					httpmock.StatusStringResponse(200, "{}"))
+			},
+			wantErr:    false,
+			wantStdout: "✓ Deleted gist 1234\n",
+			wantStderr: "",
+		},
+		{
+			name: "successfully delete with prompt and --yes",
+			opts: &DeleteOptions{
+				Selector:  "",
+				Confirmed: true,
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(httpmock.REST("DELETE", "gists/1234"),
+					httpmock.StatusStringResponse(200, "{}"))
+			},
+			mockGistList: true,
+			wantErr:      false,
+			wantStdout:   "✓ Deleted gist 1234\n",
 			wantStderr:   "",
 		},
 		{
 			name: "not found",
-			opts: DeleteOptions{
-				Selector: "1234",
+			opts: &DeleteOptions{
+				Selector:  "1234",
+				Confirmed: false,
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
@@ -112,14 +151,18 @@ func Test_deleteRun(t *testing.T) {
 			},
 			wantErr:    true,
 			wantStdout: "",
-			wantStderr: "",
+			wantStderr: "unable to delete gist 1234: either the gist is not found or it is not owned by you",
 		},
 	}
 
 	for _, tt := range tests {
 		reg := &httpmock.Registry{}
-		if tt.httpStubs != nil {
-			tt.httpStubs(reg)
+		tt.httpStubs(reg)
+		pm := prompter.NewMockPrompter(t)
+		if !tt.opts.Confirmed {
+			pm.RegisterConfirmDeletion("Type delete to confirm deletion:", func(_ string) error {
+				return nil
+			})
 		}
 
 		if tt.mockGistList {
@@ -141,12 +184,11 @@ func Test_deleteRun(t *testing.T) {
 				)),
 			)
 
-			pm := prompter.NewMockPrompter(t)
 			pm.RegisterSelect("Select a gist", []string{"cool.txt  about 6 hours ago"}, func(_, _ string, opts []string) (int, error) {
 				return 0, nil
 			})
-			tt.opts.Prompter = pm
 		}
+		tt.opts.Prompter = pm
 
 		tt.opts.HttpClient = func() (*http.Client, error) {
 			return &http.Client{Transport: reg}, nil
@@ -154,13 +196,13 @@ func Test_deleteRun(t *testing.T) {
 		tt.opts.Config = func() (gh.Config, error) {
 			return config.NewBlankConfig(), nil
 		}
-		ios, _, _, _ := iostreams.Test()
-		ios.SetStdoutTTY(false)
+		ios, _, stdout, stderr := iostreams.Test()
+		ios.SetStdoutTTY(true)
 		ios.SetStdinTTY(false)
 		tt.opts.IO = ios
 
 		t.Run(tt.name, func(t *testing.T) {
-			err := deleteRun(&tt.opts)
+			err := deleteRun(tt.opts)
 			reg.Verify(t)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -170,7 +212,8 @@ func Test_deleteRun(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-
+			assert.Equal(t, tt.wantStdout, stdout.String())
+			assert.Equal(t, tt.wantStderr, stderr.String())
 		})
 	}
 }

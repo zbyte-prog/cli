@@ -530,9 +530,16 @@ func (r trackingRef) String() string {
 
 func mustParseTrackingRef(text string) trackingRef {
 	parts := strings.SplitN(string(text), "/", 4)
+	// The only place this is called is tryDetermineTrackingRef, where we are reconstructing
+	// the same tracking ref we passed in. If it doesn't match the expected format, this is a
+	// programmer error we want to know about, so it's ok to panic.
 	if len(parts) != 4 {
-		panic(fmt.Errorf("invalid tracking ref: %s", text))
+		panic(fmt.Errorf("tracking ref should have four parts: %s", text))
 	}
+	if parts[0] != "refs" || parts[1] != "remotes" {
+		panic(fmt.Errorf("tracking ref should start with refs/remotes/: %s", text))
+	}
+
 	return trackingRef{
 		remoteName: parts[2],
 		branchName: parts[3],

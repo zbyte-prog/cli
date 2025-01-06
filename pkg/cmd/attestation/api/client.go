@@ -14,6 +14,7 @@ import (
 	"github.com/golang/snappy"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -168,15 +169,24 @@ func (c *LiveClient) getAttestations(url, name, digest string, limit int) ([]*At
 
 func (c *LiveClient) fetchBundlesByURL(attestations []*Attestation) ([]*Attestation, error) {
 	fetched := make([]*Attestation, len(attestations))
+	g := errgroup.Group{}
 	for i, a := range attestations {
-		b, err := c.fetchBundleByURL(a)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch bundle with URL: %w", err)
-		}
-		fetched[i] = &Attestation{
-			Bundle: b,
-		}
+		g.Go(func() error {
+			b, err := c.fetchBundleByURL(a)
+			if err != nil {
+				return fmt.Errorf("failed to fetch bundle with URL: %w", err)
+			}
+			fetched[i] = &Attestation{
+				Bundle: b,
+			}
+			return nil
+		})
 	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
 	return fetched, nil
 }
 

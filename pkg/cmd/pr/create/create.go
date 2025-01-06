@@ -555,15 +555,23 @@ func determineTrackingBranch(gitClient *git.Client, remotes ghContext.Remotes, l
 				continue
 			}
 			// Otherwise we can parse the returned ref into a tracking ref and return that
-			trackingRef, err := git.ParseTrackingRef(r.Name)
-			if err != nil {
-				return nil
-			}
+			trackingRef := mustParseTrackingRef(r.Name)
 			return &trackingRef
 		}
 	}
 
 	return nil
+}
+
+func mustParseTrackingRef(text string) git.TrackingRef {
+	parts := strings.SplitN(string(text), "/", 4)
+	if len(parts) != 4 {
+		panic(fmt.Errorf("invalid tracking ref: %s", text))
+	}
+	return git.TrackingRef{
+		RemoteName: parts[2],
+		BranchName: parts[3],
+	}
 }
 
 func NewIssueState(ctx CreateContext, opts CreateOptions) (*shared.IssueMetadataState, error) {

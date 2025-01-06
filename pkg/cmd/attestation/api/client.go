@@ -69,7 +69,7 @@ func (c *LiveClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Atte
 	url := c.buildRepoAndDigestURL(repo, digest)
 	attestations, err := c.getAttestations(url, repo, digest, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch attestation by repo and digest: %w", err)
+		return nil, err
 	}
 
 	bundles, err := c.fetchBundlesByURL(attestations)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cli/cli/v2/pkg/cmd/attestation/io"
+	"github.com/cli/cli/v2/pkg/cmd/attestation/test/data"
 
 	"github.com/stretchr/testify/require"
 )
@@ -25,8 +26,8 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 			githubAPI: mockAPIClient{
 				OnRESTWithNext: fetcher.OnRESTSuccessWithNextPage,
 			},
-			httpClient: mockHttpClient{
-				OnGet: fetcher.OnGetSuccess,
+			httpClient: &mockHttpClient{
+				OnGet: OnGetSuccess,
 			},
 			logger: l,
 		}
@@ -36,8 +37,8 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTSuccess,
 		},
-		httpClient: mockHttpClient{
-			OnGet: fetcher.OnGetSuccess,
+		httpClient: &mockHttpClient{
+			OnGet: OnGetSuccess,
 		},
 		logger: l,
 	}
@@ -144,8 +145,8 @@ func TestGetByDigest_NoAttestationsFound(t *testing.T) {
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTWithNextNoAttestations,
 		},
-		httpClient: mockHttpClient{
-			OnGet: fetcher.OnGetSuccess,
+		httpClient: &mockHttpClient{
+			OnGet: OnGetSuccess,
 		},
 		logger: io.NewTestHandler(),
 	}
@@ -180,6 +181,42 @@ func TestGetByDigest_Error(t *testing.T) {
 	attestations, err = c.GetByOwnerAndDigest(testOwner, testDigest, DefaultLimit)
 	require.Error(t, err)
 	require.Nil(t, attestations)
+}
+
+func TestFetchBundleByURL(t *testing.T) {
+	t.Run("fetch by bundle URL successfully", func(t *testing.T) {
+		httpClient := mockHttpClient{
+			OnGet: OnGetSuccess,
+		}
+		c := &LiveClient{
+			httpClient: &httpClient,
+			logger:     io.NewTestHandler(),
+		}
+
+		attestation := makeTestAttestation()
+		bundle, err := c.fetchBundleByURL(&attestation)
+		require.NoError(t, err)
+		require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
+		require.True(t, httpClient.called)
+	})
+
+	t.Run("fallback to bundle field when BundleURL field is empty", func(t *testing.T) {
+		httpClient := mockHttpClient{
+			OnGet: OnGetSuccess,
+		}
+		c := &LiveClient{
+			httpClient: &mockHttpClient{
+				OnGet: OnGetSuccess,
+			},
+			logger: io.NewTestHandler(),
+		}
+
+		attestation := Attestation{Bundle: data.SigstoreBundle(t)}
+		bundle, err := c.fetchBundleByURL(&attestation)
+		require.NoError(t, err)
+		require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
+		require.False(t, httpClient.called)
+	})
 }
 
 func TestGetTrustDomain(t *testing.T) {
@@ -225,8 +262,8 @@ func TestGetAttestationsRetries(t *testing.T) {
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.FlakyOnRESTSuccessWithNextPageHandler(),
 		},
-		httpClient: mockHttpClient{
-			OnGet: fetcher.OnGetSuccess,
+		httpClient: &mockHttpClient{
+			OnGet: OnGetSuccess,
 		},
 		logger: io.NewTestHandler(),
 	}

@@ -10,14 +10,16 @@ import (
 )
 
 type mockHttpClient struct {
-	OnGet func(url string) (*http.Response, error)
+	called bool
+	OnGet  func(url string) (*http.Response, error)
 }
 
-func (m mockHttpClient) Get(url string) (*http.Response, error) {
+func (m *mockHttpClient) Get(url string) (*http.Response, error) {
+	m.called = true
 	return m.OnGet(url)
 }
 
-func (m *mockDataGenerator) OnGetSuccess(url string) (*http.Response, error) {
+func OnGetSuccess(url string) (*http.Response, error) {
 	compressed := snappy.Encode(nil, data.SigstoreBundleRaw)
 	return &http.Response{
 		StatusCode: 200,

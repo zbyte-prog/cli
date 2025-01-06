@@ -196,7 +196,7 @@ func (c *LiveClient) fetchBundleByURL(a *Attestation) (*bundle.Bundle, error) {
 		return a.Bundle, nil
 	}
 
-	c.logger.VerbosePrintf("Fetching attestation bundle\n\n")
+	c.logger.VerbosePrintf("Fetching attestation bundle with bundle URL\n\n")
 
 	resp, err := c.httpClient.Get(a.BundleURL)
 	if err != nil {

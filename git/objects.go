@@ -54,16 +54,6 @@ type Ref struct {
 	Name string
 }
 
-// TrackingRef represents a ref for a remote tracking branch.
-type TrackingRef struct {
-	RemoteName string
-	BranchName string
-}
-
-func (r TrackingRef) String() string {
-	return "refs/remotes/" + r.RemoteName + "/" + r.BranchName
-}
-
 type Commit struct {
 	Sha   string
 	Title string

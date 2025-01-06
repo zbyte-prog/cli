@@ -1627,7 +1627,7 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 		name                string
 		cmdStubs            func(*run.CommandStubber)
 		remotes             context.Remotes
-		expectedTrackingRef git.TrackingRef
+		expectedTrackingRef trackingRef
 		expectedFound       bool
 	}{
 		{
@@ -1636,7 +1636,7 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 				cs.Register(`git config --get-regexp.+branch\\\.feature\\\.`, 0, "")
 				cs.Register(`git show-ref --verify -- HEAD`, 0, "abc HEAD")
 			},
-			expectedTrackingRef: git.TrackingRef{},
+			expectedTrackingRef: trackingRef{},
 			expectedFound:       false,
 		},
 		{
@@ -1655,7 +1655,7 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 					Repo:   ghrepo.New("hubot", "Spoon-Knife"),
 				},
 			},
-			expectedTrackingRef: git.TrackingRef{},
+			expectedTrackingRef: trackingRef{},
 			expectedFound:       false,
 		},
 		{
@@ -1678,9 +1678,9 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 					Repo:   ghrepo.New("hubot", "Spoon-Knife"),
 				},
 			},
-			expectedTrackingRef: git.TrackingRef{
-				RemoteName: "origin",
-				BranchName: "feature",
+			expectedTrackingRef: trackingRef{
+				remoteName: "origin",
+				branchName: "feature",
 			},
 			expectedFound: true,
 		},
@@ -1702,7 +1702,7 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 					Repo:   ghrepo.New("hubot", "Spoon-Knife"),
 				},
 			},
-			expectedTrackingRef: git.TrackingRef{},
+			expectedTrackingRef: trackingRef{},
 			expectedFound:       false,
 		},
 	}

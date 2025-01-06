@@ -518,26 +518,47 @@ func initDefaultTitleBody(ctx CreateContext, state *shared.IssueMetadataState, u
 	return nil
 }
 
+// trackingRef represents a ref for a remote tracking branch.
+type trackingRef struct {
+	remoteName string
+	branchName string
+}
+
+func (r trackingRef) String() string {
+	return "refs/remotes/" + r.remoteName + "/" + r.branchName
+}
+
+func mustParseTrackingRef(text string) trackingRef {
+	parts := strings.SplitN(string(text), "/", 4)
+	if len(parts) != 4 {
+		panic(fmt.Errorf("invalid tracking ref: %s", text))
+	}
+	return trackingRef{
+		remoteName: parts[2],
+		branchName: parts[3],
+	}
+}
+
 // tryDetermineTrackingRef is intended to try and find a remote branch on the same commit as the currently checked out
 // HEAD, i.e. the local branch. If there are multiple branches that might match, the first remote is chosen, which in
 // practice is determined by the sorting algorithm applied much earlier in the process, roughly "upstream", "github", "origin",
 // and then everything else unstably sorted.
-func tryDetermineTrackingRef(gitClient *git.Client, remotes ghContext.Remotes, localBranchName string, headBranchConfig git.BranchConfig) (git.TrackingRef, bool) {
+func tryDetermineTrackingRef(gitClient *git.Client, remotes ghContext.Remotes, localBranchName string, headBranchConfig git.BranchConfig) (trackingRef, bool) {
 	// To try and determine the tracking ref for a local branch, we first construct a collection of refs
 	// that might be tracking, given the current branch's config, and the list of known remotes.
 	refsForLookup := []string{"HEAD"}
 	if headBranchConfig.RemoteName != "" && headBranchConfig.MergeRef != "" {
-		tr := git.TrackingRef{
-			RemoteName: headBranchConfig.RemoteName,
-			BranchName: strings.TrimPrefix(headBranchConfig.MergeRef, "refs/heads/"),
+		tr := trackingRef{
+			remoteName: headBranchConfig.RemoteName,
+			branchName: strings.TrimPrefix(headBranchConfig.MergeRef, "refs/heads/"),
 		}
 		refsForLookup = append(refsForLookup, tr.String())
 	}
 
 	for _, remote := range remotes {
-		tr := git.TrackingRef{
-			RemoteName: remote.Name,
-			BranchName: localBranchName,
+		tr := trackingRef{
+			remoteName: remote.Name,
+			branchName: localBranchName,
 		}
 		refsForLookup = append(refsForLookup, tr.String())
 	}
@@ -563,18 +584,7 @@ func tryDetermineTrackingRef(gitClient *git.Client, remotes ghContext.Remotes, l
 		}
 	}
 
-	return git.TrackingRef{}, false
-}
-
-func mustParseTrackingRef(text string) git.TrackingRef {
-	parts := strings.SplitN(string(text), "/", 4)
-	if len(parts) != 4 {
-		panic(fmt.Errorf("invalid tracking ref: %s", text))
-	}
-	return git.TrackingRef{
-		RemoteName: parts[2],
-		BranchName: parts[3],
-	}
+	return trackingRef{}, false
 }
 
 func NewIssueState(ctx CreateContext, opts CreateOptions) (*shared.IssueMetadataState, error) {
@@ -668,12 +678,12 @@ func NewCreateContext(opts *CreateOptions) (*CreateContext, error) {
 		// determine whether the head branch is already pushed to a remote
 		if trackingRef, found := tryDetermineTrackingRef(gitClient, remotes, headBranch, headBranchConfig); found {
 			isPushEnabled = false
-			if r, err := remotes.FindByName(trackingRef.RemoteName); err == nil {
+			if r, err := remotes.FindByName(trackingRef.remoteName); err == nil {
 				headRepo = r
 				headRemote = r
-				headBranchLabel = trackingRef.BranchName
+				headBranchLabel = trackingRef.branchName
 				if !ghrepo.IsSame(baseRepo, headRepo) {
-					headBranchLabel = fmt.Sprintf("%s:%s", headRepo.RepoOwner(), trackingRef.BranchName)
+					headBranchLabel = fmt.Sprintf("%s:%s", headRepo.RepoOwner(), trackingRef.branchName)
 				}
 			}
 		}

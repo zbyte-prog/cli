@@ -184,39 +184,50 @@ func TestGetByDigest_Error(t *testing.T) {
 }
 
 func TestFetchBundleByURL(t *testing.T) {
-	t.Run("fetch by bundle URL successfully", func(t *testing.T) {
-		httpClient := mockHttpClient{
-			OnGet: OnGetSuccess,
-		}
-		c := &LiveClient{
-			httpClient: &httpClient,
-			logger:     io.NewTestHandler(),
-		}
+	httpClient := mockHttpClient{
+		OnGet: OnGetSuccess,
+	}
+	c := &LiveClient{
+		httpClient: &httpClient,
+		logger:     io.NewTestHandler(),
+	}
 
-		attestation := makeTestAttestation()
-		bundle, err := c.fetchBundleByURL(&attestation)
-		require.NoError(t, err)
-		require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-		require.True(t, httpClient.called)
-	})
+	attestation := makeTestAttestation()
+	bundle, err := c.fetchBundleByURL(&attestation)
+	require.NoError(t, err)
+	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
+	require.True(t, httpClient.called)
+}
+func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
+	httpClient := mockHttpClient{
+		OnGet: OnGetFail,
+	}
+	c := &LiveClient{
+		httpClient: &httpClient,
+		logger:     io.NewTestHandler(),
+	}
 
-	t.Run("fallback to bundle field when BundleURL field is empty", func(t *testing.T) {
-		httpClient := mockHttpClient{
-			OnGet: OnGetSuccess,
-		}
-		c := &LiveClient{
-			httpClient: &mockHttpClient{
-				OnGet: OnGetSuccess,
-			},
-			logger: io.NewTestHandler(),
-		}
+	attestation := makeTestAttestation()
+	bundle, err := c.fetchBundleByURL(&attestation)
+	require.Error(t, err)
+	require.Nil(t, bundle)
+	require.True(t, httpClient.called)
+}
 
-		attestation := Attestation{Bundle: data.SigstoreBundle(t)}
-		bundle, err := c.fetchBundleByURL(&attestation)
-		require.NoError(t, err)
-		require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-		require.False(t, httpClient.called)
-	})
+func TestFetchBundleByURL_FallbackToBundleField(t *testing.T) {
+	httpClient := mockHttpClient{
+		OnGet: OnGetSuccess,
+	}
+	c := &LiveClient{
+		httpClient: &httpClient,
+		logger:     io.NewTestHandler(),
+	}
+
+	attestation := Attestation{Bundle: data.SigstoreBundle(t)}
+	bundle, err := c.fetchBundleByURL(&attestation)
+	require.NoError(t, err)
+	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
+	require.False(t, httpClient.called)
 }
 
 func TestGetTrustDomain(t *testing.T) {

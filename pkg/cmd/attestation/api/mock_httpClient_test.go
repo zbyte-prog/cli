@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -25,4 +26,10 @@ func OnGetSuccess(url string) (*http.Response, error) {
 		StatusCode: 200,
 		Body:       io.NopCloser(bytes.NewReader(compressed)),
 	}, nil
+}
+
+func OnGetFail(url string) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: 500,
+	}, fmt.Errorf("failed to fetch with %s", url)
 }

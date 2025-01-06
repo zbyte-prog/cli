@@ -44,11 +44,11 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*createOptions) error) *cobra.Co
 
 			The %[1]skeyPrefix%[1]s specifies the prefix that will generate a link when it is appended by certain characters.
 
-			The %[1]surlTemplate%[1]s specifies the target URL that will be generated when the keyPrefix is found. The urlTemplate must contain %[1]s<num>%[1]s for the reference number. %[1]s<num>%[1]s matches different characters depending on the whether the autolink is specified as numeric or alphanumeric.
+			The %[1]surlTemplate%[1]s specifies the target URL that will be generated when the keyPrefix is found. The %[1]surlTemplate%[1]s must contain %[1]s<num>%[1]s for the reference number. %[1]s<num>%[1]s matches different characters depending on the whether the autolink is specified as numeric or alphanumeric.
 
-			By default, the command will create an alphanumeric autolink. This means that  the %[1]s<num>%[1]s in the %[1]surlTemplate%[1]s will match alphanumeric characters %[1]sA-Z%[1]s (case insensitive), %[1]s0-9%[1]s, and %[1]s-%[1]s. To create a numeric autolink, use the %[1]s--numeric%[1]s flag. Numeric autolinks only match against numeric characters. If the template contains multiple instances of %[1]s<num>%[1]s, only the first will be replaced.
+			By default, the command will create an alphanumeric autolink. This means that the %[1]s<num>%[1]s in the %[1]surlTemplate%[1]s will match alphanumeric characters %[1]sA-Z%[1]s (case insensitive), %[1]s0-9%[1]s, and %[1]s-%[1]s. To create a numeric autolink, use the %[1]s--numeric%[1]s flag. Numeric autolinks only match against numeric characters. If the template contains multiple instances of %[1]s<num>%[1]s, only the first will be replaced.
 
-			If you are using a shell that applies special meaning to angle brackets, you you will need to need to escape these characters in the %[1]surlTemplate%[1]s or place quotation marks around this argument.
+			If you are using a shell that applies special meaning to angle brackets, you will need to escape these characters in the %[1]surlTemplate%[1]s or place quotation marks around the whole argument.
 			
 			Only repository administrators can create autolinks.
 		`, "`"),

@@ -519,15 +519,14 @@ func initDefaultTitleBody(ctx CreateContext, state *shared.IssueMetadataState, u
 }
 
 func determineTrackingBranch(gitClient *git.Client, remotes ghContext.Remotes, localBranchName string, headBranchConfig *git.BranchConfig) *git.TrackingRef {
+	// To try and determine the tracking ref for a local branch, we first construct a collection of refs
+	// that might be tracking, given the current branch's config, and the list of known remotes.
 	refsForLookup := []string{"HEAD"}
-	var trackingRefs []git.TrackingRef
-
-	if headBranchConfig.RemoteName != "" {
+	if headBranchConfig.RemoteName != "" && headBranchConfig.MergeRef != "" {
 		tr := git.TrackingRef{
 			RemoteName: headBranchConfig.RemoteName,
 			BranchName: strings.TrimPrefix(headBranchConfig.MergeRef, "refs/heads/"),
 		}
-		trackingRefs = append(trackingRefs, tr)
 		refsForLookup = append(refsForLookup, tr.String())
 	}
 
@@ -536,22 +535,31 @@ func determineTrackingBranch(gitClient *git.Client, remotes ghContext.Remotes, l
 			RemoteName: remote.Name,
 			BranchName: localBranchName,
 		}
-		trackingRefs = append(trackingRefs, tr)
 		refsForLookup = append(refsForLookup, tr.String())
 	}
 
+	// Then we ask git for details about these refs, for example, refs/remotes/origin/trunk might return a hash
+	// for the remote tracking branch, trunk, for the remote, origin. If there is no ref, the git client returns
+	// no ref information.
+	//
+	// We also first check for the HEAD ref, so that we have the hash of the currently checked out commit.
 	resolvedRefs, _ := gitClient.ShowRefs(context.Background(), refsForLookup)
+
+	// If there is more than one resolved ref, that means that at least one ref was found in addition to the HEAD.
 	if len(resolvedRefs) > 1 {
+		headRef := resolvedRefs[0]
 		for _, r := range resolvedRefs[1:] {
-			if r.Hash != resolvedRefs[0].Hash {
+			// If the hash of the remote ref doesn't match the hash of HEAD then the remote branch is not in the same
+			// state, so it can't be used.
+			if r.Hash != headRef.Hash {
 				continue
 			}
-			for _, tr := range trackingRefs {
-				if tr.String() != r.Name {
-					continue
-				}
-				return &tr
+			// Otherwise we can parse the returned ref into a tracking ref and return that
+			trackingRef, err := git.ParseTrackingRef(r.Name)
+			if err != nil {
+				return nil
 			}
+			return &trackingRef
 		}
 	}
 

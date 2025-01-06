@@ -1,6 +1,7 @@
 package git
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 )
@@ -62,6 +63,17 @@ type TrackingRef struct {
 
 func (r TrackingRef) String() string {
 	return "refs/remotes/" + r.RemoteName + "/" + r.BranchName
+}
+
+func ParseTrackingRef(text string) (TrackingRef, error) {
+	parts := strings.SplitN(string(text), "/", 4)
+	if len(parts) != 4 {
+		return TrackingRef{}, fmt.Errorf("invalid tracking ref: %s", text)
+	}
+	return TrackingRef{
+		RemoteName: parts[2],
+		BranchName: parts[3],
+	}, nil
 }
 
 type Commit struct {

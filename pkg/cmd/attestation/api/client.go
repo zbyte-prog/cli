@@ -26,11 +26,13 @@ const (
 // Allow injecting backoff interval in tests.
 var getAttestationRetryInterval = time.Millisecond * 200
 
+// githubApiClient makes REST calls to the GitHub API
 type githubApiClient interface {
 	REST(hostname, method, p string, body io.Reader, data interface{}) error
 	RESTWithNext(hostname, method, p string, body io.Reader, data interface{}) (string, error)
 }
 
+// httpClient makes HTTP calls to all non-GitHub API endpoints
 type httpClient interface {
 	Get(url string) (*http.Response, error)
 }
@@ -180,7 +182,8 @@ func (c *LiveClient) fetchBundlesByURL(attestations []*Attestation) ([]*Attestat
 
 func (c *LiveClient) fetchBundleByURL(a *Attestation) (*bundle.Bundle, error) {
 	if a.BundleURL == "" {
-		return nil, fmt.Errorf("bundle URL is empty")
+		c.logger.VerbosePrintf("Bundle URL is empty. Falling back to bundle field\n\n")
+		return a.Bundle, nil
 	}
 
 	c.logger.VerbosePrintf("Fetching attestation bundle\n\n")

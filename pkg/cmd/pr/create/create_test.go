@@ -1643,16 +1643,16 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 			name: "no match",
 			cmdStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git config --get-regexp.+branch\\\.feature\\\.`, 0, "")
-				cs.Register("git show-ref --verify -- HEAD refs/remotes/origin/feature refs/remotes/upstream/feature", 0, "abc HEAD\nbca refs/remotes/origin/feature")
+				cs.Register("git show-ref --verify -- HEAD refs/remotes/upstream/feature refs/remotes/origin/feature", 0, "abc HEAD\nbca refs/remotes/upstream/feature")
 			},
 			remotes: context.Remotes{
 				&context.Remote{
-					Remote: &git.Remote{Name: "origin"},
-					Repo:   ghrepo.New("hubot", "Spoon-Knife"),
-				},
-				&context.Remote{
 					Remote: &git.Remote{Name: "upstream"},
 					Repo:   ghrepo.New("octocat", "Spoon-Knife"),
+				},
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.New("hubot", "Spoon-Knife"),
 				},
 			},
 			expectedTrackingRef: git.TrackingRef{},
@@ -1662,24 +1662,24 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 			name: "match",
 			cmdStubs: func(cs *run.CommandStubber) {
 				cs.Register(`git config --get-regexp.+branch\\\.feature\\\.`, 0, "")
-				cs.Register(`git show-ref --verify -- HEAD refs/remotes/origin/feature refs/remotes/upstream/feature$`, 0, heredoc.Doc(`
+				cs.Register(`git show-ref --verify -- HEAD refs/remotes/upstream/feature refs/remotes/origin/feature$`, 0, heredoc.Doc(`
 		deadbeef HEAD
-		deadb00f refs/remotes/origin/feature
-		deadbeef refs/remotes/upstream/feature
+		deadb00f refs/remotes/upstream/feature
+		deadbeef refs/remotes/origin/feature
 	`))
 			},
 			remotes: context.Remotes{
 				&context.Remote{
-					Remote: &git.Remote{Name: "origin"},
-					Repo:   ghrepo.New("hubot", "Spoon-Knife"),
-				},
-				&context.Remote{
 					Remote: &git.Remote{Name: "upstream"},
 					Repo:   ghrepo.New("octocat", "Spoon-Knife"),
 				},
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.New("hubot", "Spoon-Knife"),
+				},
 			},
 			expectedTrackingRef: git.TrackingRef{
-				RemoteName: "upstream",
+				RemoteName: "origin",
 				BranchName: "feature",
 			},
 			expectedFound: true,

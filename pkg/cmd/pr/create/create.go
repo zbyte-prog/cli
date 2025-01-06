@@ -519,7 +519,9 @@ func initDefaultTitleBody(ctx CreateContext, state *shared.IssueMetadataState, u
 }
 
 // tryDetermineTrackingRef is intended to try and find a remote branch on the same commit as the currently checked out
-// HEAD, i.e. the local branch.
+// HEAD, i.e. the local branch. If there are multiple branches that might match, the first remote is chosen, which in
+// practice is determined by the sorting algorithm applied much earlier in the process, roughly "upstream", "github", "origin",
+// and then everything else unstably sorted.
 func tryDetermineTrackingRef(gitClient *git.Client, remotes ghContext.Remotes, localBranchName string, headBranchConfig git.BranchConfig) (git.TrackingRef, bool) {
 	// To try and determine the tracking ref for a local branch, we first construct a collection of refs
 	// that might be tracking, given the current branch's config, and the list of known remotes.

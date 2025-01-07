@@ -60,14 +60,14 @@ func NewLiveClient(hc *http.Client, host string, l *ioconfig.Handler) *LiveClien
 	}
 }
 
-func (c *LiveClient) buildRepoAndDigestURL(repo, digest string) string {
+func (c *LiveClient) BuildRepoAndDigestURL(repo, digest string) string {
 	repo = strings.Trim(repo, "/")
 	return fmt.Sprintf(GetAttestationByRepoAndSubjectDigestPath, repo, digest)
 }
 
 // GetByRepoAndDigest fetches the attestation by repo and digest
 func (c *LiveClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Attestation, error) {
-	url := c.buildRepoAndDigestURL(repo, digest)
+	url := c.BuildRepoAndDigestURL(repo, digest)
 	attestations, err := c.getAttestations(url, repo, digest, limit)
 	if err != nil {
 		return nil, err

@@ -55,7 +55,7 @@ func TestGetURL(t *testing.T) {
 	}
 
 	for _, data := range testData {
-		s := c.buildRepoAndDigestURL(data.repo, data.digest)
+		s := c.BuildRepoAndDigestURL(data.repo, data.digest)
 		require.Equal(t, data.expected, s)
 	}
 }

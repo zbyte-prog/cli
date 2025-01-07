@@ -194,7 +194,7 @@ func TestFetchBundlesByURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, fetched, 2)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", fetched[0].Bundle.GetMediaType())
-	require.Equal(t, 2, mockHTTPClient.TimesCalled())
+	mockHTTPClient.AssertNumberOfCalls(t, "OnGet", 2)
 }
 
 func TestFetchBundlesByURL_Fail(t *testing.T) {
@@ -225,7 +225,7 @@ func TestFetchBundleByURL(t *testing.T) {
 	bundle, err := c.fetchBundleByURL(&attestation)
 	require.NoError(t, err)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-	require.Equal(t, 1, mockHTTPClient.TimesCalled())
+	mockHTTPClient.AssertNumberOfCalls(t, "OnGet", 1)
 }
 
 func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
@@ -240,7 +240,7 @@ func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
 	bundle, err := c.fetchBundleByURL(&attestation)
 	require.Error(t, err)
 	require.Nil(t, bundle)
-	require.Equal(t, 1, mockHTTPClient.TimesCalled())
+	mockHTTPClient.AssertNumberOfCalls(t, "OnGet", 1)
 }
 
 func TestFetchBundleByURL_FallbackToBundleField(t *testing.T) {
@@ -255,7 +255,7 @@ func TestFetchBundleByURL_FallbackToBundleField(t *testing.T) {
 	bundle, err := c.fetchBundleByURL(&attestation)
 	require.NoError(t, err)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-	require.Equal(t, 0, mockHTTPClient.TimesCalled())
+	mockHTTPClient.AssertNotCalled(t, "OnGet")
 }
 
 func TestGetTrustDomain(t *testing.T) {

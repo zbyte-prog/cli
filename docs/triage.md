@@ -45,7 +45,7 @@ Before removing the `needs-triage` label, consider adding any of the following l
 | `good first issue` | Used to denote when an issue may be a good candidate for a first-time contributor to the CLI. These are usually small and well defined issues. |
 | `help wanted` |  Defines what we feel the community could solve should they care to contribute, respectively. We tend to lean towards `help wanted` by default, and adding `core` should be reserved for trickier issues or implementations we have strong opinions/preferences about. |
 | `invalid` | Added to spam and abusive issues. |
-| `needs-user-input` | Some issues require a lot of back and forth with a contributor before they can be successfully triaged. After asking any contributors for more information, add this label so it is clear that the issue has been responded to and we are waiting on the user. |
+| `needs-user-input` | After asking any contributors for more information, add this label so it is clear that the issue has been responded to and we are waiting on the user. |
 
 ## Expectations for community pull requests
 
@@ -59,7 +59,7 @@ The primary goal of triaging spam and abuse is to remove distracting and offensi
 
 We get a lot of spam. Whenever you determine an issue as spam, add the `invalid` label and close it as "won't do". For spammy comments, simply mark them as spam using GitHub's built-in spam feature.
 
-Abusive contributions are defined by our [Code of Conduct](../.github/CODE-OF-CONDUCT.md). Any contribution you determine abusive should be removed. Repeat offenses or particularly offensive abuse should be reported using GitHub's reporting features. If an entire issue is abusive, label it as `invalid` and close as "won't do".
+Abusive contributions are defined by our [Code of Conduct](../.github/CODE-OF-CONDUCT.md). Any contribution you determine abusive should be removed. Repeat offenses or particularly offensive abuse should be reported using GitHub's reporting features and the user blocked. If an entire issue is abusive, label it as `invalid` and close as "won't do".
 
 ## Weekly PR audit
 

@@ -186,7 +186,7 @@ func statusRun(opts *StatusOptions) error {
 
 func prSelectorForCurrentBranch(gitClient *git.Client, baseRepo ghrepo.Interface, prHeadRef string, rem ghContext.Remotes) (prNumber int, selector string, err error) {
 	selector = prHeadRef
-	branchConfig := gitClient.ReadBranchConfig(context.Background(), prHeadRef)
+	branchConfig, _ := gitClient.ReadBranchConfig(context.Background(), prHeadRef)
 
 	// the branch is configured to merge a special PR head ref
 	prHeadRE := regexp.MustCompile(`^refs/pull/(\d+)/head$`)

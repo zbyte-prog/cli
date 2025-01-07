@@ -1717,7 +1717,7 @@ func Test_tryDetermineTrackingRef(t *testing.T) {
 				GhPath:  "some/path/gh",
 				GitPath: "some/path/git",
 			}
-			headBranchConfig := gitClient.ReadBranchConfig(ctx.Background(), "feature")
+			headBranchConfig, _ := gitClient.ReadBranchConfig(ctx.Background(), "feature")
 			ref, found := tryDetermineTrackingRef(gitClient, tt.remotes, "feature", headBranchConfig)
 
 			assert.Equal(t, tt.expectedTrackingRef, ref)

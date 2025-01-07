@@ -680,7 +680,11 @@ func NewCreateContext(opts *CreateOptions) (*CreateContext, error) {
 	var headRepo ghrepo.Interface
 	var headRemote *ghContext.Remote
 
-	headBranchConfig := gitClient.ReadBranchConfig(context.Background(), headBranch)
+	headBranchConfig, err := gitClient.ReadBranchConfig(context.Background(), headBranch)
+	if err != nil {
+		// We can still proceed without the branch config, so print to stderr but continue
+		fmt.Fprintf(opts.IO.ErrOut, "Error reading git branch config: %v\n", err)
+	}
 	if isPushEnabled {
 		// determine whether the head branch is already pushed to a remote
 		if trackingRef, found := tryDetermineTrackingRef(gitClient, remotes, headBranch, headBranchConfig); found {

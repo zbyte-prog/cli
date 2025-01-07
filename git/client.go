@@ -377,16 +377,22 @@ func (c *Client) lookupCommit(ctx context.Context, sha, format string) ([]byte, 
 }
 
 // ReadBranchConfig parses the `branch.BRANCH.(remote|merge|gh-merge-base)` part of git config.
-func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (cfg BranchConfig) {
+// If no branch config is found or there is an error in the command, it returns an empty BranchConfig.
+// Downstream consumers of ReadBranchConfig should consider the behavior they desire if this errors,
+// as an empty config is not necessarily breaking.
+func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (BranchConfig, error) {
+	var cfg BranchConfig
+
 	prefix := regexp.QuoteMeta(fmt.Sprintf("branch.%s.", branch))
 	args := []string{"config", "--get-regexp", fmt.Sprintf("^%s(remote|merge|%s)$", prefix, MergeBaseConfig)}
 	cmd, err := c.Command(ctx, args...)
 	if err != nil {
-		return
+		return cfg, err
 	}
+
 	out, err := cmd.Output()
 	if err != nil {
-		return
+		return cfg, err
 	}
 
 	for _, line := range outputLines(out) {
@@ -412,7 +418,7 @@ func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (cfg Branc
 			cfg.MergeBase = parts[1]
 		}
 	}
-	return
+	return cfg, nil
 }
 
 // SetBranchConfig sets the named value on the given branch.

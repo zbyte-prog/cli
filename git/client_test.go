@@ -747,7 +747,7 @@ func TestClientReadBranchConfig(t *testing.T) {
 				GitPath:        "path/to/git",
 				commandContext: cmdCtx,
 			}
-			branchConfig := client.ReadBranchConfig(context.Background(), "trunk")
+			branchConfig, _ := client.ReadBranchConfig(context.Background(), "trunk")
 			assert.Equal(t, tt.wantCmdArgs, strings.Join(cmd.Args[3:], " "))
 			assert.Equal(t, tt.wantBranchConfig, branchConfig)
 		})

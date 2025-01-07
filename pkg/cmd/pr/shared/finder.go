@@ -59,7 +59,8 @@ func NewFinder(factory *cmdutil.Factory) PRFinder {
 		httpClient: factory.HttpClient,
 		progress:   factory.IOStreams,
 		branchConfig: func(s string) git.BranchConfig {
-			return factory.GitClient.ReadBranchConfig(context.Background(), s)
+			branchConfig, _ := factory.GitClient.ReadBranchConfig(context.Background(), s)
+			return branchConfig
 		},
 	}
 }

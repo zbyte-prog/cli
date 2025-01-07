@@ -12,28 +12,26 @@ import (
 )
 
 type mockHttpClient struct {
-	mutex  sync.RWMutex
-	called bool
-	OnGet  func(url string) (*http.Response, error)
+	mutex             sync.RWMutex
+	currNumCalls      int
+	failAfterNumCalls int
 }
 
 func (m *mockHttpClient) Get(url string) (*http.Response, error) {
 	m.mutex.Lock()
-	m.called = true
+	m.currNumCalls++
 	m.mutex.Unlock()
-	return m.OnGet(url)
-}
 
-func OnGetSuccess(url string) (*http.Response, error) {
-	compressed := snappy.Encode(nil, data.SigstoreBundleRaw)
+	if m.failAfterNumCalls > 0 && m.currNumCalls >= m.failAfterNumCalls {
+		return &http.Response{
+			StatusCode: 500,
+		}, fmt.Errorf("failed to fetch with %s", url)
+	}
+
+	var compressed []byte
+	compressed = snappy.Encode(compressed, data.SigstoreBundleRaw)
 	return &http.Response{
 		StatusCode: 200,
 		Body:       io.NopCloser(bytes.NewReader(compressed)),
 	}, nil
-}
-
-func OnGetFail(url string) (*http.Response, error) {
-	return &http.Response{
-		StatusCode: 500,
-	}, fmt.Errorf("failed to fetch with %s", url)
 }

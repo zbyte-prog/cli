@@ -184,17 +184,17 @@ func statusRun(opts *StatusOptions) error {
 	return nil
 }
 
-func prSelectorForCurrentBranch(gitClient *git.Client, baseRepo ghrepo.Interface, prHeadRef string, rem ghContext.Remotes) (prNumber int, selector string, err error) {
-	selector = prHeadRef
+func prSelectorForCurrentBranch(gitClient *git.Client, baseRepo ghrepo.Interface, prHeadRef string, rem ghContext.Remotes) (int, string, error) {
 	branchConfig, _ := gitClient.ReadBranchConfig(context.Background(), prHeadRef)
 
 	// the branch is configured to merge a special PR head ref
 	prHeadRE := regexp.MustCompile(`^refs/pull/(\d+)/head$`)
 	if m := prHeadRE.FindStringSubmatch(branchConfig.MergeRef); m != nil {
-		prNumber, _ = strconv.Atoi(m[1])
-		return
+		prNumber, err := strconv.Atoi(m[1])
+		return prNumber, prHeadRef, err
 	}
 
+	var err error
 	var branchOwner string
 	if branchConfig.RemoteURL != nil {
 		// the branch merges from a remote specified by URL
@@ -208,6 +208,7 @@ func prSelectorForCurrentBranch(gitClient *git.Client, baseRepo ghrepo.Interface
 		}
 	}
 
+	selector := prHeadRef
 	if branchOwner != "" {
 		if strings.HasPrefix(branchConfig.MergeRef, "refs/heads/") {
 			selector = strings.TrimPrefix(branchConfig.MergeRef, "refs/heads/")
@@ -218,7 +219,7 @@ func prSelectorForCurrentBranch(gitClient *git.Client, baseRepo ghrepo.Interface
 		}
 	}
 
-	return
+	return 0, selector, err
 }
 
 func totalApprovals(pr *api.PullRequest) int {

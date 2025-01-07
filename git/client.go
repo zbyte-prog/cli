@@ -388,23 +388,23 @@ func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (BranchCon
 		return cfg, err
 	}
 
-	return c.createBranchConfig(outputLines(branchConfigOutput)), nil
+	return c.createBranchConfig(branchConfigOutput), nil
 }
 
-func (c *Client) readGitBranchConfig(ctx context.Context, branch string) ([]byte, error) {
+func (c *Client) readGitBranchConfig(ctx context.Context, branch string) ([]string, error) {
 	prefix := regexp.QuoteMeta(fmt.Sprintf("branch.%s.", branch))
 	args := []string{"config", "--get-regexp", fmt.Sprintf("^%s(remote|merge|%s)$", prefix, MergeBaseConfig)}
 	cmd, err := c.Command(ctx, args...)
 	if err != nil {
-		return []byte{}, err
+		return []string{}, err
 	}
 
 	out, err := cmd.Output()
 	if err != nil {
-		return []byte{}, err
+		return []string{}, err
 	}
 
-	return out, nil
+	return outputLines(out), nil
 }
 
 func (c *Client) createBranchConfig(gitBranchConfigOutput []string) BranchConfig {

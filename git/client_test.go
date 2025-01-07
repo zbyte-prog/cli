@@ -756,43 +756,57 @@ func TestClientReadBranchConfig(t *testing.T) {
 
 func Test_readGitBranchConfig(t *testing.T) {
 	tests := []struct {
-		name        string
-		branch      string
-		cmdExitCode int
-		cmdStdout   string
-		cmdStderr   string
-		wantCmdArgs string
-		wantErr     *GitError
+		name           string
+		branch         string
+		cmdExitStatus  int
+		cmdStdout      string
+		cmdStderr      string
+		expectedOutput []string
+		expectedError  *GitError
 	}{
 		{
-			name:        "read branch config",
-			branch:      "trunk",
-			cmdStdout:   "branch.trunk.remote origin\nbranch.trunk.merge refs/heads/trunk\nbranch.trunk.gh-merge-base trunk",
-			wantCmdArgs: `path/to/git config --get-regexp ^branch\.trunk\.(remote|merge|gh-merge-base)$`,
+			name:          "read branch config",
+			branch:        "trunk",
+			cmdExitStatus: 0,
+			cmdStdout:     "branch.trunk.remote origin\nbranch.trunk.merge refs/heads/trunk\nbranch.trunk.gh-merge-base trunk",
+			expectedOutput: []string{
+				"branch.trunk.remote origin",
+				"branch.trunk.merge refs/heads/trunk",
+				"branch.trunk.gh-merge-base trunk"},
+			expectedError: nil,
 		},
 		{
-			name:        "command failure",
-			branch:      "trunk",
-			wantCmdArgs: `path/to/git config --get-regexp ^branch\.trunk\.(remote|merge|gh-merge-base)$`,
-			cmdExitCode: 1,
-			cmdStderr:   "error",
-			wantErr:     &GitError{ExitCode: 1, Stderr: "error"},
+			name:           "command failure",
+			branch:         "trunk",
+			cmdExitStatus:  1,
+			cmdStderr:      "git error message",
+			expectedOutput: []string{},
+			expectedError: &GitError{
+				ExitCode: 1,
+				Stderr:   "git error message",
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, cmdCtx := createCommandContext(t, tt.cmdExitCode, tt.cmdStdout, tt.cmdStderr)
+			commandString := fmt.Sprintf("path/to/git config --get-regexp ^branch\\.%s\\.(remote|merge|gh-merge-base)$", tt.branch)
+			cmdCtx := createMockedCommandContext(t, map[args]commandResult{
+				args(commandString): {
+					ExitStatus: tt.cmdExitStatus,
+					Stdout:     tt.cmdStdout,
+					Stderr:     tt.cmdStderr,
+				},
+			})
 			client := Client{
 				GitPath:        "path/to/git",
 				commandContext: cmdCtx,
 			}
+
 			out, err := client.readGitBranchConfig(context.Background(), tt.branch)
-			if tt.wantErr != nil {
-				assert.Equal(t, tt.wantErr.ExitCode, err.(*GitError).ExitCode)
-				assert.Equal(t, tt.wantErr.Stderr, err.(*GitError).Stderr)
-			} else {
-				assert.Equal(t, tt.wantCmdArgs, strings.Join(cmd.Args[3:], " "))
-				assert.Equal(t, tt.cmdStdout, string(out))
+			assert.Equal(t, tt.expectedOutput, out)
+			if err != nil {
+				assert.Equal(t, tt.cmdStderr, err.(*GitError).Stderr)
+				assert.Equal(t, tt.cmdExitStatus, err.(*GitError).ExitCode)
 			}
 		})
 	}

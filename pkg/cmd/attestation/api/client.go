@@ -172,7 +172,7 @@ func (c *LiveClient) fetchBundlesByURL(attestations []*Attestation) ([]*Attestat
 	g := errgroup.Group{}
 	for i, a := range attestations {
 		g.Go(func() error {
-			b, err := c.fetchBundleByURL(a)
+			b, err := c.GetBundle(url)
 			if err != nil {
 				return fmt.Errorf("failed to fetch bundle with URL: %w", err)
 			}

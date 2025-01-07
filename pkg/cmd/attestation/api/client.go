@@ -209,7 +209,6 @@ func (c *LiveClient) fetchBundleByURL(a *Attestation) (*bundle.Bundle, error) {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// parse the URL to get the host and path
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read blob storage response body: %w", err)

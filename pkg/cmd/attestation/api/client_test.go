@@ -181,9 +181,9 @@ func TestGetByDigest_Error(t *testing.T) {
 }
 
 func TestFetchBundlesByURL(t *testing.T) {
-	mockHTTPClient := &mockHttpClient{}
+	mockHTTPClient := SuccessHTTPClient()
 	client := LiveClient{
-		httpClient: mockHTTPClient,
+		httpClient: &mockHTTPClient,
 		logger:     io.NewTestHandler(),
 	}
 
@@ -194,11 +194,11 @@ func TestFetchBundlesByURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, fetched, 2)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", fetched[0].Bundle.GetMediaType())
-	mockHTTPClient.AssertNumberOfCalls(t, "OnGet", 2)
+	mockHTTPClient.AssertNumberOfCalls(t, "OnGetSuccess", 2)
 }
 
 func TestFetchBundlesByURL_Fail(t *testing.T) {
-	mockHTTPClient := HTTPClientFailsAfterNumCalls(1)
+	mockHTTPClient := FailsAfterNumCallsHTTPClient(1)
 
 	c := &LiveClient{
 		httpClient: &mockHTTPClient,
@@ -211,6 +211,7 @@ func TestFetchBundlesByURL_Fail(t *testing.T) {
 	fetched, err := c.fetchBundlesByURL(attestations)
 	require.Error(t, err)
 	require.Nil(t, fetched)
+	mockHTTPClient.AssertNumberOfCalls(t, "OnGetFailAfterOneCall", 2)
 }
 
 func TestFetchBundleByURL(t *testing.T) {
@@ -225,7 +226,7 @@ func TestFetchBundleByURL(t *testing.T) {
 	bundle, err := c.fetchBundleByURL(&attestation)
 	require.NoError(t, err)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-	mockHTTPClient.AssertNumberOfCalls(t, "OnGet", 1)
+	mockHTTPClient.AssertNumberOfCalls(t, "OnGetSuccess", 1)
 }
 
 func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
@@ -240,7 +241,7 @@ func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
 	bundle, err := c.fetchBundleByURL(&attestation)
 	require.Error(t, err)
 	require.Nil(t, bundle)
-	mockHTTPClient.AssertNumberOfCalls(t, "OnGet", 1)
+	mockHTTPClient.AssertNumberOfCalls(t, "OnGetFail", 1)
 }
 
 func TestFetchBundleByURL_FallbackToBundleField(t *testing.T) {
@@ -255,7 +256,7 @@ func TestFetchBundleByURL_FallbackToBundleField(t *testing.T) {
 	bundle, err := c.fetchBundleByURL(&attestation)
 	require.NoError(t, err)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-	mockHTTPClient.AssertNotCalled(t, "OnGet")
+	mockHTTPClient.AssertNotCalled(t, "OnGetSuccess")
 }
 
 func TestGetTrustDomain(t *testing.T) {

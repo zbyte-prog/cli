@@ -191,6 +191,7 @@ func (c *LiveClient) fetchBundlesByURL(attestations []*Attestation) ([]*Attestat
 }
 
 func (c *LiveClient) fetchBundleByURL(a *Attestation) (*bundle.Bundle, error) {
+	// for now, we fallback to the bundle field if the bundle URL is empty
 	if a.BundleURL == "" {
 		c.logger.VerbosePrintf("Bundle URL is empty. Falling back to bundle field\n\n")
 		return a.Bundle, nil

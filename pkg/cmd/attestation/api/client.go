@@ -167,7 +167,7 @@ func (c *LiveClient) getAttestations(url, name, digest string, limit int) ([]*At
 	return attestations, nil
 }
 
-func (c *LiveClient) fetchBundlesByURL(attestations []*Attestation) ([]*Attestation, error) {
+func (c *LiveClient) fetchBundleFromAttestations(attestations []*Attestation) ([]*Attestation, error) {
 	fetched := make([]*Attestation, len(attestations))
 	g := errgroup.Group{}
 	for i, a := range attestations {

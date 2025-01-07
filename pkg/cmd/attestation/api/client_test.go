@@ -21,14 +21,14 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 	}
 	l := io.NewTestHandler()
 
-	mockHTTPClient := SuccessHTTPClient()
+	httpClient := &mockHttpClient{}
 
 	if hasNextPage {
 		return &LiveClient{
 			githubAPI: mockAPIClient{
 				OnRESTWithNext: fetcher.OnRESTSuccessWithNextPage,
 			},
-			httpClient: &mockHTTPClient,
+			httpClient: httpClient,
 			logger:     l,
 		}
 	}
@@ -37,7 +37,7 @@ func NewClientWithMockGHClient(hasNextPage bool) Client {
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTSuccess,
 		},
-		httpClient: &mockHTTPClient,
+		httpClient: httpClient,
 		logger:     l,
 	}
 }
@@ -139,12 +139,12 @@ func TestGetByDigest_NoAttestationsFound(t *testing.T) {
 		NumAttestations: 5,
 	}
 
-	httpClient := SuccessHTTPClient()
+	httpClient := &mockHttpClient{}
 	c := LiveClient{
 		githubAPI: mockAPIClient{
 			OnRESTWithNext: fetcher.OnRESTWithNextNoAttestations,
 		},
-		httpClient: &httpClient,
+		httpClient: httpClient,
 		logger:     io.NewTestHandler(),
 	}
 
@@ -181,9 +181,9 @@ func TestGetByDigest_Error(t *testing.T) {
 }
 
 func TestFetchBundlesByURL(t *testing.T) {
-	mockHTTPClient := SuccessHTTPClient()
+	httpClient := &mockHttpClient{}
 	client := LiveClient{
-		httpClient: &mockHTTPClient,
+		httpClient: httpClient,
 		logger:     io.NewTestHandler(),
 	}
 
@@ -194,14 +194,14 @@ func TestFetchBundlesByURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, fetched, 2)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", fetched[0].Bundle.GetMediaType())
-	mockHTTPClient.AssertNumberOfCalls(t, "OnGetSuccess", 2)
+	httpClient.AssertNumberOfCalls(t, "OnGetSuccess", 2)
 }
 
 func TestFetchBundlesByURL_Fail(t *testing.T) {
-	mockHTTPClient := FailsAfterNumCallsHTTPClient(1)
+	httpClient := &failAfterOneCallHttpClient{}
 
 	c := &LiveClient{
-		httpClient: &mockHTTPClient,
+		httpClient: httpClient,
 		logger:     io.NewTestHandler(),
 	}
 
@@ -211,14 +211,14 @@ func TestFetchBundlesByURL_Fail(t *testing.T) {
 	fetched, err := c.fetchBundlesByURL(attestations)
 	require.Error(t, err)
 	require.Nil(t, fetched)
-	mockHTTPClient.AssertNumberOfCalls(t, "OnGetFailAfterOneCall", 2)
+	httpClient.AssertNumberOfCalls(t, "OnGetFailAfterOneCall", 2)
 }
 
 func TestFetchBundleByURL(t *testing.T) {
-	mockHTTPClient := SuccessHTTPClient()
+	httpClient := &mockHttpClient{}
 
 	c := &LiveClient{
-		httpClient: &mockHTTPClient,
+		httpClient: httpClient,
 		logger:     io.NewTestHandler(),
 	}
 
@@ -226,14 +226,14 @@ func TestFetchBundleByURL(t *testing.T) {
 	bundle, err := c.fetchBundleByURL(&attestation)
 	require.NoError(t, err)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-	mockHTTPClient.AssertNumberOfCalls(t, "OnGetSuccess", 1)
+	httpClient.AssertNumberOfCalls(t, "OnGetSuccess", 1)
 }
 
 func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
-	mockHTTPClient := FailHTTPClient()
+	mockHTTPClient := &failHttpClient{}
 
 	c := &LiveClient{
-		httpClient: &mockHTTPClient,
+		httpClient: mockHTTPClient,
 		logger:     io.NewTestHandler(),
 	}
 
@@ -245,10 +245,10 @@ func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
 }
 
 func TestFetchBundleByURL_FallbackToBundleField(t *testing.T) {
-	mockHTTPClient := SuccessHTTPClient()
+	mockHTTPClient := &mockHttpClient{}
 
 	c := &LiveClient{
-		httpClient: &mockHTTPClient,
+		httpClient: mockHTTPClient,
 		logger:     io.NewTestHandler(),
 	}
 

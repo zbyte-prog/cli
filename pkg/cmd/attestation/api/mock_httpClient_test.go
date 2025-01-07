@@ -62,15 +62,3 @@ func (m *failAfterOneCallHttpClient) Get(url string) (*http.Response, error) {
 		Body:       io.NopCloser(bytes.NewReader(compressed)),
 	}, nil
 }
-
-func FailHTTPClient() failHttpClient {
-	return failHttpClient{}
-}
-
-func SuccessHTTPClient() mockHttpClient {
-	return mockHttpClient{}
-}
-
-func FailsAfterNumCallsHTTPClient(numCalls int) failAfterOneCallHttpClient {
-	return failAfterOneCallHttpClient{}
-}

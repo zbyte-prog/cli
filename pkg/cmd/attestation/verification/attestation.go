@@ -106,14 +106,12 @@ func GetRemoteAttestations(client api.Client, params FetchRemoteAttestationsPara
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch attestations from %s: %w", params.Repo, err)
 		}
-
 		return attestations, nil
 	} else if params.Owner != "" {
 		attestations, err := client.GetByOwnerAndDigest(params.Owner, params.Digest, params.Limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch attestations from %s: %w", params.Owner, err)
 		}
-
 		return attestations, nil
 	}
 	return nil, fmt.Errorf("owner or repo must be provided")

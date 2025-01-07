@@ -333,7 +333,6 @@ func buildTableVerifyContent(tenant string, results []*verification.AttestationP
 			return nil, err
 		}
 
-		//sourceRepoURI := res.VerificationResult.Signature.Certificate.Extensions.SourceRepositoryURI
 		buildConfigURI := res.VerificationResult.Signature.Certificate.Extensions.BuildConfigURI
 		sourceRepoAndOrg, sourceWorkflow, err := extractAttestationDetail(tenant, buildConfigURI)
 		if err != nil {

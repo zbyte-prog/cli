@@ -73,7 +73,7 @@ func (c *LiveClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Atte
 		return nil, err
 	}
 
-	bundles, err := c.fetchBundlesByURL(attestations)
+	bundles, err := c.fetchBundleFromAttestations(attestations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch bundle with URL: %w", err)
 	}
@@ -98,7 +98,7 @@ func (c *LiveClient) GetByOwnerAndDigest(owner, digest string, limit int) ([]*At
 		return nil, newErrNoAttestations(owner, digest)
 	}
 
-	bundles, err := c.fetchBundlesByURL(attestations)
+	bundles, err := c.fetchBundleFromAttestations(attestations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch bundle with URL: %w", err)
 	}
@@ -172,7 +172,16 @@ func (c *LiveClient) fetchBundleFromAttestations(attestations []*Attestation) ([
 	g := errgroup.Group{}
 	for i, a := range attestations {
 		g.Go(func() error {
-			b, err := c.GetBundle(url)
+			// for now, we fallback to the bundle field if the bundle URL is empty
+			if a.BundleURL == "" {
+				c.logger.VerbosePrintf("Bundle URL is empty. Falling back to bundle field\n\n")
+				fetched[i] = &Attestation{
+					Bundle: a.Bundle,
+				}
+				return nil
+			}
+
+			b, err := c.GetBundle(a.BundleURL)
 			if err != nil {
 				return fmt.Errorf("failed to fetch bundle with URL: %w", err)
 			}
@@ -190,16 +199,10 @@ func (c *LiveClient) fetchBundleFromAttestations(attestations []*Attestation) ([
 	return fetched, nil
 }
 
-func (c *LiveClient) fetchBundleByURL(a *Attestation) (*bundle.Bundle, error) {
-	// for now, we fallback to the bundle field if the bundle URL is empty
-	if a.BundleURL == "" {
-		c.logger.VerbosePrintf("Bundle URL is empty. Falling back to bundle field\n\n")
-		return a.Bundle, nil
-	}
-
+func (c *LiveClient) GetBundle(url string) (*bundle.Bundle, error) {
 	c.logger.VerbosePrintf("Fetching attestation bundle with bundle URL\n\n")
 
-	resp, err := c.httpClient.Get(a.BundleURL)
+	resp, err := c.httpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}

@@ -180,7 +180,7 @@ func TestGetByDigest_Error(t *testing.T) {
 	require.Nil(t, attestations)
 }
 
-func TestFetchBundlesByURL(t *testing.T) {
+func TestFetchBundleFromAttestations(t *testing.T) {
 	httpClient := &mockHttpClient{}
 	client := LiveClient{
 		httpClient: httpClient,
@@ -190,14 +190,14 @@ func TestFetchBundlesByURL(t *testing.T) {
 	att1 := makeTestAttestation()
 	att2 := makeTestAttestation()
 	attestations := []*Attestation{&att1, &att2}
-	fetched, err := client.fetchBundlesByURL(attestations)
+	fetched, err := client.fetchBundleFromAttestations(attestations)
 	require.NoError(t, err)
 	require.Len(t, fetched, 2)
 	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", fetched[0].Bundle.GetMediaType())
 	httpClient.AssertNumberOfCalls(t, "OnGetSuccess", 2)
 }
 
-func TestFetchBundlesByURL_Fail(t *testing.T) {
+func TestFetchBundleFromAttestations_Fail(t *testing.T) {
 	httpClient := &failAfterOneCallHttpClient{}
 
 	c := &LiveClient{
@@ -208,28 +208,13 @@ func TestFetchBundlesByURL_Fail(t *testing.T) {
 	att1 := makeTestAttestation()
 	att2 := makeTestAttestation()
 	attestations := []*Attestation{&att1, &att2}
-	fetched, err := c.fetchBundlesByURL(attestations)
+	fetched, err := c.fetchBundleFromAttestations(attestations)
 	require.Error(t, err)
 	require.Nil(t, fetched)
 	httpClient.AssertNumberOfCalls(t, "OnGetFailAfterOneCall", 2)
 }
 
-func TestFetchBundleByURL(t *testing.T) {
-	httpClient := &mockHttpClient{}
-
-	c := &LiveClient{
-		httpClient: httpClient,
-		logger:     io.NewTestHandler(),
-	}
-
-	attestation := makeTestAttestation()
-	bundle, err := c.fetchBundleByURL(&attestation)
-	require.NoError(t, err)
-	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
-	httpClient.AssertNumberOfCalls(t, "OnGetSuccess", 1)
-}
-
-func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
+func TestFetchBundleFromAttestations_FetchByURLFail(t *testing.T) {
 	mockHTTPClient := &failHttpClient{}
 
 	c := &LiveClient{
@@ -237,8 +222,9 @@ func TestFetchBundleByURL_FetchByURLFail(t *testing.T) {
 		logger:     io.NewTestHandler(),
 	}
 
-	attestation := makeTestAttestation()
-	bundle, err := c.fetchBundleByURL(&attestation)
+	a := makeTestAttestation()
+	attestations := []*Attestation{&a}
+	bundle, err := c.fetchBundleFromAttestations(attestations)
 	require.Error(t, err)
 	require.Nil(t, bundle)
 	mockHTTPClient.AssertNumberOfCalls(t, "OnGetFail", 1)
@@ -252,10 +238,11 @@ func TestFetchBundleByURL_FallbackToBundleField(t *testing.T) {
 		logger:     io.NewTestHandler(),
 	}
 
-	attestation := Attestation{Bundle: data.SigstoreBundle(t)}
-	bundle, err := c.fetchBundleByURL(&attestation)
+	a := Attestation{Bundle: data.SigstoreBundle(t)}
+	attestations := []*Attestation{&a}
+	fetched, err := c.fetchBundleFromAttestations(attestations)
 	require.NoError(t, err)
-	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", bundle.GetMediaType())
+	require.Equal(t, "application/vnd.dev.sigstore.bundle.v0.3+json", fetched[0].Bundle.GetMediaType())
 	mockHTTPClient.AssertNotCalled(t, "OnGetSuccess")
 }
 

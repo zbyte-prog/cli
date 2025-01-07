@@ -14,6 +14,7 @@ import (
 type mockHttpClient struct {
 	mutex             sync.RWMutex
 	currNumCalls      int
+	alwaysFail        bool
 	failAfterNumCalls int
 }
 
@@ -22,7 +23,7 @@ func (m *mockHttpClient) Get(url string) (*http.Response, error) {
 	m.currNumCalls++
 	m.mutex.Unlock()
 
-	if m.failAfterNumCalls > 0 && m.currNumCalls >= m.failAfterNumCalls {
+	if m.alwaysFail || (m.failAfterNumCalls > 0 && m.currNumCalls > m.failAfterNumCalls) {
 		return &http.Response{
 			StatusCode: 500,
 		}, fmt.Errorf("failed to fetch with %s", url)
@@ -34,4 +35,24 @@ func (m *mockHttpClient) Get(url string) (*http.Response, error) {
 		StatusCode: 200,
 		Body:       io.NopCloser(bytes.NewReader(compressed)),
 	}, nil
+}
+
+func (m *mockHttpClient) TimesCalled() int {
+	return m.currNumCalls
+}
+
+func FailHTTPClient() mockHttpClient {
+	return mockHttpClient{
+		alwaysFail: true,
+	}
+}
+
+func SuccessHTTPClient() mockHttpClient {
+	return mockHttpClient{}
+}
+
+func HTTPClientFailsAfterNumCalls(numCalls int) mockHttpClient {
+	return mockHttpClient{
+		failAfterNumCalls: numCalls,
+	}
 }

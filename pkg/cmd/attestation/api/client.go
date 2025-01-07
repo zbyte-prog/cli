@@ -81,14 +81,14 @@ func (c *LiveClient) GetByRepoAndDigest(repo, digest string, limit int) ([]*Atte
 	return bundles, nil
 }
 
-func (c *LiveClient) buildOwnerAndDigestURL(owner, digest string) string {
+func (c *LiveClient) BuildOwnerAndDigestURL(owner, digest string) string {
 	owner = strings.Trim(owner, "/")
 	return fmt.Sprintf(GetAttestationByOwnerAndSubjectDigestPath, owner, digest)
 }
 
 // GetByOwnerAndDigest fetches attestation by owner and digest
 func (c *LiveClient) GetByOwnerAndDigest(owner, digest string, limit int) ([]*Attestation, error) {
-	url := c.buildOwnerAndDigestURL(owner, digest)
+	url := c.BuildOwnerAndDigestURL(owner, digest)
 	attestations, err := c.getAttestations(url, owner, digest, limit)
 	if err != nil {
 		return nil, err

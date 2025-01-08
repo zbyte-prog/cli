@@ -271,7 +271,7 @@ func runVerify(opts *Options) error {
 		return err
 	}
 
-	headers := []string{"signer repo", "signer workflow", "build repo", "build workflow"}
+	headers := []string{"signer repo", "signer workflow", "builder repo", "builder workflow"}
 	if err = opts.Logger.PrintTable(headers, tableContent); err != nil {
 		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to print attestation details to table"))
 		return err

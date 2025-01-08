@@ -76,15 +76,6 @@ func TestVerifyIntegration(t *testing.T) {
 		require.ErrorContains(t, err, "expected SourceRepositoryOwnerURI to be https://github.com/fakeowner, got https://github.com/sigstore")
 	})
 
-	t.Run("with invalid owner and invalid repo", func(t *testing.T) {
-		opts := publicGoodOpts
-		opts.Repo = "fakeowner/fakerepo"
-
-		err := runVerify(&opts)
-		require.Error(t, err)
-		require.ErrorContains(t, err, "expected SourceRepositoryURI to be https://github.com/fakeowner/fakerepo, got https://github.com/sigstore/sigstore-js")
-	})
-
 	t.Run("with no matching OIDC issuer", func(t *testing.T) {
 		opts := publicGoodOpts
 		opts.OIDCIssuer = "some-other-issuer"
@@ -110,6 +101,25 @@ func TestVerifyIntegration(t *testing.T) {
 		err := runVerify(&opts)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "verifying with issuer \"sigstore.dev\"")
+	})
+
+	t.Run("with bundle from OCI registry", func(t *testing.T) {
+		opts := Options{
+			APIClient:             api.NewLiveClient(hc, host, logger),
+			ArtifactPath:          "oci://ghcr.io/github/artifact-attestations-helm-charts/policy-controller:v0.10.0-github9",
+			UseBundleFromRegistry: true,
+			DigestAlgorithm:       "sha256",
+			Logger:                logger,
+			OCIClient:             oci.NewLiveClient(),
+			OIDCIssuer:            verification.GitHubOIDCIssuer,
+			Owner:                 "github",
+			PredicateType:         verification.SLSAPredicateV1,
+			SANRegex:              "^https://github.com/github/",
+			SigstoreVerifier:      verification.NewLiveSigstoreVerifier(sigstoreConfig),
+		}
+
+		err := runVerify(&opts)
+		require.NoError(t, err)
 	})
 }
 

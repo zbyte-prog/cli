@@ -157,9 +157,6 @@ func NewVerifyCmd(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 				opts.Tenant = tenant
 			}
 
-			// set policy flags based on what has been provided
-			opts.SetPolicyFlags()
-
 			if runF != nil {
 				return runF(opts)
 			}
@@ -242,7 +239,9 @@ func runVerify(opts *Options) error {
 	}
 	attestations = filteredAttestations
 
-	opts.Logger.VerbosePrintf("Verifying attestations with predicate type: %s\n", ec.PredicateType)
+	// print information about the policy that will be enforced against attestations
+	opts.Logger.Println("\nThe following policy criteria will be enforced:")
+	opts.Logger.Println(ec.BuildPolicyInformation())
 
 	verified, errMsg, err := verifyAttestations(*artifact, attestations, opts.SigstoreVerifier, ec)
 	if err != nil {

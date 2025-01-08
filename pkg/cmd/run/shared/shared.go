@@ -27,6 +27,7 @@ const (
 	InProgress Status = "in_progress"
 	Requested  Status = "requested"
 	Waiting    Status = "waiting"
+	Pending    Status = "pending"
 
 	// Run conclusions
 	ActionRequired Conclusion = "action_required"
@@ -53,6 +54,7 @@ var AllStatuses = []string{
 	"in_progress",
 	"requested",
 	"waiting",
+	"pending",
 	"action_required",
 	"cancelled",
 	"failure",
@@ -508,7 +510,7 @@ func SelectRun(p Prompter, cs *iostreams.ColorScheme, runs []Run) (string, error
 		symbol, _ := Symbol(cs, run.Status, run.Conclusion)
 		candidates = append(candidates,
 			// TODO truncate commit message, long ones look terrible
-			fmt.Sprintf("%s %s, %s (%s) %s", symbol, run.Title(), run.WorkflowName(), run.HeadBranch, preciseAgo(now, run.StartedTime())))
+			fmt.Sprintf("%s %s, %s [%s] %s", symbol, run.Title(), run.WorkflowName(), run.HeadBranch, preciseAgo(now, run.StartedTime())))
 	}
 
 	selected, err := p.Select("Select a workflow run", "", candidates)

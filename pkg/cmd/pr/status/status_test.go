@@ -387,6 +387,16 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 		wantError    error
 	}{
 		{
+			name: "The branch is configured to merge a special PR head ref",
+			branchConfig: git.BranchConfig{
+				MergeRef: "refs/pull/666/head",
+			},
+			prHeadRef:    "Frederick888/main",
+			wantPrNumber: 666,
+			wantSelector: "Frederick888/main",
+			wantError:    nil,
+		},
+		{
 			name: "Branch merges from a remote specified by URL",
 			branchConfig: git.BranchConfig{
 				RemoteURL: &url.URL{
@@ -395,18 +405,126 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 					Host:   "github.com",
 					Path:   "Frederick888/playground.git",
 				},
-				MergeRef: "refs/heads/main",
 			},
-			baseRepo:  ghrepo.NewWithHost("octocat", "playground", "github.com"),
+			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
 			prHeadRef: "Frederick888/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
-					Repo:   ghrepo.NewWithHost("octocat", "playground", "github.com"),
+					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
 				},
 			},
 			wantPrNumber: 0,
-			wantSelector: "Frederick888:main",
+			wantSelector: "Frederick888/main",
+			wantError:    nil,
+		},
+		{
+			name: "Branch merges from a remote specified by name",
+			branchConfig: git.BranchConfig{
+				RemoteName: "upstream",
+			},
+			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+			prHeadRef: "Frederick888/main",
+			remotes: context.Remotes{
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.NewWithHost("forkName", "playground", "github.com"),
+				},
+				&context.Remote{
+					Remote: &git.Remote{Name: "upstream"},
+					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+				},
+			},
+			wantPrNumber: 0,
+			wantSelector: "Frederick888/main",
+			wantError:    nil,
+		},
+		{
+			name: "Branch is a fork and merges from a remote specified by URL",
+			branchConfig: git.BranchConfig{
+				RemoteURL: &url.URL{
+					Scheme: "ssh",
+					User:   url.User("git"),
+					Host:   "github.com",
+					Path:   "forkName/playground.git",
+				},
+				MergeRef: "refs/heads/main",
+			},
+			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+			prHeadRef: "Frederick888/main",
+			remotes: context.Remotes{
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.NewWithHost("forkName", "playground", "github.com"),
+				},
+			},
+			wantPrNumber: 0,
+			wantSelector: "forkName:main",
+			wantError:    nil,
+		},
+		{
+			name: "Branch is a fork and merges from a remote specified by name",
+			branchConfig: git.BranchConfig{
+				RemoteName: "origin",
+			},
+			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+			prHeadRef: "Frederick888/main",
+			remotes: context.Remotes{
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.NewWithHost("forkName", "playground", "github.com"),
+				},
+				&context.Remote{
+					Remote: &git.Remote{Name: "upstream"},
+					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+				},
+			},
+			wantPrNumber: 0,
+			wantSelector: "forkName:Frederick888/main",
+			wantError:    nil,
+		},
+		{
+			name: "Branch specifies a mergeRef and merges from a remote specified by name",
+			branchConfig: git.BranchConfig{
+				RemoteName: "upstream",
+				MergeRef:   "refs/heads/main",
+			},
+			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+			prHeadRef: "Frederick888/main",
+			remotes: context.Remotes{
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.NewWithHost("forkName", "playground", "github.com"),
+				},
+				&context.Remote{
+					Remote: &git.Remote{Name: "upstream"},
+					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+				},
+			},
+			wantPrNumber: 0,
+			wantSelector: "main",
+			wantError:    nil,
+		},
+		{
+			name: "Branch is a fork, specifies a mergeRef, and merges from a remote specified by name",
+			branchConfig: git.BranchConfig{
+				RemoteName: "origin",
+				MergeRef:   "refs/heads/main",
+			},
+			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+			prHeadRef: "Frederick888/main",
+			remotes: context.Remotes{
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.NewWithHost("forkName", "playground", "github.com"),
+				},
+				&context.Remote{
+					Remote: &git.Remote{Name: "upstream"},
+					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+				},
+			},
+			wantPrNumber: 0,
+			wantSelector: "forkName:main",
 			wantError:    nil,
 		},
 	}

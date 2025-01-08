@@ -72,6 +72,7 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 }
 
 func statusRun(opts *StatusOptions) error {
+	ctx := context.Background()
 	httpClient, err := opts.HttpClient()
 	if err != nil {
 		return err
@@ -93,7 +94,8 @@ func statusRun(opts *StatusOptions) error {
 		}
 
 		remotes, _ := opts.Remotes()
-		currentPRNumber, currentPRHeadRef, err = prSelectorForCurrentBranch(opts.GitClient, baseRepo, currentBranch, remotes)
+		branchConfig, _ := opts.GitClient.ReadBranchConfig(ctx, currentBranch)
+		currentPRNumber, currentPRHeadRef, err = prSelectorForCurrentBranch(branchConfig, baseRepo, currentBranch, remotes)
 		if err != nil {
 			return fmt.Errorf("could not query for pull request for current branch: %w", err)
 		}
@@ -184,14 +186,15 @@ func statusRun(opts *StatusOptions) error {
 	return nil
 }
 
-func prSelectorForCurrentBranch(gitClient *git.Client, baseRepo ghrepo.Interface, prHeadRef string, rem ghContext.Remotes) (int, string, error) {
-	branchConfig, _ := gitClient.ReadBranchConfig(context.Background(), prHeadRef)
-
+func prSelectorForCurrentBranch(branchConfig git.BranchConfig, baseRepo ghrepo.Interface, prHeadRef string, rem ghContext.Remotes) (int, string, error) {
 	// the branch is configured to merge a special PR head ref
 	prHeadRE := regexp.MustCompile(`^refs/pull/(\d+)/head$`)
 	if m := prHeadRE.FindStringSubmatch(branchConfig.MergeRef); m != nil {
 		prNumber, err := strconv.Atoi(m[1])
-		return prNumber, prHeadRef, err
+		if err != nil {
+			return 0, "", err
+		}
+		return prNumber, prHeadRef, nil
 	}
 
 	var err error

@@ -683,7 +683,7 @@ func NewCreateContext(opts *CreateOptions) (*CreateContext, error) {
 	headBranchConfig, err := gitClient.ReadBranchConfig(context.Background(), headBranch)
 	if err != nil {
 		// We can still proceed without the branch config, so print to stderr but continue
-		fmt.Fprintf(opts.IO.ErrOut, "Error reading git branch config: %v\n", err)
+		fmt.Fprintf(opts.IO.ErrOut, "Unable to read git branch config: %v\n", err)
 	}
 	if isPushEnabled {
 		// determine whether the head branch is already pushed to a remote

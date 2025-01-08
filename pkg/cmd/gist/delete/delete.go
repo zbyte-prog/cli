@@ -35,7 +35,7 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "delete [<id> | <url>]",
+		Use:   "delete {<id> | <url>}",
 		Short: "Delete a gist",
 		Long: heredoc.Docf(`
 		Delete a GitHub gist.
@@ -53,9 +53,18 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
+			if !opts.IO.CanPrompt() && !opts.Confirmed {
+				return cmdutil.FlagErrorf("--yes required when not running interactively")
+			}
+
+			if !opts.IO.CanPrompt() && len(args) == 0 {
+				return cmdutil.FlagErrorf("id or url argument required in non-interactive mode")
+			}
+
 			if len(args) == 1 {
 				opts.Selector = args[0]
 			}
+
 			if runF != nil {
 				return runF(&opts)
 			}
@@ -97,9 +106,11 @@ func deleteRun(opts *DeleteOptions) error {
 	}
 
 	if !opts.Confirmed {
-		err = opts.Prompter.ConfirmDeletion("delete")
-
+		confirmed, err := opts.Prompter.Confirm(fmt.Sprintf("Delete \"%s\" gist?", gistID), false)
 		if err != nil {
+			return err
+		}
+		if !confirmed {
 			return cmdutil.CancelError
 		}
 	}
@@ -128,7 +139,7 @@ func deleteGist(apiClient *api.Client, hostname string, gistID string, opts *Del
 	if opts.IO.IsStdoutTTY() {
 		cs := opts.IO.ColorScheme()
 		fmt.Fprintf(opts.IO.Out,
-			"%s Deleted gist %s\n",
+			"%s Gist \"%s\" deleted\n",
 			cs.SuccessIcon(),
 			gistID)
 	}

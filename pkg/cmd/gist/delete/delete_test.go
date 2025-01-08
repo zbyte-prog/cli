@@ -19,36 +19,75 @@ import (
 
 func TestNewCmdDelete(t *testing.T) {
 	tests := []struct {
-		name  string
-		cli   string
-		wants DeleteOptions
+		name       string
+		cli        string
+		tty        bool
+		want       DeleteOptions
+		wantErr    bool
+		wantErrMsg string
 	}{
 		{
 			name: "valid selector",
 			cli:  "123",
-			wants: DeleteOptions{
+			tty:  true,
+			want: DeleteOptions{
 				Selector: "123",
 			},
 		},
 		{
-			name: "no ID supplied",
+			name: "valid selector, no ID supplied",
 			cli:  "",
-			wants: DeleteOptions{
+			tty:  true,
+			want: DeleteOptions{
 				Selector: "",
 			},
 		},
 		{
-			name: "yes flag",
+			name: "no ID supplied with --yes",
+			cli:  "--yes",
+			tty:  true,
+			want: DeleteOptions{
+				Selector: "",
+			},
+		},
+		{
+			name: "selector with --yes, no tty",
 			cli:  "123 --yes",
-			wants: DeleteOptions{
+			tty:  false,
+			want: DeleteOptions{
 				Selector: "123",
 			},
+		},
+		{
+			name: "ID arg without --yes, no tty",
+			cli:  "123",
+			tty:  false,
+			want: DeleteOptions{
+				Selector: "",
+			},
+			wantErr:    true,
+			wantErrMsg: "--yes required when not running interactively",
+		},
+		{
+			name: "no ID supplied with --yes, no tty",
+			cli:  "--yes",
+			tty:  false,
+			want: DeleteOptions{
+				Selector: "",
+			},
+			wantErr:    true,
+			wantErrMsg: "id or url argument required in non-interactive mode",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := &cmdutil.Factory{}
+			io, _, _, _ := iostreams.Test()
+			f := &cmdutil.Factory{
+				IOStreams: io,
+			}
+			io.SetStdinTTY(tt.tty)
+			io.SetStdoutTTY(tt.tty)
 
 			argv, err := shlex.Split(tt.cli)
 			assert.NoError(t, err)
@@ -64,9 +103,13 @@ func TestNewCmdDelete(t *testing.T) {
 			cmd.SetErr(&bytes.Buffer{})
 
 			_, err = cmd.ExecuteC()
-			assert.NoError(t, err)
+			if tt.wantErr {
+				assert.EqualError(t, err, tt.wantErrMsg)
+				return
+			}
 
-			assert.Equal(t, tt.wants.Selector, gotOpts.Selector)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want.Selector, gotOpts.Selector)
 		})
 	}
 }
@@ -75,6 +118,7 @@ func Test_deleteRun(t *testing.T) {
 	tests := []struct {
 		name         string
 		opts         *DeleteOptions
+		cancel       bool
 		httpStubs    func(*httpmock.Registry)
 		mockGistList bool
 		wantErr      bool
@@ -91,7 +135,7 @@ func Test_deleteRun(t *testing.T) {
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Deleted gist 1234\n",
+			wantStdout: "✓ Gist \"1234\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -105,7 +149,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			mockGistList: true,
 			wantErr:      false,
-			wantStdout:   "✓ Deleted gist 1234\n",
+			wantStdout:   "✓ Gist \"1234\" deleted\n",
 			wantStderr:   "",
 		},
 		{
@@ -119,7 +163,7 @@ func Test_deleteRun(t *testing.T) {
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Deleted gist 1234\n",
+			wantStdout: "✓ Gist \"1234\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -134,8 +178,28 @@ func Test_deleteRun(t *testing.T) {
 			},
 			mockGistList: true,
 			wantErr:      false,
-			wantStdout:   "✓ Deleted gist 1234\n",
+			wantStdout:   "✓ Gist \"1234\" deleted\n",
 			wantStderr:   "",
+		},
+		{
+			name: "cancel delete with id",
+			opts: &DeleteOptions{
+				Selector: "1234",
+			},
+			cancel:     true,
+			wantErr:    true,
+			wantStdout: "",
+			wantStderr: "",
+		},
+		{
+			name: "cancel delete with prompt",
+			opts: &DeleteOptions{
+				Selector: "",
+			},
+			cancel:     true,
+			wantErr:    true,
+			wantStdout: "",
+			wantStderr: "",
 		},
 		{
 			name: "not found",
@@ -153,43 +217,47 @@ func Test_deleteRun(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		reg := &httpmock.Registry{}
-		tt.httpStubs(reg)
 		pm := prompter.NewMockPrompter(t)
 		if !tt.opts.Confirmed {
-			pm.RegisterConfirmDeletion("Type delete to confirm deletion:", func(_ string) error {
-				return nil
+			pm.RegisterConfirm("Delete \"1234\" gist?", func(_ string, _ bool) (bool, error) {
+				return !tt.cancel, nil
 			})
 		}
 
-		if tt.mockGistList {
-			sixHours, _ := time.ParseDuration("6h")
-			sixHoursAgo := time.Now().Add(-sixHours)
-			reg.Register(
-				httpmock.GraphQL(`query GistList\b`),
-				httpmock.StringResponse(fmt.Sprintf(
-					`{ "data": { "viewer": { "gists": { "nodes": [
-							{
-								"name": "1234",
-								"files": [{ "name": "cool.txt" }],
-								"description": "",
-								"updatedAt": "%s",
-								"isPublic": true
-							}
-						] } } } }`,
-					sixHoursAgo.Format(time.RFC3339),
-				)),
-			)
+		reg := &httpmock.Registry{}
+		if !tt.cancel {
+			tt.httpStubs(reg)
+			if tt.mockGistList {
+				sixHours, _ := time.ParseDuration("6h")
+				sixHoursAgo := time.Now().Add(-sixHours)
+				reg.Register(
+					httpmock.GraphQL(`query GistList\b`),
+					httpmock.StringResponse(fmt.Sprintf(
+						`{ "data": { "viewer": { "gists": { "nodes": [
+								{
+									"name": "1234",
+									"files": [{ "name": "cool.txt" }],
+									"description": "",
+									"updatedAt": "%s",
+									"isPublic": true
+								}
+							] } } } }`,
+						sixHoursAgo.Format(time.RFC3339),
+					)),
+				)
 
-			pm.RegisterSelect("Select a gist", []string{"cool.txt  about 6 hours ago"}, func(_, _ string, opts []string) (int, error) {
-				return 0, nil
-			})
+				pm.RegisterSelect("Select a gist", []string{"cool.txt  about 6 hours ago"}, func(_, _ string, opts []string) (int, error) {
+					return 0, nil
+				})
+			}
+
 		}
 		tt.opts.Prompter = pm
 
 		tt.opts.HttpClient = func() (*http.Client, error) {
 			return &http.Client{Transport: reg}, nil
 		}
+
 		tt.opts.Config = func() (gh.Config, error) {
 			return config.NewBlankConfig(), nil
 		}

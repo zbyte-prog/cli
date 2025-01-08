@@ -197,6 +197,20 @@ func TestFetchBundleFromAttestations(t *testing.T) {
 	httpClient.AssertNumberOfCalls(t, "OnGetSuccess", 2)
 }
 
+func TestFetchBundleFromAttestations_InvalidAttestation(t *testing.T) {
+	httpClient := &mockHttpClient{}
+	client := LiveClient{
+		httpClient: httpClient,
+		logger:     io.NewTestHandler(),
+	}
+
+	att1 := Attestation{}
+	attestations := []*Attestation{&att1}
+	fetched, err := client.fetchBundleFromAttestations(attestations)
+	require.Error(t, err)
+	require.Nil(t, fetched, 2)
+}
+
 func TestFetchBundleFromAttestations_Fail(t *testing.T) {
 	httpClient := &failAfterOneCallHttpClient{}
 

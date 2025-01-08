@@ -172,6 +172,10 @@ func (c *LiveClient) fetchBundleFromAttestations(attestations []*Attestation) ([
 	g := errgroup.Group{}
 	for i, a := range attestations {
 		g.Go(func() error {
+			if a.Bundle == nil && a.BundleURL == "" {
+				return fmt.Errorf("attestation has no bundle or bundle URL")
+			}
+
 			// for now, we fallback to the bundle field if the bundle URL is empty
 			if a.BundleURL == "" {
 				c.logger.VerbosePrintf("Bundle URL is empty. Falling back to bundle field\n\n")
@@ -181,6 +185,7 @@ func (c *LiveClient) fetchBundleFromAttestations(attestations []*Attestation) ([
 				return nil
 			}
 
+			// otherwise fetch the bundle with the provided URL
 			b, err := c.GetBundle(a.BundleURL)
 			if err != nil {
 				return fmt.Errorf("failed to fetch bundle with URL: %w", err)

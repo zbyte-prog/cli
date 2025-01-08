@@ -2,6 +2,7 @@ package status
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -526,6 +527,41 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 			wantPrNumber: 0,
 			wantSelector: "forkName:main",
 			wantError:    nil,
+		},
+		{
+			name: "Remote URL error",
+			branchConfig: git.BranchConfig{
+				RemoteURL: &url.URL{
+					Scheme: "ssh",
+					User:   url.User("git"),
+					Host:   "github.com",
+					Path:   "/\\invalid?Path/",
+				},
+			},
+			prHeadRef:    "Frederick888/main",
+			wantPrNumber: 0,
+			wantSelector: "Frederick888/main",
+			wantError:    fmt.Errorf("invalid path: /\\invalid?Path/"),
+		},
+		{
+			name: "Remote Name error",
+			branchConfig: git.BranchConfig{
+				RemoteName: "nonexistentRemote",
+			},
+			prHeadRef: "Frederick888/main",
+			remotes: context.Remotes{
+				&context.Remote{
+					Remote: &git.Remote{Name: "origin"},
+					Repo:   ghrepo.NewWithHost("forkName", "playground", "github.com"),
+				},
+				&context.Remote{
+					Remote: &git.Remote{Name: "upstream"},
+					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+				},
+			},
+			wantPrNumber: 0,
+			wantSelector: "Frederick888/main",
+			wantError:    fmt.Errorf("no matching remote found"),
 		},
 	}
 

@@ -197,18 +197,21 @@ func prSelectorForCurrentBranch(branchConfig git.BranchConfig, baseRepo ghrepo.I
 		return prNumber, prHeadRef, nil
 	}
 
-	var err error
 	var branchOwner string
 	if branchConfig.RemoteURL != nil {
 		// the branch merges from a remote specified by URL
-		if r, err := ghrepo.FromURL(branchConfig.RemoteURL); err == nil {
-			branchOwner = r.RepoOwner()
+		r, err := ghrepo.FromURL(branchConfig.RemoteURL)
+		if err != nil {
+			return 0, prHeadRef, err
 		}
+		branchOwner = r.RepoOwner()
 	} else if branchConfig.RemoteName != "" {
 		// the branch merges from a remote specified by name
-		if r, err := rem.FindByName(branchConfig.RemoteName); err == nil {
-			branchOwner = r.RepoOwner()
+		r, err := rem.FindByName(branchConfig.RemoteName)
+		if err != nil {
+			return 0, prHeadRef, err
 		}
+		branchOwner = r.RepoOwner()
 	}
 
 	selector := prHeadRef
@@ -222,7 +225,7 @@ func prSelectorForCurrentBranch(branchConfig git.BranchConfig, baseRepo ghrepo.I
 		}
 	}
 
-	return 0, selector, err
+	return 0, selector, nil
 }
 
 func totalApprovals(pr *api.PullRequest) int {

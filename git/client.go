@@ -381,35 +381,26 @@ func (c *Client) lookupCommit(ctx context.Context, sha, format string) ([]byte, 
 // Downstream consumers of ReadBranchConfig should consider the behavior they desire if this errors,
 // as an empty config is not necessarily breaking.
 func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (BranchConfig, error) {
-	var cfg BranchConfig
 
-	branchConfigOutput, err := c.readGitBranchConfig(ctx, branch)
-	if err != nil {
-		return cfg, err
-	}
-
-	return c.createBranchConfig(branchConfigOutput), nil
-}
-
-func (c *Client) readGitBranchConfig(ctx context.Context, branch string) ([]string, error) {
 	prefix := regexp.QuoteMeta(fmt.Sprintf("branch.%s.", branch))
 	args := []string{"config", "--get-regexp", fmt.Sprintf("^%s(remote|merge|%s)$", prefix, MergeBaseConfig)}
 	cmd, err := c.Command(ctx, args...)
 	if err != nil {
-		return []string{}, err
+		return BranchConfig{}, err
 	}
 
 	out, err := cmd.Output()
 	if err != nil {
-		return []string{}, err
+		return BranchConfig{}, err
 	}
 
-	return outputLines(out), nil
+	return parseBranchConfig(outputLines(out)), nil
 }
 
-func (c *Client) createBranchConfig(gitBranchConfigOutput []string) BranchConfig {
+func parseBranchConfig(configLines []string) BranchConfig {
 	var cfg BranchConfig
-	for _, line := range gitBranchConfigOutput {
+
+	for _, line := range configLines {
 		parts := strings.SplitN(line, " ", 2)
 		if len(parts) < 2 {
 			continue

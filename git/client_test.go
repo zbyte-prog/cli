@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -811,11 +812,32 @@ func Test_parseBranchConfig(t *testing.T) {
 				MergeBase:  "gh-merge-base",
 			},
 		},
+		{
+			name: "remote URL",
+			gitBranchConfigOutput: []string{
+				"branch.Frederick888/main.remote git@github.com:Frederick888/playground.git",
+				"branch.Frederick888/main.merge refs/heads/main",
+			},
+			wantBranchConfig: BranchConfig{
+				MergeRef: "refs/heads/main",
+				RemoteURL: &url.URL{
+					Scheme: "ssh",
+					User:   url.User("git"),
+					Host:   "github.com",
+					Path:   "/Frederick888/playground.git",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			branchConfig := parseBranchConfig(tt.gitBranchConfigOutput)
-			assert.Equal(t, tt.wantBranchConfig, branchConfig)
+			assert.Equal(t, tt.wantBranchConfig.RemoteName, branchConfig.RemoteName)
+			assert.Equal(t, tt.wantBranchConfig.MergeRef, branchConfig.MergeRef)
+			assert.Equal(t, tt.wantBranchConfig.MergeBase, branchConfig.MergeBase)
+			if tt.wantBranchConfig.RemoteURL != nil {
+				assert.Equal(t, tt.wantBranchConfig.RemoteURL.String(), branchConfig.RemoteURL.String())
+			}
 		})
 	}
 }

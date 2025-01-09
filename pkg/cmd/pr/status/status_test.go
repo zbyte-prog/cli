@@ -398,10 +398,10 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 		{
 			name: "The branch is configured to merge a special PR head ref",
 			branchConfig: git.BranchConfig{
-				MergeRef: "refs/pull/666/head",
+				MergeRef: "refs/pull/42/head",
 			},
 			prHeadRef:    "Frederick888/main",
-			wantPrNumber: 666,
+			wantPrNumber: 42,
 			wantSelector: "Frederick888/main",
 			wantError:    nil,
 		},

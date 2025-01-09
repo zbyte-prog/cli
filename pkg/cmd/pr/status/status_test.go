@@ -390,9 +390,9 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 		{
 			name:         "Empty branch config",
 			branchConfig: git.BranchConfig{},
-			prHeadRef:    "Frederick888/main",
+			prHeadRef:    "monalisa/main",
 			wantPrNumber: 0,
-			wantSelector: "Frederick888/main",
+			wantSelector: "monalisa/main",
 			wantError:    nil,
 		},
 		{
@@ -400,9 +400,9 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 			branchConfig: git.BranchConfig{
 				MergeRef: "refs/pull/42/head",
 			},
-			prHeadRef:    "Frederick888/main",
+			prHeadRef:    "monalisa/main",
 			wantPrNumber: 42,
-			wantSelector: "Frederick888/main",
+			wantSelector: "monalisa/main",
 			wantError:    nil,
 		},
 		{
@@ -412,19 +412,19 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 					Scheme: "ssh",
 					User:   url.User("git"),
 					Host:   "github.com",
-					Path:   "Frederick888/playground.git",
+					Path:   "monalisa/playground.git",
 				},
 			},
-			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
-			prHeadRef: "Frederick888/main",
+			baseRepo:  ghrepo.NewWithHost("monalisa", "playground", "github.com"),
+			prHeadRef: "monalisa/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
-					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+					Repo:   ghrepo.NewWithHost("monalisa", "playground", "github.com"),
 				},
 			},
 			wantPrNumber: 0,
-			wantSelector: "Frederick888/main",
+			wantSelector: "monalisa/main",
 			wantError:    nil,
 		},
 		{
@@ -432,8 +432,8 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 			branchConfig: git.BranchConfig{
 				RemoteName: "upstream",
 			},
-			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
-			prHeadRef: "Frederick888/main",
+			baseRepo:  ghrepo.NewWithHost("monalisa", "playground", "github.com"),
+			prHeadRef: "monalisa/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
@@ -441,11 +441,11 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				},
 				&context.Remote{
 					Remote: &git.Remote{Name: "upstream"},
-					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+					Repo:   ghrepo.NewWithHost("monalisa", "playground", "github.com"),
 				},
 			},
 			wantPrNumber: 0,
-			wantSelector: "Frederick888/main",
+			wantSelector: "monalisa/main",
 			wantError:    nil,
 		},
 		{
@@ -459,8 +459,8 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				},
 				MergeRef: "refs/heads/main",
 			},
-			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
-			prHeadRef: "Frederick888/main",
+			baseRepo:  ghrepo.NewWithHost("monalisa", "playground", "github.com"),
+			prHeadRef: "monalisa/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
@@ -476,8 +476,8 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 			branchConfig: git.BranchConfig{
 				RemoteName: "origin",
 			},
-			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
-			prHeadRef: "Frederick888/main",
+			baseRepo:  ghrepo.NewWithHost("monalisa", "playground", "github.com"),
+			prHeadRef: "monalisa/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
@@ -485,11 +485,11 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				},
 				&context.Remote{
 					Remote: &git.Remote{Name: "upstream"},
-					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+					Repo:   ghrepo.NewWithHost("monalisa", "playground", "github.com"),
 				},
 			},
 			wantPrNumber: 0,
-			wantSelector: "forkName:Frederick888/main",
+			wantSelector: "forkName:monalisa/main",
 			wantError:    nil,
 		},
 		{
@@ -498,8 +498,8 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				RemoteName: "upstream",
 				MergeRef:   "refs/heads/main",
 			},
-			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
-			prHeadRef: "Frederick888/main",
+			baseRepo:  ghrepo.NewWithHost("monalisa", "playground", "github.com"),
+			prHeadRef: "monalisa/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
@@ -507,7 +507,7 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				},
 				&context.Remote{
 					Remote: &git.Remote{Name: "upstream"},
-					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+					Repo:   ghrepo.NewWithHost("monalisa", "playground", "github.com"),
 				},
 			},
 			wantPrNumber: 0,
@@ -520,8 +520,8 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				RemoteName: "origin",
 				MergeRef:   "refs/heads/main",
 			},
-			baseRepo:  ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
-			prHeadRef: "Frederick888/main",
+			baseRepo:  ghrepo.NewWithHost("monalisa", "playground", "github.com"),
+			prHeadRef: "monalisa/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
@@ -529,7 +529,7 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				},
 				&context.Remote{
 					Remote: &git.Remote{Name: "upstream"},
-					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+					Repo:   ghrepo.NewWithHost("monalisa", "playground", "github.com"),
 				},
 			},
 			wantPrNumber: 0,
@@ -546,9 +546,9 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 					Path:   "/\\invalid?Path/",
 				},
 			},
-			prHeadRef:    "Frederick888/main",
+			prHeadRef:    "monalisa/main",
 			wantPrNumber: 0,
-			wantSelector: "Frederick888/main",
+			wantSelector: "monalisa/main",
 			wantError:    fmt.Errorf("invalid path: /\\invalid?Path/"),
 		},
 		{
@@ -556,7 +556,7 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 			branchConfig: git.BranchConfig{
 				RemoteName: "nonexistentRemote",
 			},
-			prHeadRef: "Frederick888/main",
+			prHeadRef: "monalisa/main",
 			remotes: context.Remotes{
 				&context.Remote{
 					Remote: &git.Remote{Name: "origin"},
@@ -564,11 +564,11 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 				},
 				&context.Remote{
 					Remote: &git.Remote{Name: "upstream"},
-					Repo:   ghrepo.NewWithHost("Frederick888", "playground", "github.com"),
+					Repo:   ghrepo.NewWithHost("monalisa", "playground", "github.com"),
 				},
 			},
 			wantPrNumber: 0,
-			wantSelector: "Frederick888/main",
+			wantSelector: "monalisa/main",
 			wantError:    fmt.Errorf("no matching remote found"),
 		},
 	}

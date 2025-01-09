@@ -55,7 +55,7 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 			}
 
 			if !opts.IO.IsStdoutTTY() {
-				return cmdutil.FlagErrorf("run or gist ID required when not running interactively\n\nUsage: gh gist view [<id> | <url>] [flags]\n\nFlags:\n  -f, --filename string   Display a single file from the gist\n      --files             List file names from the gist\n  -r, --raw               Print raw instead of rendered gist contents\n  -w, --web               Open gist in the browser\n")
+				opts.Raw = true
 			}
 
 			if runF != nil {
@@ -89,6 +89,10 @@ func viewRun(opts *ViewOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if gistID == "" {
+		if !opts.IO.CanPrompt() {
+			return cmdutil.FlagErrorf("gist ID or URL required when not running interactively")
+		}
+
 		gistID, err = shared.PromptGists(opts.Prompter, client, hostname, cs)
 		if err != nil {
 			return err

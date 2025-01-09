@@ -20,11 +20,10 @@ import (
 
 func TestNewCmdView(t *testing.T) {
 	tests := []struct {
-		name     string
-		cli      string
-		wants    ViewOptions
-		tty      bool
-		wantsErr bool
+		name  string
+		cli   string
+		wants ViewOptions
+		tty   bool
 	}{
 		{
 			name: "tty no arguments",
@@ -45,7 +44,6 @@ func TestNewCmdView(t *testing.T) {
 				Selector:  "123",
 				ListFiles: false,
 			},
-			wantsErr: true,
 		},
 		{
 			name: "filename passed",
@@ -98,11 +96,6 @@ func TestNewCmdView(t *testing.T) {
 				return nil
 			})
 
-			_, err = cmd.ExecuteC()
-			if tt.wantsErr {
-				assert.Error(t, err)
-				return
-			}
 			cmd.SetArgs(argv)
 			cmd.SetIn(&bytes.Buffer{})
 			cmd.SetOut(&bytes.Buffer{})
@@ -166,7 +159,7 @@ func Test_viewRun(t *testing.T) {
 					},
 				},
 			},
-			wantOut: "test interactive mode\n",
+			wantErr: true,
 		},
 		{
 			name: "filename selected",

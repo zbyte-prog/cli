@@ -13,7 +13,7 @@ type AmbiguousBaseRepoError struct {
 }
 
 func (e AmbiguousBaseRepoError) Error() string {
-	return "multiple remotes detected. please specify which repo to use by providing the -R or --repo argument"
+	return "multiple remotes detected. please specify which repo to use by providing the -R, --repo argument"
 }
 
 type baseRepoFn func() (ghrepo.Interface, error)
@@ -42,8 +42,6 @@ func PromptWhenAmbiguousBaseRepoFunc(baseRepoFn baseRepoFn, prompter prompter.Pr
 // there was only one option, regardless of whether the base repo had been set.
 func RequireNoAmbiguityBaseRepoFunc(baseRepo baseRepoFn, remotes remotesFn) baseRepoFn {
 	return func() (ghrepo.Interface, error) {
-		// TODO: Is this really correct? Some remotes may not be in the same network. We probably need to resolve the
-		// network rather than looking at the remotes?
 		remotes, err := remotes()
 		if err != nil {
 			return nil, err
@@ -57,10 +55,13 @@ func RequireNoAmbiguityBaseRepoFunc(baseRepo baseRepoFn, remotes remotesFn) base
 	}
 }
 
+// REVIEW WARNING: I have not had a close look at this function yet, I do not vouch for it.
 func promptForRepo(baseRepo ghrepo.Interface, remotes ghContext.Remotes, prompter prompter.Prompter) (ghrepo.Interface, error) {
 	var defaultRepo string
 	var remoteArray []string
 
+	// TODO: consider whether we should just go with the default order of remotes because then
+	// users that are familiar can just hit enter and achieve the behaviour they had before.
 	if defaultRemote, _ := remotes.ResolvedRemote(); defaultRemote != nil {
 		// this is a remote explicitly chosen via `repo set-default`
 		defaultRepo = ghrepo.FullName(defaultRemote)

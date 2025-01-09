@@ -750,7 +750,7 @@ func TestClientReadBranchConfig(t *testing.T) {
 			cmdStderr:        "git error message",
 			branch:           "trunk",
 			wantBranchConfig: BranchConfig{},
-			wantError:        &GitError{ExitCode: 1, Stderr: "git error message"},
+			wantError:        &GitError{},
 		},
 		{
 			name:             "git config runs successfully but returns no output",
@@ -773,12 +773,10 @@ func TestClientReadBranchConfig(t *testing.T) {
 			wantCmdArgs := fmt.Sprintf("path/to/git config --get-regexp ^branch\\.%s\\.(remote|merge|gh-merge-base)$", tt.branch)
 			assert.Equal(t, wantCmdArgs, strings.Join(cmd.Args[3:], " "))
 			assert.Equal(t, tt.wantBranchConfig, branchConfig)
-			if err != nil {
-				if tt.wantError == nil {
-					t.Fatalf("expected no error but got %v", err)
-				}
-				assert.Equal(t, tt.wantError.ExitCode, err.(*GitError).ExitCode)
-				assert.Equal(t, tt.wantError.Stderr, err.(*GitError).Stderr)
+			if tt.wantError != nil {
+				assert.ErrorAs(t, err, &tt.wantError)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}

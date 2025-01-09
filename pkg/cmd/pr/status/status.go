@@ -214,8 +214,8 @@ func prSelectorForCurrentBranch(branchConfig git.BranchConfig, baseRepo ghrepo.I
 		branchOwner = r.RepoOwner()
 	}
 
-	selector := prHeadRef
 	if branchOwner != "" {
+		selector := prHeadRef
 		if strings.HasPrefix(branchConfig.MergeRef, "refs/heads/") {
 			selector = strings.TrimPrefix(branchConfig.MergeRef, "refs/heads/")
 		}
@@ -223,9 +223,10 @@ func prSelectorForCurrentBranch(branchConfig git.BranchConfig, baseRepo ghrepo.I
 		if !strings.EqualFold(branchOwner, baseRepo.RepoOwner()) {
 			selector = fmt.Sprintf("%s:%s", branchOwner, selector)
 		}
+		return 0, selector, nil
 	}
 
-	return 0, selector, nil
+	return 0, prHeadRef, nil
 }
 
 func totalApprovals(pr *api.PullRequest) int {

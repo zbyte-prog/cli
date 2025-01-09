@@ -388,6 +388,14 @@ func Test_prSelectorForCurrentBranch(t *testing.T) {
 		wantError    error
 	}{
 		{
+			name:         "Empty branch config",
+			branchConfig: git.BranchConfig{},
+			prHeadRef:    "Frederick888/main",
+			wantPrNumber: 0,
+			wantSelector: "Frederick888/main",
+			wantError:    nil,
+		},
+		{
 			name: "The branch is configured to merge a special PR head ref",
 			branchConfig: git.BranchConfig{
 				MergeRef: "refs/pull/666/head",

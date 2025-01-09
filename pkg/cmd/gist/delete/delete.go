@@ -121,7 +121,7 @@ func deleteRun(opts *DeleteOptions) error {
 	apiClient := api.NewClientFromHTTP(client)
 	if err := deleteGist(apiClient, host, gist, opts); err != nil {
 		if errors.Is(err, shared.NotFoundErr) {
-			return fmt.Errorf("unable to delete gist %s: either the gist is not found or it is not owned by you", gist.Description)
+			return fmt.Errorf("unable to delete gist \"%s\": either the gist is not found or it is not owned by you", gist.Description)
 		}
 		return err
 	}

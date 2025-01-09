@@ -133,12 +133,12 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "1234"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Gist \"1234\" deleted\n",
+			wantStdout: "✓ Gist \"my cool text\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -152,7 +152,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			mockGistList: true,
 			wantErr:      false,
-			wantStdout:   "✓ Gist \"1234\" deleted\n",
+			wantStdout:   "✓ Gist \"my cool text\" deleted\n",
 			wantStderr:   "",
 		},
 		{
@@ -163,12 +163,12 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "1234"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Gist \"1234\" deleted\n",
+			wantStdout: "✓ Gist \"my cool text\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -183,7 +183,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			mockGistList: true,
 			wantErr:      false,
-			wantStdout:   "✓ Gist \"1234\" deleted\n",
+			wantStdout:   "✓ Gist \"my cool text\" deleted\n",
 			wantStderr:   "",
 		},
 		{
@@ -193,7 +193,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "1234"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
 			},
 			cancel:     true,
 			wantErr:    true,
@@ -207,7 +207,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "1234"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
 			},
 			cancel:     true,
 			wantErr:    true,
@@ -231,20 +231,20 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "1234"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(404, "{}"))
 			},
 			wantErr:    true,
 			wantStdout: "",
-			wantStderr: "unable to delete gist 1234: either the gist is not found or it is not owned by you",
+			wantStderr: "unable to delete gist \"my cool text\": either the gist is not found or it is not owned by you",
 		},
 	}
 
 	for _, tt := range tests {
 		pm := prompter.NewMockPrompter(t)
 		if !tt.opts.Confirmed {
-			pm.RegisterConfirm("Delete \"1234\" gist?", func(_ string, _ bool) (bool, error) {
+			pm.RegisterConfirm("Delete \"my cool text\" gist?", func(_ string, _ bool) (bool, error) {
 				return !tt.cancel, nil
 			})
 		}
@@ -262,7 +262,7 @@ func Test_deleteRun(t *testing.T) {
 								{
 									"name": "1234",
 									"files": [{ "name": "cool.txt" }],
-									"description": "1234",
+									"description": "my cool text",
 									"updatedAt": "%s",
 									"isPublic": true
 								}
@@ -271,7 +271,7 @@ func Test_deleteRun(t *testing.T) {
 					)),
 				)
 
-				pm.RegisterSelect("Select a gist", []string{"cool.txt 1234 about 6 hours ago"}, func(_, _ string, opts []string) (int, error) {
+				pm.RegisterSelect("Select a gist", []string{"cool.txt my cool text about 6 hours ago"}, func(_, _ string, opts []string) (int, error) {
 					return 0, nil
 				})
 			}

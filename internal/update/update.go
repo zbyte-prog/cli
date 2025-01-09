@@ -33,6 +33,7 @@ type StateEntry struct {
 	LatestRelease      ReleaseInfo `yaml:"latest_release"`
 }
 
+// ShouldCheckForUpdate decides whether we check for updates for the GitHub CLI and/or GitHub CLI extensions based on user preferences and current execution context.
 func ShouldCheckForUpdate() bool {
 	if os.Getenv("GH_NO_UPDATE_NOTIFIER") != "" {
 		return false
@@ -43,6 +44,7 @@ func ShouldCheckForUpdate() bool {
 	return !IsCI() && IsTerminal(os.Stdout) && IsTerminal(os.Stderr)
 }
 
+// CheckForExtensionUpdate checks whether an update exists for a specific extension based on extension type and recency of last check within past 24 hours.
 func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension, now time.Time) (*ReleaseInfo, error) {
 	// local extensions cannot have updates, so avoid work that ultimately returns nothing.
 	if ext.IsLocal() {
@@ -72,7 +74,7 @@ func CheckForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Exte
 	return nil, nil
 }
 
-// CheckForUpdate checks whether this software has had a newer release on GitHub
+// CheckForUpdate checks whether an update exists for the GitHub CLI based on recency of last check within past 24 hours.
 func CheckForUpdate(ctx context.Context, client *http.Client, stateFilePath, repo, currentVersion string) (*ReleaseInfo, error) {
 	stateEntry, _ := getStateEntry(stateFilePath)
 	if stateEntry != nil && time.Since(stateEntry.CheckedForUpdateAt).Hours() < 24 {
@@ -164,11 +166,13 @@ func versionGreaterThan(v, w string) bool {
 	return ve == nil && we == nil && vv.GreaterThan(vw)
 }
 
+// IsTerminal determines if a file descriptor is an interactive terminal / TTY.
 func IsTerminal(f *os.File) bool {
 	return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
 }
 
-// based on https://github.com/watson/ci-info/blob/HEAD/index.js
+// IsCI determines if the current execution context is within a known CI/CD system.
+// This is based on https://github.com/watson/ci-info/blob/HEAD/index.js.
 func IsCI() bool {
 	return os.Getenv("CI") != "" || // GitHub Actions, Travis CI, CircleCI, Cirrus CI, GitLab CI, AppVeyor, CodeShip, dsari
 		os.Getenv("BUILD_NUMBER") != "" || // Jenkins, TeamCity

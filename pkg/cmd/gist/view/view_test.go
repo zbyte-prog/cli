@@ -37,7 +37,6 @@ func TestNewCmdView(t *testing.T) {
 		},
 		{
 			name: "nontty no arguments",
-			tty:  false,
 			cli:  "123",
 			wants: ViewOptions{
 				Raw:       true,

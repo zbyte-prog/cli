@@ -744,13 +744,22 @@ func TestClientReadBranchConfig(t *testing.T) {
 			wantError:        nil,
 		},
 		{
-			name:             "command error",
+			name:             "output error",
 			cmdExitStatus:    1,
 			cmdStdout:        "",
 			cmdStderr:        "git error message",
 			branch:           "trunk",
 			wantBranchConfig: BranchConfig{},
 			wantError:        &GitError{ExitCode: 1, Stderr: "git error message"},
+		},
+		{
+			name:             "git config runs successfully but returns no output",
+			cmdExitStatus:    1,
+			cmdStdout:        "",
+			cmdStderr:        "",
+			branch:           "trunk",
+			wantBranchConfig: BranchConfig{},
+			wantError:        nil,
 		},
 	}
 	for _, tt := range tests {
@@ -764,7 +773,10 @@ func TestClientReadBranchConfig(t *testing.T) {
 			wantCmdArgs := fmt.Sprintf("path/to/git config --get-regexp ^branch\\.%s\\.(remote|merge|gh-merge-base)$", tt.branch)
 			assert.Equal(t, wantCmdArgs, strings.Join(cmd.Args[3:], " "))
 			assert.Equal(t, tt.wantBranchConfig, branchConfig)
-			if tt.wantError != nil {
+			if err != nil {
+				if tt.wantError == nil {
+					t.Fatalf("expected no error but got %v", err)
+				}
 				assert.Equal(t, tt.wantError.ExitCode, err.(*GitError).ExitCode)
 				assert.Equal(t, tt.wantError.Stderr, err.(*GitError).Stderr)
 			}
@@ -774,34 +786,34 @@ func TestClientReadBranchConfig(t *testing.T) {
 
 func Test_parseBranchConfig(t *testing.T) {
 	tests := []struct {
-		name                  string
-		gitBranchConfigOutput []string
-		wantBranchConfig      BranchConfig
+		name             string
+		configLines      []string
+		wantBranchConfig BranchConfig
 	}{
 		{
-			name:                  "remote branch",
-			gitBranchConfigOutput: []string{"branch.trunk.remote origin"},
+			name:        "remote branch",
+			configLines: []string{"branch.trunk.remote origin"},
 			wantBranchConfig: BranchConfig{
 				RemoteName: "origin",
 			},
 		},
 		{
-			name:                  "merge ref",
-			gitBranchConfigOutput: []string{"branch.trunk.merge refs/heads/trunk"},
+			name:        "merge ref",
+			configLines: []string{"branch.trunk.merge refs/heads/trunk"},
 			wantBranchConfig: BranchConfig{
 				MergeRef: "refs/heads/trunk",
 			},
 		},
 		{
-			name:                  "merge base",
-			gitBranchConfigOutput: []string{"branch.trunk.gh-merge-base gh-merge-base"},
+			name:        "merge base",
+			configLines: []string{"branch.trunk.gh-merge-base gh-merge-base"},
 			wantBranchConfig: BranchConfig{
 				MergeBase: "gh-merge-base",
 			},
 		},
 		{
 			name: "remote, merge ref, and merge base all specified",
-			gitBranchConfigOutput: []string{
+			configLines: []string{
 				"branch.trunk.remote origin",
 				"branch.trunk.merge refs/heads/trunk",
 				"branch.trunk.gh-merge-base gh-merge-base",
@@ -814,7 +826,7 @@ func Test_parseBranchConfig(t *testing.T) {
 		},
 		{
 			name: "remote URL",
-			gitBranchConfigOutput: []string{
+			configLines: []string{
 				"branch.Frederick888/main.remote git@github.com:Frederick888/playground.git",
 				"branch.Frederick888/main.merge refs/heads/main",
 			},
@@ -831,7 +843,7 @@ func Test_parseBranchConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			branchConfig := parseBranchConfig(tt.gitBranchConfigOutput)
+			branchConfig := parseBranchConfig(tt.configLines)
 			assert.Equal(t, tt.wantBranchConfig.RemoteName, branchConfig.RemoteName)
 			assert.Equal(t, tt.wantBranchConfig.MergeRef, branchConfig.MergeRef)
 			assert.Equal(t, tt.wantBranchConfig.MergeBase, branchConfig.MergeBase)

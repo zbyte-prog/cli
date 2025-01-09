@@ -391,7 +391,13 @@ func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (BranchCon
 
 	out, err := cmd.Output()
 	if err != nil {
-		return BranchConfig{}, err
+		// This will error if no matches are found but the git command still ran successfully. We only
+		// want to return an error if the command failed to run, usually and ExitError, which will be
+		// indicated by output on Stderr.
+		if err.(*GitError).Stderr != "" {
+			return BranchConfig{}, err
+		}
+		return BranchConfig{}, nil
 	}
 
 	return parseBranchConfig(outputLines(out)), nil

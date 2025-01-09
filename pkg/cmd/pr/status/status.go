@@ -94,7 +94,10 @@ func statusRun(opts *StatusOptions) error {
 		}
 
 		remotes, _ := opts.Remotes()
-		branchConfig, _ := opts.GitClient.ReadBranchConfig(ctx, currentBranch)
+		branchConfig, err := opts.GitClient.ReadBranchConfig(ctx, currentBranch)
+		if err != nil {
+			return err
+		}
 		currentPRNumber, currentPRHeadRef, err = prSelectorForCurrentBranch(branchConfig, baseRepo, currentBranch, remotes)
 		if err != nil {
 			return fmt.Errorf("could not query for pull request for current branch: %w", err)

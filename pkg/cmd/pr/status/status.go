@@ -205,14 +205,20 @@ func prSelectorForCurrentBranch(branchConfig git.BranchConfig, baseRepo ghrepo.I
 		// the branch merges from a remote specified by URL
 		r, err := ghrepo.FromURL(branchConfig.RemoteURL)
 		if err != nil {
-			return 0, prHeadRef, err
+			// TODO: We aren't returning the error because we discovered that it was shadowed
+			// before refactoring to its current return pattern. Thus, we aren't confident
+			// that returning the error won't break existing behavior.
+			return 0, prHeadRef, nil
 		}
 		branchOwner = r.RepoOwner()
 	} else if branchConfig.RemoteName != "" {
 		// the branch merges from a remote specified by name
 		r, err := rem.FindByName(branchConfig.RemoteName)
 		if err != nil {
-			return 0, prHeadRef, err
+			// TODO: We aren't returning the error because we discovered that it was shadowed
+			// before refactoring to its current return pattern. Thus, we aren't confident
+			// that returning the error won't break existing behavior.
+			return 0, prHeadRef, nil
 		}
 		branchOwner = r.RepoOwner()
 	}

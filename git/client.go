@@ -392,12 +392,10 @@ func (c *Client) ReadBranchConfig(ctx context.Context, branch string) (BranchCon
 	out, err := cmd.Output()
 	if err != nil {
 		// This is the error we expect if the git command does not run successfully.
-		// Note: err is non-nil if the command is successful but has no output
+		// If the ExitCode is 1, then we just didn't find any config for the branch.
 		var gitError *GitError
-		if errors.As(err, &gitError) {
-			if gitError.Stderr != "" {
-				return BranchConfig{}, err
-			}
+		if ok := errors.As(err, &gitError); ok && gitError.ExitCode != 1 {
+			return BranchConfig{}, err
 		}
 		return BranchConfig{}, nil
 	}

@@ -744,22 +744,22 @@ func TestClientReadBranchConfig(t *testing.T) {
 			wantError:        nil,
 		},
 		{
-			name:             "output error",
-			cmdExitStatus:    1,
-			cmdStdout:        "",
-			cmdStderr:        "git error message",
-			branch:           "trunk",
-			wantBranchConfig: BranchConfig{},
-			wantError:        &GitError{},
-		},
-		{
-			name:             "git config runs successfully but returns no output",
+			name:             "git config runs successfully but returns no output (Exit Code 1)",
 			cmdExitStatus:    1,
 			cmdStdout:        "",
 			cmdStderr:        "",
 			branch:           "trunk",
 			wantBranchConfig: BranchConfig{},
 			wantError:        nil,
+		},
+		{
+			name:             "output error (Exit Code > 1)",
+			cmdExitStatus:    2,
+			cmdStdout:        "",
+			cmdStderr:        "git error message",
+			branch:           "trunk",
+			wantBranchConfig: BranchConfig{},
+			wantError:        &GitError{},
 		},
 	}
 	for _, tt := range tests {

@@ -471,16 +471,7 @@ func (m *Manager) Upgrade(name string, force bool) error {
 
 func (m *Manager) upgradeExtensions(exts []*Extension, force bool) error {
 	var longestExt = slices.MaxFunc(exts, func(a, b *Extension) int {
-		la, lb := len(a.Name()), len(b.Name())
-		if la == lb {
-			return 0
-		}
-
-		if la < lb {
-			return -1
-		}
-
-		return 1
+		return len(a.Name()) - len(b.Name())
 	})
 	var longestExtName = len(longestExt.Name())
 

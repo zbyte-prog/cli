@@ -851,14 +851,7 @@ func codesignBinary(binPath string) error {
 
 // cleanExtensionUpdateDir deletes extension state directory to avoid problems reinstalling extensions.
 func (m *Manager) cleanExtensionUpdateDir(name string) error {
-	updatePath := m.UpdateDir(name)
-	if _, err := os.Stat(updatePath); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to check previous extension update state: %w", err)
-	}
-	if err := os.RemoveAll(updatePath); err != nil {
+	if err := os.RemoveAll(m.UpdateDir(name)); err != nil {
 		return fmt.Errorf("failed to remove previous extension update state: %w", err)
 	}
 	return nil

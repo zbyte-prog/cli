@@ -77,7 +77,7 @@ func NewCmdExtension(io *iostreams.IOStreams, em extensions.ExtensionManager, ex
 }
 
 func checkForExtensionUpdate(em extensions.ExtensionManager, ext extensions.Extension) (*update.ReleaseInfo, error) {
-	if !update.ShouldCheckForUpdate() {
+	if !update.ShouldCheckForExtensionUpdate() {
 		return nil, nil
 	}
 

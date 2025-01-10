@@ -425,6 +425,63 @@ func TestShouldCheckForUpdate(t *testing.T) {
 	}
 }
 
+func TestShouldCheckForExtensionUpdate(t *testing.T) {
+	tests := []struct {
+		name     string
+		env      map[string]string
+		expected bool
+	}{
+		{
+			name: "should not check when user has explicitly disable notifications",
+			env: map[string]string{
+				"GH_NO_EXTENSION_UPDATE_NOTIFIER": "1",
+			},
+			expected: false,
+		},
+		{
+			name: "should not check when user is in codespace",
+			env: map[string]string{
+				"CODESPACES": "1",
+			},
+			expected: false,
+		},
+		{
+			name: "should not check when in GitHub Actions / Travis / Circle / Cirrus / GitLab / AppVeyor / CodeShip / dsari",
+			env: map[string]string{
+				"CI": "1",
+			},
+			expected: false,
+		},
+		{
+			name: "should not check when in Jenkins / TeamCity",
+			env: map[string]string{
+				"BUILD_NUMBER": "1",
+			},
+			expected: false,
+		},
+		{
+			name: "should not check when in TaskCluster / dsari",
+			env: map[string]string{
+				"RUN_ID": "1",
+			},
+			expected: false,
+		},
+		// TODO: Figure out how to refactor IsTerminal() to be testable
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Clearenv()
+			for k, v := range tt.env {
+				os.Setenv(k, v)
+			}
+
+			actual := ShouldCheckForExtensionUpdate()
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func tempFilePath() string {
 	file, err := os.CreateTemp("", "")
 	if err != nil {

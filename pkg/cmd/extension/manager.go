@@ -477,7 +477,7 @@ func (m *Manager) upgradeExtensions(exts []*Extension, force bool) error {
 
 	var failed bool
 	for _, f := range exts {
-		fmt.Fprintf(m.io.Out, "[%*s] ", longestExtName, f.Name())
+		fmt.Fprintf(m.io.Out, "[%*s]: ", longestExtName, f.Name())
 		currentVersion := displayExtensionVersion(f, f.CurrentVersion())
 		err := m.upgradeExtension(f, force)
 		if err != nil {

@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 
@@ -469,18 +470,23 @@ func (m *Manager) Upgrade(name string, force bool) error {
 }
 
 func (m *Manager) upgradeExtensions(exts []*Extension, force bool) error {
-	var longestExtName = 0
-	for _, ext := range exts {
-		l := len(ext.Name())
-		if len(ext.Name()) > longestExtName {
-			longestExtName = l
+	var longestExt = slices.MaxFunc(exts, func(a, b *Extension) int {
+		la, lb := len(a.Name()), len(b.Name())
+		if la == lb {
+			return 0
 		}
-	}
-	format := fmt.Sprintf("[%%%ds]: ", longestExtName)
+
+		if la < lb {
+			return -1
+		}
+
+		return 1
+	})
+	var longestExtName = len(longestExt.Name())
 
 	var failed bool
 	for _, f := range exts {
-		fmt.Fprintf(m.io.Out, format, f.Name())
+		fmt.Fprintf(m.io.Out, "[%*s] ", longestExtName, f.Name())
 		currentVersion := displayExtensionVersion(f, f.CurrentVersion())
 		err := m.upgradeExtension(f, force)
 		if err != nil {

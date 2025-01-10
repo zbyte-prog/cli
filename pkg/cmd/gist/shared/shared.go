@@ -39,6 +39,23 @@ type Gist struct {
 	Owner       *GistOwner           `json:"owner,omitempty"`
 }
 
+func (g Gist) Filename() string {
+	filenames := make([]string, 0, len(g.Files))
+	for fn := range g.Files {
+		filenames = append(filenames, fn)
+	}
+	sort.Strings(filenames)
+	return filenames[0]
+}
+
+func (g Gist) TruncDescription() string {
+	return text.Truncate(100, text.RemoveExcessiveWhitespace(g.Description))
+}
+
+func (g Gist) FilenameDescription() string {
+	return g.Filename() + " " + g.TruncDescription()
+}
+
 var NotFoundErr = errors.New("not found")
 
 func GetGist(client *http.Client, hostname, gistID string) (*Gist, error) {
@@ -212,29 +229,12 @@ func PromptGists(prompter prompter.Prompter, client *http.Client, host string, c
 		return &Gist{}, nil
 	}
 
-	// var opts []string
 	var opts = make([]string, len(gists))
 
 	for i, gist := range gists {
-		description := ""
-		gistName := ""
-
-		if gist.Description != "" {
-			description = gist.Description
-		}
-
-		filenames := make([]string, 0, len(gist.Files))
-		for fn := range gist.Files {
-			filenames = append(filenames, fn)
-		}
-		sort.Strings(filenames)
-		gistName = filenames[0]
-
 		gistTime := text.FuzzyAgo(time.Now(), gist.UpdatedAt)
 		// TODO: support dynamic maxWidth
-		description = text.Truncate(100, text.RemoveExcessiveWhitespace(description))
-		opts[i] = fmt.Sprintf("%s %s %s", cs.Bold(gistName), description, cs.Gray(gistTime))
-		// opts = append(opts, opt)
+		opts[i] = fmt.Sprintf("%s %s %s", cs.Bold(gist.Filename()), gist.TruncDescription(), cs.Gray(gistTime))
 	}
 
 	result, err := prompter.Select("Select a gist", "", opts)

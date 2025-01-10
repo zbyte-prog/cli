@@ -133,12 +133,12 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Gist \"my cool text\" deleted\n",
+			wantStdout: "✓ Gist \"cool.txt my cool text\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -152,7 +152,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			mockGistList: true,
 			wantErr:      false,
-			wantStdout:   "✓ Gist \"my cool text\" deleted\n",
+			wantStdout:   "✓ Gist \"cool.txt my cool text\" deleted\n",
 			wantStderr:   "",
 		},
 		{
@@ -163,12 +163,12 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Gist \"my cool text\" deleted\n",
+			wantStdout: "✓ Gist \"cool.txt my cool text\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -183,7 +183,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			mockGistList: true,
 			wantErr:      false,
-			wantStdout:   "✓ Gist \"my cool text\" deleted\n",
+			wantStdout:   "✓ Gist \"cool.txt my cool text\" deleted\n",
 			wantStderr:   "",
 		},
 		{
@@ -193,7 +193,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 			},
 			cancel:     true,
 			wantErr:    true,
@@ -207,7 +207,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 			},
 			cancel:     true,
 			wantErr:    true,
@@ -231,20 +231,20 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text"}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(404, "{}"))
 			},
 			wantErr:    true,
 			wantStdout: "",
-			wantStderr: "unable to delete gist \"my cool text\": either the gist is not found or it is not owned by you",
+			wantStderr: "unable to delete gist \"cool.txt my cool text\": either the gist is not found or it is not owned by you",
 		},
 	}
 
 	for _, tt := range tests {
 		pm := prompter.NewMockPrompter(t)
 		if !tt.opts.Confirmed {
-			pm.RegisterConfirm("Delete \"my cool text\" gist?", func(_ string, _ bool) (bool, error) {
+			pm.RegisterConfirm("Delete \"cool.txt my cool text\" gist?", func(_ string, _ bool) (bool, error) {
 				return !tt.cancel, nil
 			})
 		}

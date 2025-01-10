@@ -849,7 +849,20 @@ func codesignBinary(binPath string) error {
 	return cmd.Run()
 }
 
-// cleanExtensionUpdateDir deletes extension state directory to avoid problems reinstalling extensions.
+// cleanExtensionUpdateDir deletes the extension-specific directory containing metadata used in checking for updates.
+// Because extension names are not unique across GitHub organizations and users, we feel its important to clean up this metadata
+// before installing or removing an extension with the same name to avoid confusing the extension manager based on past extensions.
+//
+// As of cli/cli#9934, the only effect on gh from not cleaning up metadata before installing or removing an extension are:
+//
+//  1. The last `checked_for_update_at` timestamp is sufficiently in the past and will check for an update on first use,
+//     which would happen if no extension update metadata existed.
+//
+//  2. The last `checked_for_update_at` timestamp is sufficiently in the future and will not check for an update,
+//     this is not a major concern as users could manually modify this.
+//
+// This could change over time as other functionality is added to extensions, which we cannot predict within cli/cli#9934,
+// such as extension manifest and lock files within cli/cli#6118.
 func (m *Manager) cleanExtensionUpdateDir(name string) error {
 	if err := os.RemoveAll(m.UpdateDir(name)); err != nil {
 		return fmt.Errorf("failed to remove previous extension update state: %w", err)

@@ -34,7 +34,13 @@ func TestWaitUntilCodespaceConnectionReady_WhenAlreadyReady(t *testing.T) {
 	t.Parallel()
 
 	apiClient := &mockApiClient{}
-	waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, readyCodespace)
+	result, err := waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, readyCodespace)
+	if err != nil {
+		t.Fatalf("Expected nil error, but was %v", err)
+	}
+	if result.State != api.CodespaceStateAvailable {
+		t.Fatalf("Expected final state to be %s, but was %s", api.CodespaceStateAvailable, result.State)
+	}
 }
 
 func TestWaitUntilCodespaceConnectionReady_PollsApi(t *testing.T) {
@@ -45,7 +51,14 @@ func TestWaitUntilCodespaceConnectionReady_PollsApi(t *testing.T) {
 			return readyCodespace, nil
 		},
 	}
-	waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, &api.Codespace{State: api.CodespaceStateStarting})
+	result, err := waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, &api.Codespace{State: api.CodespaceStateStarting})
+
+	if err != nil {
+		t.Fatalf("Expected nil error, but was %v", err)
+	}
+	if result.State != api.CodespaceStateAvailable {
+		t.Fatalf("Expected final state to be %s, but was %s", api.CodespaceStateAvailable, result.State)
+	}
 }
 
 func TestWaitUntilCodespaceConnectionReady_StartsCodespace(t *testing.T) {
@@ -62,7 +75,13 @@ func TestWaitUntilCodespaceConnectionReady_StartsCodespace(t *testing.T) {
 			return nil
 		},
 	}
-	waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	result, err := waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	if err != nil {
+		t.Fatalf("Expected nil error, but was %v", err)
+	}
+	if result.State != api.CodespaceStateAvailable {
+		t.Fatalf("Expected final state to be %s, but was %s", api.CodespaceStateAvailable, result.State)
+	}
 }
 
 func TestWaitUntilCodespaceConnectionReady_PollsCodespaceUntilReady(t *testing.T) {
@@ -86,7 +105,13 @@ func TestWaitUntilCodespaceConnectionReady_PollsCodespaceUntilReady(t *testing.T
 			return nil
 		},
 	}
-	waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	result, err := waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	if err != nil {
+		t.Fatalf("Expected nil error, but was %v", err)
+	}
+	if result.State != api.CodespaceStateAvailable {
+		t.Fatalf("Expected final state to be %s, but was %s", api.CodespaceStateAvailable, result.State)
+	}
 }
 
 func TestWaitUntilCodespaceConnectionReady_WaitsForShutdownBeforeStarting(t *testing.T) {
@@ -110,10 +135,16 @@ func TestWaitUntilCodespaceConnectionReady_WaitsForShutdownBeforeStarting(t *tes
 			return nil
 		},
 	}
-	waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	result, err := waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	if err != nil {
+		t.Fatalf("Expected nil error, but was %v", err)
+	}
+	if result.State != api.CodespaceStateAvailable {
+		t.Fatalf("Expected final state to be %s, but was %s", api.CodespaceStateAvailable, result.State)
+	}
 }
 
-func TestWaitUntilCodespaceConnectionReady_DoesntStartTwice(t *testing.T) {
+func TestUntilCodespaceConnectionReady_DoesntStartTwice(t *testing.T) {
 	t.Parallel()
 
 	codespace := &api.Codespace{State: api.CodespaceStateShutdown}
@@ -141,7 +172,13 @@ func TestWaitUntilCodespaceConnectionReady_DoesntStartTwice(t *testing.T) {
 			return nil
 		},
 	}
-	waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	result, err := waitUntilCodespaceConnectionReady(context.Background(), &mockProgressIndicator{}, apiClient, codespace)
+	if err != nil {
+		t.Fatalf("Expected nil error, but was %v", err)
+	}
+	if result.State != api.CodespaceStateAvailable {
+		t.Fatalf("Expected final state to be %s, but was %s", api.CodespaceStateAvailable, result.State)
+	}
 }
 
 type mockApiClient struct {

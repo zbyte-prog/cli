@@ -109,7 +109,7 @@ func deleteRun(opts *DeleteOptions) error {
 	}
 
 	if !opts.Confirmed {
-		confirmed, err := opts.Prompter.Confirm(fmt.Sprintf("Delete %q gist?", gist.FilenameDescription()), false)
+		confirmed, err := opts.Prompter.Confirm(fmt.Sprintf("Delete %q gist?", gist.Filename()), false)
 		if err != nil {
 			return err
 		}
@@ -119,18 +119,26 @@ func deleteRun(opts *DeleteOptions) error {
 	}
 
 	apiClient := api.NewClientFromHTTP(client)
-	if err := deleteGist(apiClient, host, gist, opts); err != nil {
+	if err := deleteGist(apiClient, host, gist.ID); err != nil {
 		if errors.Is(err, shared.NotFoundErr) {
-			return fmt.Errorf("unable to delete gist %q: either the gist is not found or it is not owned by you", gist.FilenameDescription())
+			return fmt.Errorf("unable to delete gist %q: either the gist is not found or it is not owned by you", gist.Filename())
 		}
 		return err
+	}
+
+	if opts.IO.IsStdoutTTY() {
+		cs := opts.IO.ColorScheme()
+		fmt.Fprintf(opts.IO.Out,
+			"%s Gist %q deleted\n",
+			cs.SuccessIcon(),
+			gist.Filename())
 	}
 
 	return nil
 }
 
-func deleteGist(apiClient *api.Client, hostname string, gist *shared.Gist, opts *DeleteOptions) error {
-	path := "gists/" + gist.ID
+func deleteGist(apiClient *api.Client, hostname string, gistID string) error {
+	path := "gists/" + gistID
 	err := apiClient.REST(hostname, "DELETE", path, nil, nil)
 	if err != nil {
 		var httpErr api.HTTPError
@@ -138,13 +146,6 @@ func deleteGist(apiClient *api.Client, hostname string, gist *shared.Gist, opts 
 			return shared.NotFoundErr
 		}
 		return err
-	}
-	if opts.IO.IsStdoutTTY() {
-		cs := opts.IO.ColorScheme()
-		fmt.Fprintf(opts.IO.Out,
-			"%s Gist %q deleted\n",
-			cs.SuccessIcon(),
-			gist.FilenameDescription())
 	}
 	return nil
 }

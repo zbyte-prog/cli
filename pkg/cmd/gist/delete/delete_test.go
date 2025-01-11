@@ -117,14 +117,14 @@ func TestNewCmdDelete(t *testing.T) {
 
 func Test_deleteRun(t *testing.T) {
 	tests := []struct {
-		name         string
-		opts         *DeleteOptions
-		cancel       bool
-		httpStubs    func(*httpmock.Registry)
-		mockGistList bool
-		wantErr      bool
-		wantStdout   string
-		wantStderr   string
+		name            string
+		opts            *DeleteOptions
+		cancel          bool
+		httpStubs       func(*httpmock.Registry)
+		mockPromptGists bool
+		wantErr         bool
+		wantStdout      string
+		wantStderr      string
 	}{
 		{
 			name: "successfully delete",
@@ -133,12 +133,12 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Gist \"cool.txt my cool text\" deleted\n",
+			wantStdout: "✓ Gist \"cool.txt\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -150,10 +150,10 @@ func Test_deleteRun(t *testing.T) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
-			mockGistList: true,
-			wantErr:      false,
-			wantStdout:   "✓ Gist \"cool.txt my cool text\" deleted\n",
-			wantStderr:   "",
+			mockPromptGists: true,
+			wantErr:         false,
+			wantStdout:      "✓ Gist \"cool.txt\" deleted\n",
+			wantStderr:      "",
 		},
 		{
 			name: "successfully delete with --yes",
@@ -163,12 +163,12 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
 			wantErr:    false,
-			wantStdout: "✓ Gist \"cool.txt my cool text\" deleted\n",
+			wantStdout: "✓ Gist \"cool.txt\" deleted\n",
 			wantStderr: "",
 		},
 		{
@@ -181,10 +181,10 @@ func Test_deleteRun(t *testing.T) {
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(200, "{}"))
 			},
-			mockGistList: true,
-			wantErr:      false,
-			wantStdout:   "✓ Gist \"cool.txt my cool text\" deleted\n",
-			wantStderr:   "",
+			mockPromptGists: true,
+			wantErr:         false,
+			wantStdout:      "✓ Gist \"cool.txt\" deleted\n",
+			wantStderr:      "",
 		},
 		{
 			name: "cancel delete with id",
@@ -193,7 +193,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 			},
 			cancel:     true,
 			wantErr:    true,
@@ -207,7 +207,7 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 			},
 			cancel:     true,
 			wantErr:    true,
@@ -219,10 +219,12 @@ func Test_deleteRun(t *testing.T) {
 			opts: &DeleteOptions{
 				Selector: "",
 			},
-			cancel:     true,
-			wantErr:    true,
-			wantStdout: "",
-			wantStderr: "",
+			httpStubs:       func(reg *httpmock.Registry) {},
+			mockPromptGists: true,
+			cancel:          true,
+			wantErr:         true,
+			wantStdout:      "",
+			wantStderr:      "",
 		},
 		{
 			name: "not found",
@@ -231,52 +233,49 @@ func Test_deleteRun(t *testing.T) {
 			},
 			httpStubs: func(reg *httpmock.Registry) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
-					httpmock.JSONResponse(shared.Gist{ID: "1234", Description: "my cool text", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
+					httpmock.JSONResponse(shared.Gist{ID: "1234", Files: map[string]*shared.GistFile{"cool.txt": {Filename: "cool.txt"}}}))
 				reg.Register(httpmock.REST("DELETE", "gists/1234"),
 					httpmock.StatusStringResponse(404, "{}"))
 			},
 			wantErr:    true,
 			wantStdout: "",
-			wantStderr: "unable to delete gist \"cool.txt my cool text\": either the gist is not found or it is not owned by you",
+			wantStderr: "unable to delete gist \"cool.txt\": either the gist is not found or it is not owned by you",
 		},
 	}
 
 	for _, tt := range tests {
 		pm := prompter.NewMockPrompter(t)
 		if !tt.opts.Confirmed {
-			pm.RegisterConfirm("Delete \"cool.txt my cool text\" gist?", func(_ string, _ bool) (bool, error) {
+			pm.RegisterConfirm("Delete \"cool.txt\" gist?", func(_ string, _ bool) (bool, error) {
 				return !tt.cancel, nil
 			})
 		}
 
 		reg := &httpmock.Registry{}
-		if !tt.cancel {
-			tt.httpStubs(reg)
-			if tt.mockGistList {
-				sixHours, _ := time.ParseDuration("6h")
-				sixHoursAgo := time.Now().Add(-sixHours)
-				reg.Register(
-					httpmock.GraphQL(`query GistList\b`),
-					httpmock.StringResponse(fmt.Sprintf(
-						`{ "data": { "viewer": { "gists": { "nodes": [
-								{
-									"name": "1234",
-									"files": [{ "name": "cool.txt" }],
-									"description": "my cool text",
-									"updatedAt": "%s",
-									"isPublic": true
-								}
-							] } } } }`,
-						sixHoursAgo.Format(time.RFC3339),
-					)),
-				)
+		tt.httpStubs(reg)
+		if tt.mockPromptGists {
+			sixHours, _ := time.ParseDuration("6h")
+			sixHoursAgo := time.Now().Add(-sixHours)
+			reg.Register(
+				httpmock.GraphQL(`query GistList\b`),
+				httpmock.StringResponse(fmt.Sprintf(
+					`{ "data": { "viewer": { "gists": { "nodes": [
+							{
+								"name": "1234",
+								"files": [{ "name": "cool.txt" }],
+								"updatedAt": "%s",
+								"isPublic": true
+							}
+						] } } } }`,
+					sixHoursAgo.Format(time.RFC3339),
+				)),
+			)
 
-				pm.RegisterSelect("Select a gist", []string{"cool.txt my cool text about 6 hours ago"}, func(_, _ string, opts []string) (int, error) {
-					return 0, nil
-				})
-			}
-
+			pm.RegisterSelect("Select a gist", []string{"cool.txt  about 6 hours ago"}, func(_, _ string, _ []string) (int, error) {
+				return 0, nil
+			})
 		}
+
 		tt.opts.Prompter = pm
 
 		tt.opts.HttpClient = func() (*http.Client, error) {

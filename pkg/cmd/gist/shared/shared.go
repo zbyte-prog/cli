@@ -52,10 +52,6 @@ func (g Gist) TruncDescription() string {
 	return text.Truncate(100, text.RemoveExcessiveWhitespace(g.Description))
 }
 
-func (g Gist) FilenameDescription() string {
-	return g.Filename() + " " + g.TruncDescription()
-}
-
 var NotFoundErr = errors.New("not found")
 
 func GetGist(client *http.Client, hostname, gistID string) (*Gist, error) {

@@ -111,6 +111,7 @@ func editRun(opts *EditOptions) error {
 			if !opts.IO.CanPrompt() {
 				return cmdutil.FlagErrorf("gist ID or URL required when not running interactively")
 			}
+			
 			gistID, err = shared.PromptGists(opts.Prompter, client, host, cs)
 			if err != nil {
 				return err

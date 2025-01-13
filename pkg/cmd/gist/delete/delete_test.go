@@ -214,7 +214,7 @@ func Test_deleteRun(t *testing.T) {
 			wantErr:         true,
 		},
 		{
-			name: "not found",
+			name: "not owned by you",
 			opts: &DeleteOptions{
 				Selector: "1234",
 			},
@@ -226,6 +226,19 @@ func Test_deleteRun(t *testing.T) {
 			},
 			wantErr:    true,
 			wantStderr: "unable to delete gist \"cool.txt\": either the gist is not found or it is not owned by you",
+		},
+		{
+			name: "not found",
+			opts: &DeleteOptions{
+				Selector: "1234",
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(httpmock.REST("GET", "gists/1234"),
+					httpmock.StatusStringResponse(404, "{}"))
+			},
+			noGists:    true,
+			wantErr:    true,
+			wantStderr: "not found",
 		},
 		{
 			name: "no gists",

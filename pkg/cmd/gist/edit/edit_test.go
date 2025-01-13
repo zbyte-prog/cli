@@ -520,8 +520,11 @@ func Test_editRun(t *testing.T) {
 			},
 		},
 		{
-			name:    "no arguments notty",
-			nontty:  true,
+			name:   "no arguments notty",
+			nontty: true,
+			opts: &EditOptions{
+				Selector: "",
+			},
 			wantErr: "gist ID or URL required when not running interactively",
 		},
 	}

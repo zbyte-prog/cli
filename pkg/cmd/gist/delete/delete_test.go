@@ -236,7 +236,6 @@ func Test_deleteRun(t *testing.T) {
 				reg.Register(httpmock.REST("GET", "gists/1234"),
 					httpmock.StatusStringResponse(404, "{}"))
 			},
-			noGists:    true,
 			wantErr:    true,
 			wantStderr: "not found",
 		},

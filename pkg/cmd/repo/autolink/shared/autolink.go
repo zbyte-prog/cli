@@ -1,4 +1,4 @@
-package domain
+package shared
 
 import "github.com/cli/cli/v2/pkg/cmdutil"
 

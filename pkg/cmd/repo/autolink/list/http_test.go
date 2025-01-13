@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/cli/cli/v2/internal/ghrepo"
-	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/domain"
+	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/shared"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,19 +16,19 @@ func TestAutoLinkLister_List(t *testing.T) {
 	tests := []struct {
 		name   string
 		repo   ghrepo.Interface
-		resp   []domain.Autolink
+		resp   []shared.Autolink
 		status int
 	}{
 		{
 			name:   "no autolinks",
 			repo:   ghrepo.New("OWNER", "REPO"),
-			resp:   []domain.Autolink{},
+			resp:   []shared.Autolink{},
 			status: 200,
 		},
 		{
 			name: "two autolinks",
 			repo: ghrepo.New("OWNER", "REPO"),
-			resp: []domain.Autolink{
+			resp: []shared.Autolink{
 				{
 					ID:             1,
 					IsAlphanumeric: true,

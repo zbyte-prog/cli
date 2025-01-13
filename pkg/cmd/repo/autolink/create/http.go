@@ -10,7 +10,7 @@ import (
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/ghrepo"
-	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/domain"
+	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/shared"
 )
 
 type AutolinkCreator struct {
@@ -23,7 +23,7 @@ type AutolinkCreateRequest struct {
 	URLTemplate    string `json:"url_template"`
 }
 
-func (a *AutolinkCreator) Create(repo ghrepo.Interface, request AutolinkCreateRequest) (*domain.Autolink, error) {
+func (a *AutolinkCreator) Create(repo ghrepo.Interface, request AutolinkCreateRequest) (*shared.Autolink, error) {
 	path := fmt.Sprintf("repos/%s/%s/autolinks", repo.RepoOwner(), repo.RepoName())
 	url := ghinstance.RESTPrefix(repo.RepoHost()) + path
 
@@ -55,7 +55,7 @@ func (a *AutolinkCreator) Create(repo ghrepo.Interface, request AutolinkCreateRe
 		return nil, err
 	}
 
-	var autolink domain.Autolink
+	var autolink shared.Autolink
 
 	err = json.NewDecoder(resp.Body).Decode(&autolink)
 	if err != nil {

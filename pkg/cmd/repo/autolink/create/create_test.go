@@ -9,7 +9,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/ghrepo"
-	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/domain"
+	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/google/shlex"
@@ -97,12 +97,12 @@ type stubAutoLinkCreator struct {
 	err error
 }
 
-func (g stubAutoLinkCreator) Create(repo ghrepo.Interface, request AutolinkCreateRequest) (*domain.Autolink, error) {
+func (g stubAutoLinkCreator) Create(repo ghrepo.Interface, request AutolinkCreateRequest) (*shared.Autolink, error) {
 	if g.err != nil {
 		return nil, g.err
 	}
 
-	return &domain.Autolink{
+	return &shared.Autolink{
 		ID:             1,
 		KeyPrefix:      request.KeyPrefix,
 		URLTemplate:    request.URLTemplate,

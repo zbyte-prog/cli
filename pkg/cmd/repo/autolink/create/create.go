@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/ghrepo"
-	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/domain"
+	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ type createOptions struct {
 }
 
 type AutolinkCreateClient interface {
-	Create(repo ghrepo.Interface, request AutolinkCreateRequest) (*domain.Autolink, error)
+	Create(repo ghrepo.Interface, request AutolinkCreateRequest) (*shared.Autolink, error)
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*createOptions) error) *cobra.Command {
@@ -114,7 +114,7 @@ func createRun(opts *createOptions) error {
 	return nil
 }
 
-func successMsg(autolink *domain.Autolink, repo ghrepo.Interface, cs *iostreams.ColorScheme) string {
+func successMsg(autolink *shared.Autolink, repo ghrepo.Interface, cs *iostreams.ColorScheme) string {
 	autolinkType := "Numeric"
 	if autolink.IsAlphanumeric {
 		autolinkType = "Alphanumeric"

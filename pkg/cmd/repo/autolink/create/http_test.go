@@ -7,7 +7,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/ghrepo"
-	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/domain"
+	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/shared"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +22,7 @@ func TestAutoLinkCreator_Create(t *testing.T) {
 		stubStatus   int
 		stubRespJSON string
 
-		expectedAutolink *domain.Autolink
+		expectedAutolink *shared.Autolink
 		expectErr        bool
 		expectedErrMsg   string
 	}{
@@ -40,7 +40,7 @@ func TestAutoLinkCreator_Create(t *testing.T) {
 				"key_prefix":      "TICKET-",
 				"url_template":    "https://example.com/TICKET?query=<num>"
 			}`,
-			expectedAutolink: &domain.Autolink{
+			expectedAutolink: &shared.Autolink{
 				ID:             1,
 				KeyPrefix:      "TICKET-",
 				URLTemplate:    "https://example.com/TICKET?query=<num>",

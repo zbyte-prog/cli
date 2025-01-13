@@ -9,7 +9,7 @@ import (
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/internal/text"
-	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/domain"
+	"github.com/cli/cli/v2/pkg/cmd/repo/autolink/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ type listOptions struct {
 }
 
 type AutolinkListClient interface {
-	List(repo ghrepo.Interface) ([]domain.Autolink, error)
+	List(repo ghrepo.Interface) ([]shared.Autolink, error)
 }
 
 func NewCmdList(f *cmdutil.Factory, runF func(*listOptions) error) *cobra.Command {

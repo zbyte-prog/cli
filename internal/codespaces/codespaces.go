@@ -15,7 +15,12 @@ import (
 
 // codespaceStatePollingBackoff is the delay between state polls while waiting for codespaces to become
 // available. It's only exposed so that it can be shortened for testing, otherwise it should not be changed
-var codespaceStatePollingBackoff = backoff.NewConstantBackOff(10 * time.Second)
+var codespaceStatePollingBackoff backoff.BackOff = backoff.NewExponentialBackOff(
+	backoff.WithInitialInterval(1*time.Second),
+	backoff.WithMultiplier(1.02),
+	backoff.WithMaxInterval(10*time.Second),
+	backoff.WithMaxElapsedTime(5*time.Minute),
+)
 
 func connectionReady(codespace *api.Codespace) bool {
 	// If the codespace is not available, it is not ready

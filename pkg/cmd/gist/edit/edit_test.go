@@ -519,6 +519,11 @@ func Test_editRun(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:    "no arguments notty",
+			nontty:  true,
+			wantErr: "gist ID or URL required when not running interactively",
+		},
 	}
 
 	for _, tt := range tests {
@@ -552,6 +557,8 @@ func Test_editRun(t *testing.T) {
 		stdin.WriteString(tt.stdin)
 		ios.SetStdoutTTY(!tt.nontty)
 		ios.SetStdinTTY(!tt.nontty)
+		ios.SetStderrTTY(!tt.nontty)
+
 		tt.opts.IO = ios
 		tt.opts.Selector = "1234"
 

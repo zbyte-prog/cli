@@ -262,7 +262,7 @@ func runVerify(opts *Options) error {
 		return nil
 	}
 
-	opts.Logger.Printf("%s was attested by %s with the following attributes:\n\n", artifact.DigestWithAlg(), text.Pluralize(len(verified), "attestation"))
+	opts.Logger.Printf("The following %d %s matched the policy criteria:\n\n", len(verified), text.Pluralize(len(verified), "attestation"))
 
 	// Otherwise print the results to the terminal in a table
 	tableContent, err := buildTableVerifyContent(opts.Tenant, verified)

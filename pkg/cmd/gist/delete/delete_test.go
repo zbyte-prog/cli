@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/prompter"
@@ -14,6 +15,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
+	ghAPI "github.com/cli/go-gh/v2/pkg/api"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 )
@@ -319,6 +321,74 @@ func Test_deleteRun(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantStdout, stdout.String())
 			assert.Equal(t, tt.wantStderr, stderr.String())
+		})
+	}
+}
+
+func Test_gistDelete(t *testing.T) {
+	tests := []struct {
+		name      string
+		httpStubs func(*httpmock.Registry)
+		hostname  string
+		gistID    string
+		wantErr   error
+	}{
+		{
+			name: "successful delete",
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.REST("DELETE", "gists/1234"),
+					httpmock.StatusStringResponse(204, "{}"),
+				)
+			},
+			hostname: "github.com",
+			gistID:   "1234",
+			wantErr:  nil,
+		},
+		{
+			name: "when an gist is not found, it returns a NotFoundError",
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.REST("DELETE", "gists/1234"),
+					httpmock.StatusStringResponse(404, "{}"),
+				)
+			},
+			hostname: "github.com",
+			gistID:   "1234",
+			wantErr:  shared.NotFoundErr,
+		},
+		{
+			name: "when there is a non-404 error deleting the gist, that error is returned",
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.REST("DELETE", "gists/1234"),
+					httpmock.StatusJSONResponse(500, `{"message": "arbitrary error"}`),
+				)
+			},
+			hostname: "github.com",
+			gistID:   "1234",
+			wantErr: api.HTTPError{
+				HTTPError: &ghAPI.HTTPError{
+					StatusCode: 500,
+					Message:    "arbitrary error",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := &httpmock.Registry{}
+			tt.httpStubs(reg)
+			client := api.NewClientFromHTTP(&http.Client{Transport: reg})
+
+			err := deleteGist(client, tt.hostname, tt.gistID)
+			if tt.wantErr != nil {
+				assert.ErrorAs(t, err, &tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+
 		})
 	}
 }

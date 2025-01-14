@@ -3,6 +3,7 @@ package root_test
 import (
 	"io"
 	"testing"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/update"
@@ -121,6 +122,8 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		em := &extensions.ExtensionManagerMock{
 			DispatchFunc: func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (bool, error) {
 				// Assume extension executed / dispatched without problems as test is focused on upgrade checking.
+				// Sleep for 1 second to allow update checking logic to complete.
+				time.Sleep(1 * time.Second)
 				return true, nil
 			},
 		}
@@ -168,4 +171,52 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 			assert.Containsf(t, stderr.String(), tt.wantStderr, "executing extension command should output message about upgrade to stderr")
 		}
 	}
+}
+
+func TestNewCmdExtension_UpdateCheckIsNonblocking(t *testing.T) {
+	ios, _, _, stderr := iostreams.Test()
+
+	em := &extensions.ExtensionManagerMock{
+		DispatchFunc: func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (bool, error) {
+			// Assume extension executed / dispatched without problems as test is focused on upgrade checking.
+			return true, nil
+		},
+	}
+
+	ext := &extensions.ExtensionMock{
+		CurrentVersionFunc: func() string {
+			return "1.0.0"
+		},
+		IsPinnedFunc: func() bool {
+			return false
+		},
+		LatestVersionFunc: func() string {
+			return "2.0.0"
+		},
+		NameFunc: func() string {
+			return "major-update"
+		},
+		UpdateAvailableFunc: func() bool {
+			return true
+		},
+		URLFunc: func() string {
+			return "https//github.com/dne/major-update"
+		},
+	}
+
+	checkFunc := func(em extensions.ExtensionManager, ext extensions.Extension) (*update.ReleaseInfo, error) {
+		// This function runs in the background as a goroutine while the extension is dispatched.
+		// Testing whether the extension cobra command is non-blocking for extension update check,
+		// this function will cause goroutine to sleep for a sufficiently long time before panicking.
+		// The idea is that the test will conclude because the dispatch function completes immediately
+		// and exits before the check update function completes.
+		time.Sleep(30 * time.Second)
+		panic("It seems like the extension cobra command might be blocking on update checking when it should not block on long update checks")
+	}
+
+	cmd := root.NewCmdExtension(ios, em, ext, checkFunc)
+
+	_, err := cmd.ExecuteC()
+	require.NoError(t, err)
+	require.Emptyf(t, stderr.String(), "long running, non-blocking extension update check should not have displayed anything on stderr")
 }

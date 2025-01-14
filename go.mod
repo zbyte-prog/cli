@@ -21,6 +21,7 @@ require (
 	github.com/distribution/reference v0.5.0
 	github.com/gabriel-vasile/mimetype v1.4.7
 	github.com/gdamore/tcell/v2 v2.5.4
+	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.20.2
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510

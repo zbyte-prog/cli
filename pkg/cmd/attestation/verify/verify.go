@@ -279,10 +279,10 @@ func runVerify(opts *Options) error {
 	}
 
 	rows := [][]string{
-		[]string{"- Build repo", sourceRepoAndOrg},
-		[]string{"- Build workflow", sourceWorkflow},
-		[]string{"- Signer repo", signerRepoAndOrg},
-		[]string{"- Signer workflow", signerWorkflow},
+		{"- Build repo", sourceRepoAndOrg},
+		{"- Build workflow", sourceWorkflow},
+		{"- Signer repo", signerRepoAndOrg},
+		{"- Signer workflow", signerWorkflow},
 	}
 	opts.Logger.PrintBulletPoints(rows)
 

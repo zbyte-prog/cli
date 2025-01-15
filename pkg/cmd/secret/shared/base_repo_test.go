@@ -102,7 +102,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		require.True(t, ghrepo.IsSame(ghrepo.New("owner", "repo"), baseRepo))
 	})
 
-	t.Run("when the wrapped base repo func returns a specific error, then the prompter is used for disambiguation, with the resolved remote as the default", func(t *testing.T) {
+	t.Run("when the wrapped base repo func returns a specific error, then the prompter is used for disambiguation, with the remote ordering remaining unchanged", func(t *testing.T) {
 		t.Parallel()
 
 		pm := prompter.NewMockPrompter(t)
@@ -110,8 +110,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 			"Select a base repo",
 			[]string{"owner/fork", "owner/repo"},
 			func(_, def string, opts []string) (int, error) {
-				t.Helper()
-				require.Equal(t, "owner/repo", def)
+				require.Equal(t, "owner/fork", def)
 				return prompter.IndexFor(opts, "owner/repo")
 			},
 		)
@@ -179,8 +178,7 @@ func errMultipleRemotesStubFn() (ghrepo.Interface, error) {
 
 	remote2 := &ghContext.Remote{
 		Remote: &git.Remote{
-			Name:     "upstream",
-			Resolved: "base",
+			Name: "upstream",
 		},
 		Repo: ghrepo.New("owner", "repo"),
 	}

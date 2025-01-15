@@ -28,10 +28,22 @@ func PromptWhenAmbiguousBaseRepoFunc(baseRepoFn baseRepoFn, prompter prompter.Pr
 				return nil, err
 			}
 
-			baseRepo, err = promptForRepo(baseRepo, ambiguousBaseRepoErr.Remotes, prompter)
+			baseRepoOptions := make([]string, len(ambiguousBaseRepoErr.Remotes))
+			for i, remote := range ambiguousBaseRepoErr.Remotes {
+				baseRepoOptions[i] = ghrepo.FullName(remote)
+			}
+
+			selectedBaseRepo, err := prompter.Select("Select a base repo", baseRepoOptions[0], baseRepoOptions)
 			if err != nil {
 				return nil, err
 			}
+
+			selectedRepo, err := ghrepo.FromFullName(baseRepoOptions[selectedBaseRepo])
+			if err != nil {
+				return nil, err
+			}
+
+			return selectedRepo, nil
 		}
 
 		return baseRepo, nil
@@ -53,36 +65,4 @@ func RequireNoAmbiguityBaseRepoFunc(baseRepo baseRepoFn, remotes remotesFn) base
 
 		return baseRepo()
 	}
-}
-
-// REVIEW WARNING: I have not had a close look at this function yet, I do not vouch for it.
-func promptForRepo(baseRepo ghrepo.Interface, remotes ghContext.Remotes, prompter prompter.Prompter) (ghrepo.Interface, error) {
-	var defaultRepo string
-	var remoteArray []string
-
-	// TODO: consider whether we should just go with the default order of remotes because then
-	// users that are familiar can just hit enter and achieve the behaviour they had before.
-	if defaultRemote, _ := remotes.ResolvedRemote(); defaultRemote != nil {
-		// this is a remote explicitly chosen via `repo set-default`
-		defaultRepo = ghrepo.FullName(defaultRemote)
-	} else if len(remotes) > 0 {
-		// as a fallback, just pick the first remote
-		defaultRepo = ghrepo.FullName(remotes[0])
-	}
-
-	for _, remote := range remotes {
-		remoteArray = append(remoteArray, ghrepo.FullName(remote))
-	}
-
-	baseRepoInput, errInput := prompter.Select("Select a base repo", defaultRepo, remoteArray)
-	if errInput != nil {
-		return baseRepo, errInput
-	}
-
-	selectedRepo, errSelectedRepo := ghrepo.FromFullName(remoteArray[baseRepoInput])
-	if errSelectedRepo != nil {
-		return baseRepo, errSelectedRepo
-	}
-
-	return selectedRepo, nil
 }

@@ -178,23 +178,13 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 }
 
 func setRun(opts *SetOptions) error {
-	secrets, err := getSecretsFromOptions(opts)
-	if err != nil {
-		return err
-	}
-
-	c, err := opts.HttpClient()
-	if err != nil {
-		return fmt.Errorf("could not create http client: %w", err)
-	}
-	client := api.NewClientFromHTTP(c)
-
 	orgName := opts.OrgName
 	envName := opts.EnvName
 
 	var host string
 	var baseRepo ghrepo.Interface
 	if orgName == "" && !opts.UserSecrets {
+		var err error
 		baseRepo, err = opts.BaseRepo()
 		if err != nil {
 			return err
@@ -208,6 +198,17 @@ func setRun(opts *SetOptions) error {
 		}
 		host, _ = cfg.Authentication().DefaultHost()
 	}
+
+	secrets, err := getSecretsFromOptions(opts)
+	if err != nil {
+		return err
+	}
+
+	c, err := opts.HttpClient()
+	if err != nil {
+		return fmt.Errorf("could not create http client: %w", err)
+	}
+	client := api.NewClientFromHTTP(c)
 
 	secretEntity, err := shared.GetSecretEntity(orgName, envName, opts.UserSecrets)
 	if err != nil {

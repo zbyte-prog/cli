@@ -99,6 +99,14 @@ func removeRun(opts *DeleteOptions) error {
 		return err
 	}
 
+	var baseRepo ghrepo.Interface
+	if secretEntity == shared.Repository || secretEntity == shared.Environment {
+		baseRepo, err = opts.BaseRepo()
+		if err != nil {
+			return err
+		}
+	}
+
 	secretApp, err := shared.GetSecretApp(opts.Application, secretEntity)
 	if err != nil {
 		return err
@@ -106,14 +114,6 @@ func removeRun(opts *DeleteOptions) error {
 
 	if !shared.IsSupportedSecretEntity(secretApp, secretEntity) {
 		return fmt.Errorf("%s secrets are not supported for %s", secretEntity, secretApp)
-	}
-
-	var baseRepo ghrepo.Interface
-	if secretEntity == shared.Repository || secretEntity == shared.Environment {
-		baseRepo, err = opts.BaseRepo()
-		if err != nil {
-			return err
-		}
 	}
 
 	cfg, err := opts.Config()

@@ -326,30 +326,3 @@ func extractAttestationDetail(tenant, builderSignerURI string) (string, string, 
 
 	return orgAndRepo, workflow, nil
 }
-
-func buildTableVerifyContent(tenant string, results []*verification.AttestationProcessingResult) ([][]string, error) {
-	content := make([][]string, len(results))
-
-	for i, res := range results {
-		if res.VerificationResult == nil ||
-			res.VerificationResult.Signature == nil ||
-			res.VerificationResult.Signature.Certificate == nil {
-			return nil, fmt.Errorf("bundle missing verification result fields")
-		}
-		builderSignerURI := res.VerificationResult.Signature.Certificate.Extensions.BuildSignerURI
-		buildRepoAndOrg, buildWorkflow, err := extractAttestationDetail(tenant, builderSignerURI)
-		if err != nil {
-			return nil, err
-		}
-
-		buildConfigURI := res.VerificationResult.Signature.Certificate.Extensions.BuildConfigURI
-		sourceRepoAndOrg, sourceWorkflow, err := extractAttestationDetail(tenant, buildConfigURI)
-		if err != nil {
-			return nil, err
-		}
-
-		content[i] = []string{buildRepoAndOrg, buildWorkflow, sourceRepoAndOrg, sourceWorkflow}
-	}
-
-	return content, nil
-}

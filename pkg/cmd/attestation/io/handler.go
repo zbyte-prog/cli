@@ -69,6 +69,9 @@ func (h *Handler) VerbosePrintf(f string, v ...interface{}) (int, error) {
 }
 
 func (h *Handler) PrintBulletPoints(rows [][]string) (int, error) {
+	if !h.IO.IsStdoutTTY() {
+		return 0, nil
+	}
 	maxColLen := 0
 	for _, row := range rows {
 		if len(row[0]) > maxColLen {

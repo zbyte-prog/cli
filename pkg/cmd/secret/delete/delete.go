@@ -50,7 +50,7 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			// So there's no reason to use the specialised BaseRepoFunc that requires remote disambiguation.
 			opts.BaseRepo = f.BaseRepo
 			if !cmd.Flags().Changed("repo") {
-				// If they haven't specified a repo directly, then we will wrap the BaseRepoFunc in one that error if
+				// If they haven't specified a repo directly, then we will wrap the BaseRepoFunc in one that errors if
 				// there might be multiple valid remotes.
 				opts.BaseRepo = shared.RequireNoAmbiguityBaseRepoFunc(opts.BaseRepo, f.Remotes)
 				// But if we are able to prompt, then we will wrap that up in a BaseRepoFunc that can prompt the user to

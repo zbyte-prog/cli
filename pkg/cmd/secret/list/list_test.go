@@ -145,7 +145,7 @@ func TestNewCmdListBaseRepoFuncs(t *testing.T) {
 			args: "",
 			prompterStubs: func(pm *prompter.MockPrompter) {
 				pm.RegisterSelect(
-					"Select a base repo",
+					"Select a repo",
 					[]string{"owner/fork", "owner/repo"},
 					func(_, _ string, opts []string) (int, error) {
 						return prompter.IndexFor(opts, "owner/fork")

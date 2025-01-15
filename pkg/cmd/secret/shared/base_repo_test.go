@@ -112,7 +112,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 
 		pm := prompter.NewMockPrompter(t)
 		pm.RegisterSelect(
-			"Select a base repo",
+			"Select a repo",
 			[]string{"owner/fork", "owner/repo"},
 			func(_, def string, opts []string) (int, error) {
 				require.Equal(t, "owner/fork", def)
@@ -142,7 +142,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		// Given the prompter returns an error
 		pm := prompter.NewMockPrompter(t)
 		pm.RegisterSelect(
-			"Select a base repo",
+			"Select a repo",
 			[]string{"owner/fork", "owner/repo"},
 			func(_, _ string, opts []string) (int, error) {
 				return 0, errors.New("test prompt error")

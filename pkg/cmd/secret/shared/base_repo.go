@@ -36,7 +36,7 @@ func PromptWhenAmbiguousBaseRepoFunc(baseRepoFn baseRepoFn, ios *iostreams.IOStr
 			}
 
 			fmt.Fprintf(ios.Out, "%s Multiple remotes detected. Due to the sensitive nature of secrets, requiring disambiguation.\n", ios.ColorScheme().WarningIcon())
-			selectedBaseRepo, err := prompter.Select("Select a base repo", baseRepoOptions[0], baseRepoOptions)
+			selectedBaseRepo, err := prompter.Select("Select a repo", baseRepoOptions[0], baseRepoOptions)
 			if err != nil {
 				return nil, err
 			}

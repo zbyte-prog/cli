@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/cli/cli/v2/utils"
 )
@@ -83,24 +82,4 @@ func (h *Handler) PrintBulletPoints(rows [][]string) (int, error) {
 		info += fmt.Sprintf("%s:%s %s\n", row[0], dots, row[1])
 	}
 	return fmt.Fprintln(h.IO.ErrOut, info)
-}
-
-func (h *Handler) PrintTable(headers []string, rows [][]string) error {
-	if !h.IO.IsStdoutTTY() {
-		return nil
-	}
-
-	t := tableprinter.New(h.IO, tableprinter.WithHeader(headers...))
-
-	for _, row := range rows {
-		for _, field := range row {
-			t.AddField(field, tableprinter.WithTruncate(nil))
-		}
-		t.EndRow()
-	}
-
-	if err := t.Render(); err != nil {
-		return fmt.Errorf("failed to print output: %v", err)
-	}
-	return nil
 }

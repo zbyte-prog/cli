@@ -284,6 +284,7 @@ func runVerify(opts *Options) error {
 		{"- Signer repo", signerRepoAndOrg},
 		{"- Signer workflow", signerWorkflow},
 	}
+	//nolint:errcheck
 	opts.Logger.PrintBulletPoints(rows)
 
 	// All attestations passed verification and policy evaluation

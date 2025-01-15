@@ -2,6 +2,7 @@ package io
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -65,8 +66,23 @@ func (h *Handler) VerbosePrintf(f string, v ...interface{}) (int, error) {
 	if !h.debugEnabled || !h.IO.IsStdoutTTY() {
 		return 0, nil
 	}
-
 	return fmt.Fprintf(h.IO.ErrOut, f, v...)
+}
+
+func (h *Handler) PrintBulletPoints(rows [][]string) (int, error) {
+	maxColLen := 0
+	for _, row := range rows {
+		if len(row[0]) > maxColLen {
+			maxColLen = len(row[0])
+		}
+	}
+
+	info := ""
+	for _, row := range rows {
+		dots := strings.Repeat(".", maxColLen-len(row[0]))
+		info += fmt.Sprintf("%s:%s %s\n", row[0], dots, row[1])
+	}
+	return fmt.Fprintln(h.IO.ErrOut, info)
 }
 
 func (h *Handler) PrintTable(headers []string, rows [][]string) error {

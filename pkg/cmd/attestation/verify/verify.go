@@ -262,20 +262,29 @@ func runVerify(opts *Options) error {
 		return nil
 	}
 
-	opts.Logger.Printf("The following %d %s matched the policy criteria:\n\n", len(verified), text.Pluralize(len(verified), "attestation"))
+	opts.Logger.Printf("%s matched the policy criteria:\n", text.Pluralize(len(verified), "attestation"))
 
-	// Otherwise print the results to the terminal in a table
-	tableContent, err := buildTableVerifyContent(opts.Tenant, verified)
+	// Otherwise print the results to the terminal
+	buildConfigURI := verified[0].VerificationResult.Signature.Certificate.Extensions.BuildConfigURI
+	sourceRepoAndOrg, sourceWorkflow, err := extractAttestationDetail(opts.Tenant, buildConfigURI)
 	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse results"))
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse build config URI"))
+		return err
+	}
+	builderSignerURI := verified[0].VerificationResult.Signature.Certificate.Extensions.BuildSignerURI
+	signerRepoAndOrg, signerWorkflow, err := extractAttestationDetail(opts.Tenant, builderSignerURI)
+	if err != nil {
+		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse build signer URI"))
 		return err
 	}
 
-	headers := []string{"signer repo", "signer workflow", "builder repo", "builder workflow"}
-	if err = opts.Logger.PrintTable(headers, tableContent); err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to print attestation details to table"))
-		return err
+	rows := [][]string{
+		[]string{"- Build repo", sourceRepoAndOrg},
+		[]string{"- Build workflow", sourceWorkflow},
+		[]string{"- Signer repo", signerRepoAndOrg},
+		[]string{"- Signer workflow", signerWorkflow},
 	}
+	opts.Logger.PrintBulletPoints(rows)
 
 	// All attestations passed verification and policy evaluation
 	return nil

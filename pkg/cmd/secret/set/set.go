@@ -114,7 +114,7 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 				// But if we are able to prompt, then we will wrap that up in a BaseRepoFunc that can prompt the user to
 				// resolve the ambiguity.
 				if opts.IO.CanPrompt() {
-					opts.BaseRepo = shared.PromptWhenAmbiguousBaseRepoFunc(opts.BaseRepo, f.Prompter)
+					opts.BaseRepo = shared.PromptWhenAmbiguousBaseRepoFunc(opts.BaseRepo, f.IOStreams, f.Prompter)
 				}
 			}
 

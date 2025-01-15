@@ -6,6 +6,7 @@ import (
 
 	ghContext "github.com/cli/cli/v2/context"
 	"github.com/cli/cli/v2/pkg/cmd/secret/shared"
+	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cli/cli/v2/git"
@@ -91,8 +92,10 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 	t.Run("when there is no error from wrapped base repo func, then it succeeds without prompting", func(t *testing.T) {
 		t.Parallel()
 
+		ios, _, _, _ := iostreams.Test()
+
 		// Given the base repo function succeeds
-		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(baseRepoStubFn, nil)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(baseRepoStubFn, ios, nil)
 
 		// When fetching the base repo
 		baseRepo, err := baseRepoFn()
@@ -105,6 +108,8 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 	t.Run("when the wrapped base repo func returns a specific error, then the prompter is used for disambiguation, with the remote ordering remaining unchanged", func(t *testing.T) {
 		t.Parallel()
 
+		ios, _, stdout, _ := iostreams.Test()
+
 		pm := prompter.NewMockPrompter(t)
 		pm.RegisterSelect(
 			"Select a base repo",
@@ -116,18 +121,23 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		)
 
 		// Given the wrapped base repo func returns a specific error
-		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errMultipleRemotesStubFn, pm)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errMultipleRemotesStubFn, ios, pm)
 
 		// When fetching the base repo
 		baseRepo, err := baseRepoFn()
 
-		// It uses the prompter for disambiguation
+		// It prints an informative message
+		require.Equal(t, "! Multiple remotes detected. Due to the sensitive nature of secrets, requiring disambiguation.\n", stdout.String())
+
+		// And it uses the prompter for disambiguation
 		require.NoError(t, err)
 		require.True(t, ghrepo.IsSame(ghrepo.New("owner", "repo"), baseRepo))
 	})
 
 	t.Run("when the prompter returns an error, then it is returned", func(t *testing.T) {
 		t.Parallel()
+
+		ios, _, _, _ := iostreams.Test()
 
 		// Given the prompter returns an error
 		pm := prompter.NewMockPrompter(t)
@@ -140,7 +150,7 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 		)
 
 		// Given the wrapped base repo func returns a specific error
-		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errMultipleRemotesStubFn, pm)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errMultipleRemotesStubFn, ios, pm)
 
 		// When fetching the base repo
 		_, err := baseRepoFn()
@@ -152,8 +162,10 @@ func TestPromptWhenMultipleRemotesBaseRepoFunc(t *testing.T) {
 	t.Run("when the wrapped base repo func returns a non-specific error, then it is returned", func(t *testing.T) {
 		t.Parallel()
 
+		ios, _, _, _ := iostreams.Test()
+
 		// Given the wrapped base repo func returns a non-specific error
-		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errBaseRepoStubFn, nil)
+		baseRepoFn := shared.PromptWhenAmbiguousBaseRepoFunc(errBaseRepoStubFn, ios, nil)
 
 		// When fetching the base repo
 		_, err := baseRepoFn()

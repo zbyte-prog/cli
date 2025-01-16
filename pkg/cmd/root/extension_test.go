@@ -123,6 +123,10 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		em := &extensions.ExtensionManagerMock{
 			DispatchFunc: func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (bool, error) {
 				// Assume extension executed / dispatched without problems as test is focused on upgrade checking.
+				// Sleep for 100 milliseconds to allow update checking logic to complete. This would be better
+				// served by making the behaviour controllable by channels, but it's a larger change than desired
+				// just to improve the test.
+				time.Sleep(100 * time.Millisecond)
 				return true, nil
 			},
 		}

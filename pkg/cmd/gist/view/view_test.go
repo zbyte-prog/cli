@@ -116,10 +116,10 @@ func Test_viewRun(t *testing.T) {
 		name         string
 		opts         *ViewOptions
 		wantOut      string
-		gist         *shared.Gist
+		mockGist     *shared.Gist
+		mockGistList bool
 		isTTY        bool
 		wantErr      string
-		mockGistList bool
 	}{
 		{
 			name:  "no such gist",
@@ -137,7 +137,7 @@ func Test_viewRun(t *testing.T) {
 				Selector:  "1234",
 				ListFiles: false,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
 						Content: "bwhiizzzbwhuiiizzzz",
@@ -155,7 +155,7 @@ func Test_viewRun(t *testing.T) {
 				ListFiles: false,
 			},
 			mockGistList: true,
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
 						Content: "test interactive mode",
@@ -178,7 +178,7 @@ func Test_viewRun(t *testing.T) {
 				Filename:  "cicada.txt",
 				ListFiles: false,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
 						Content: "bwhiizzzbwhuiiizzzz",
@@ -201,7 +201,7 @@ func Test_viewRun(t *testing.T) {
 				Raw:       true,
 				ListFiles: false,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
 						Content: "bwhiizzzbwhuiiizzzz",
@@ -222,7 +222,7 @@ func Test_viewRun(t *testing.T) {
 				Selector:  "1234",
 				ListFiles: false,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
 						Content: "bwhiizzzbwhuiiizzzz",
@@ -243,7 +243,7 @@ func Test_viewRun(t *testing.T) {
 				Selector:  "1234",
 				ListFiles: false,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
 						Content: "bwhiizzzbwhuiiizzzz\n",
@@ -264,7 +264,7 @@ func Test_viewRun(t *testing.T) {
 				Selector:  "1234",
 				ListFiles: false,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Description: "some files",
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
@@ -287,7 +287,7 @@ func Test_viewRun(t *testing.T) {
 				Raw:       true,
 				ListFiles: false,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Description: "some files",
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
@@ -310,7 +310,7 @@ func Test_viewRun(t *testing.T) {
 				Raw:       false,
 				ListFiles: true,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Description: "some files",
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
@@ -329,7 +329,7 @@ func Test_viewRun(t *testing.T) {
 				Raw:       false,
 				ListFiles: true,
 			},
-			gist: &shared.Gist{
+			mockGist: &shared.Gist{
 				Description: "some files",
 				Files: map[string]*shared.GistFile{
 					"cicada.txt": {
@@ -348,12 +348,12 @@ func Test_viewRun(t *testing.T) {
 
 	for _, tt := range tests {
 		reg := &httpmock.Registry{}
-		if tt.gist == nil {
+		if tt.mockGist == nil {
 			reg.Register(httpmock.REST("GET", "gists/1234"),
 				httpmock.StatusStringResponse(404, "Not Found"))
 		} else {
 			reg.Register(httpmock.REST("GET", "gists/1234"),
-				httpmock.JSONResponse(tt.gist))
+				httpmock.JSONResponse(tt.mockGist))
 		}
 
 		if tt.opts == nil {

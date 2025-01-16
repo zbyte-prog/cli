@@ -149,7 +149,7 @@ func Test_editRun(t *testing.T) {
 		mockGistList              bool
 		httpStubs                 func(*httpmock.Registry)
 		prompterStubs             func(*prompter.MockPrompter)
-		istty                     bool
+		isTTY                     bool
 		stdin                     string
 		wantErr                   string
 		wantLastRequestParameters map[string]interface{}
@@ -163,7 +163,7 @@ func Test_editRun(t *testing.T) {
 		},
 		{
 			name:  "one file",
-			istty: false,
+			isTTY: false,
 			opts: &EditOptions{
 				Selector: "1234",
 			},
@@ -194,7 +194,7 @@ func Test_editRun(t *testing.T) {
 		},
 		{
 			name:         "multiple files, submit, with TTY",
-			istty:        true,
+			isTTY:        true,
 			mockGistList: true,
 			prompterStubs: func(pm *prompter.MockPrompter) {
 				pm.RegisterSelect("Edit which file?",
@@ -243,7 +243,7 @@ func Test_editRun(t *testing.T) {
 		},
 		{
 			name:  "multiple files, cancel",
-			istty: true,
+			isTTY: true,
 			opts: &EditOptions{
 				Selector: "1234",
 			},
@@ -551,7 +551,7 @@ func Test_editRun(t *testing.T) {
 		},
 		{
 			name:  "no arguments notty",
-			istty: false,
+			isTTY: false,
 			opts: &EditOptions{
 				Selector: "",
 			},
@@ -626,9 +626,9 @@ func Test_editRun(t *testing.T) {
 		}
 		ios, stdin, stdout, stderr := iostreams.Test()
 		stdin.WriteString(tt.stdin)
-		ios.SetStdoutTTY(tt.istty)
-		ios.SetStdinTTY(tt.istty)
-		ios.SetStderrTTY(tt.istty)
+		ios.SetStdoutTTY(tt.isTTY)
+		ios.SetStdinTTY(tt.isTTY)
+		ios.SetStderrTTY(tt.isTTY)
 
 		tt.opts.IO = ios
 

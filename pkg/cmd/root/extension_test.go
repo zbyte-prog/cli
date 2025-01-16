@@ -1,6 +1,7 @@
 package root_test
 
 import (
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -122,8 +123,6 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 		em := &extensions.ExtensionManagerMock{
 			DispatchFunc: func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (bool, error) {
 				// Assume extension executed / dispatched without problems as test is focused on upgrade checking.
-				// Sleep for 1 second to allow update checking logic to complete.
-				time.Sleep(1 * time.Second)
 				return true, nil
 			},
 		}
@@ -174,7 +173,7 @@ func TestNewCmdExtension_Updates(t *testing.T) {
 }
 
 func TestNewCmdExtension_UpdateCheckIsNonblocking(t *testing.T) {
-	ios, _, _, stderr := iostreams.Test()
+	ios, _, _, _ := iostreams.Test()
 
 	em := &extensions.ExtensionManagerMock{
 		DispatchFunc: func(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) (bool, error) {
@@ -204,19 +203,30 @@ func TestNewCmdExtension_UpdateCheckIsNonblocking(t *testing.T) {
 		},
 	}
 
+	// When the extension command is executed, the checkFunc will run in the background longer than the extension dispatch.
+	// If the update check is non-blocking, then the extension command will complete immediately while checkFunc is still running.
 	checkFunc := func(em extensions.ExtensionManager, ext extensions.Extension) (*update.ReleaseInfo, error) {
-		// This function runs in the background as a goroutine while the extension is dispatched.
-		// Testing whether the extension cobra command is non-blocking for extension update check,
-		// this function will cause goroutine to sleep for a sufficiently long time before panicking.
-		// The idea is that the test will conclude because the dispatch function completes immediately
-		// and exits before the check update function completes.
 		time.Sleep(30 * time.Second)
-		panic("It seems like the extension cobra command might be blocking on update checking when it should not block on long update checks")
+		return nil, fmt.Errorf("update check should not have completed")
 	}
 
 	cmd := root.NewCmdExtension(ios, em, ext, checkFunc)
 
-	_, err := cmd.ExecuteC()
-	require.NoError(t, err)
-	require.Emptyf(t, stderr.String(), "long running, non-blocking extension update check should not have displayed anything on stderr")
+	// The test whether update check is non-blocking is based on how long it takes for the extension command execution.
+	// If there is no wait time as checkFunc is sleeping sufficiently long, we can trust update check is non-blocking.
+	// Otherwise, if any amount of wait is encountered, it is a decent indicator that update checking is blocking.
+	// This is not an ideal test and indicates the update design should be revisited to be easier to understand and manage.
+	completed := make(chan struct{})
+	go func() {
+		_, err := cmd.ExecuteC()
+		require.NoError(t, err)
+		close(completed)
+	}()
+
+	select {
+	case <-completed:
+		// Expected behavior assuming extension dispatch exits immediately while checkFunc is still running.
+	case <-time.After(1 * time.Second):
+		t.Fatal("extension update check should have exited")
+	}
 }

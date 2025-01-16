@@ -242,7 +242,7 @@ func Test_editRun(t *testing.T) {
 			},
 		},
 		{
-			name:  "multiple files, cancel",
+			name:  "multiple files, cancel, with TTY",
 			isTTY: true,
 			opts: &EditOptions{
 				Selector: "1234",

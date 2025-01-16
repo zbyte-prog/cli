@@ -113,7 +113,6 @@ func editRun(opts *EditOptions) error {
 			}
 
 			gist, err := shared.PromptGists(opts.Prompter, client, host, cs)
-
 			if err != nil {
 				return err
 			}

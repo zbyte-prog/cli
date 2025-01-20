@@ -156,7 +156,7 @@ func viewRun(opts *ViewOptions) error {
 		fmt.Fprintf(stdout, "description:\t%s\n", repo.Description)
 		if readme != nil {
 			fmt.Fprintln(stdout, "--")
-			fmt.Fprintf(stdout, readme.Content)
+			fmt.Fprintf(stdout, "%s", readme.Content)
 			fmt.Fprintln(stdout)
 		}
 

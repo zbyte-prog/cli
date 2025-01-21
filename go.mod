@@ -19,7 +19,7 @@ require (
 	github.com/creack/pty v1.1.24
 	github.com/digitorus/timestamp v0.0.0-20231217203849-220c5c2851b7
 	github.com/distribution/reference v0.5.0
-	github.com/gabriel-vasile/mimetype v1.4.7
+	github.com/gabriel-vasile/mimetype v1.4.8
 	github.com/gdamore/tcell/v2 v2.5.4
 	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.6.0
@@ -51,7 +51,7 @@ require (
 	golang.org/x/term v0.27.0
 	golang.org/x/text v0.21.0
 	google.golang.org/grpc v1.64.1
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.3
 	gopkg.in/h2non/gock.v1 v1.1.2
 	gopkg.in/yaml.v3 v3.0.1
 )

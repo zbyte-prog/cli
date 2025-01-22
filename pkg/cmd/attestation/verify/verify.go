@@ -262,30 +262,33 @@ func runVerify(opts *Options) error {
 		return nil
 	}
 
-	opts.Logger.Printf("%s matched the policy criteria:\n", text.Pluralize(len(verified), "attestation"))
+	opts.Logger.Printf("The following %s matched the policy criteria\n\n", text.Pluralize(len(verified), "attestation"))
 
 	// Otherwise print the results to the terminal
-	buildConfigURI := verified[0].VerificationResult.Signature.Certificate.Extensions.BuildConfigURI
-	sourceRepoAndOrg, sourceWorkflow, err := extractAttestationDetail(opts.Tenant, buildConfigURI)
-	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse build config URI"))
-		return err
-	}
-	builderSignerURI := verified[0].VerificationResult.Signature.Certificate.Extensions.BuildSignerURI
-	signerRepoAndOrg, signerWorkflow, err := extractAttestationDetail(opts.Tenant, builderSignerURI)
-	if err != nil {
-		opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse build signer URI"))
-		return err
-	}
+	for i, v := range verified {
+		buildConfigURI := v.VerificationResult.Signature.Certificate.Extensions.BuildConfigURI
+		sourceRepoAndOrg, sourceWorkflow, err := extractAttestationDetail(opts.Tenant, buildConfigURI)
+		if err != nil {
+			opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse build config URI"))
+			return err
+		}
+		builderSignerURI := v.VerificationResult.Signature.Certificate.Extensions.BuildSignerURI
+		signerRepoAndOrg, signerWorkflow, err := extractAttestationDetail(opts.Tenant, builderSignerURI)
+		if err != nil {
+			opts.Logger.Println(opts.Logger.ColorScheme.Red("failed to parse build signer URI"))
+			return err
+		}
 
-	rows := [][]string{
-		{"- Build repo", sourceRepoAndOrg},
-		{"- Build workflow", sourceWorkflow},
-		{"- Signer repo", signerRepoAndOrg},
-		{"- Signer workflow", signerWorkflow},
+		opts.Logger.Printf("- Attestation #%d\n", i+1)
+		rows := [][]string{
+			{"  - Build repo", sourceRepoAndOrg},
+			{"  - Build workflow", sourceWorkflow},
+			{"  - Signer repo", signerRepoAndOrg},
+			{"  - Signer workflow", signerWorkflow},
+		}
+		//nolint:errcheck
+		opts.Logger.PrintBulletPoints(rows)
 	}
-	//nolint:errcheck
-	opts.Logger.PrintBulletPoints(rows)
 
 	// All attestations passed verification and policy evaluation
 	return nil

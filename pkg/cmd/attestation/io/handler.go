@@ -82,7 +82,7 @@ func (h *Handler) PrintBulletPoints(rows [][]string) (int, error) {
 	info := ""
 	for _, row := range rows {
 		dots := strings.Repeat(".", maxColLen-len(row[0]))
-		info += fmt.Sprintf(h.ColorScheme.Bold("%s:%s %s\n"), h.ColorScheme.Bold(row[0]), dots, row[1])
+		info += fmt.Sprintf("%s:%s %s\n", row[0], dots, row[1])
 	}
 	return fmt.Fprintln(h.IO.ErrOut, info)
 }

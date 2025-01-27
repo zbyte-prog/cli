@@ -40,32 +40,35 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*createOptions) error) *cobra.Co
 		Long: heredoc.Docf(`
 			Create a new autolink reference for a repository.
 
-			Autolinks automatically generate links to external resources when they appear in an issue, pull request, or commit.
+			The %[1]skeyPrefix%[1]s argument specifies the prefix that will generate a link when it is appended by certain characters.
 
-			The %[1]skeyPrefix%[1]s specifies the prefix that will generate a link when it is appended by certain characters.
+			The %[1]surlTemplate%[1]s argument specifies the target URL that will be generated when the keyPrefix is found, which
+			must contain %[1]s<num>%[1]s variable for the reference number.
 
-			The %[1]surlTemplate%[1]s specifies the target URL that will be generated when the keyPrefix is found. The %[1]surlTemplate%[1]s must contain %[1]s<num>%[1]s for the reference number. %[1]s<num>%[1]s matches different characters depending on the whether the autolink is specified as numeric or alphanumeric.
+			By default, autolinks are alphanumeric with %[1]s--numeric%[1]s flag used to create a numeric autolink.
 
-			By default, the command will create an alphanumeric autolink. This means that the %[1]s<num>%[1]s in the %[1]surlTemplate%[1]s will match alphanumeric characters %[1]sA-Z%[1]s (case insensitive), %[1]s0-9%[1]s, and %[1]s-%[1]s. To create a numeric autolink, use the %[1]s--numeric%[1]s flag. Numeric autolinks only match against numeric characters. If the template contains multiple instances of %[1]s<num>%[1]s, only the first will be replaced.
+			The %[1]s<num>%[1]s variable behavior differs depending on whether the autolink is alphanumeric or numeric:
 
-			If you are using a shell that applies special meaning to angle brackets, you will need to escape these characters in the %[1]surlTemplate%[1]s or place quotation marks around the whole argument.
-			
-			Only repository administrators can create autolinks.
+			- alphanumeric: matches %[1]sA-Z%[1]s (case insensitive), %[1]s0-9%[1]s, and %[1]s-%[1]s
+			- numeric: matches %[1]s0-9%[1]s
+
+			If the template contains multiple instances of %[1]s<num>%[1]s, only the first will be replaced.
 		`, "`"),
 		Example: heredoc.Doc(`
-			# Create an alphanumeric autolink to example.com for the key prefix "TICKET-". This will generate a link to https://example.com/TICKET?query=123abc when "TICKET-123abc" appears.
-			$ gh repo autolink create TICKET- https://example.com/TICKET?query=<num>
+			# Create an alphanumeric autolink to example.com for the key prefix "TICKET-".
+			# Generates https://example.com/TICKET?query=123abc from "TICKET-123abc".
+			$ gh repo autolink create TICKET- "https://example.com/TICKET?query=<num>"
 
-			# Create a numeric autolink to example.com for the key prefix "STORY-". This will generate a link to https://example.com/STORY?id=123 when "STORY-123" appears.
-			$ gh repo autolink create STORY- https://example.com/STORY?id=<num> --numeric
-
+			# Create a numeric autolink to example.com for the key prefix "STORY-".
+			# Generates https://example.com/STORY?id=123 from "STORY-123".
+			$ gh repo autolink create STORY- "https://example.com/STORY?id=<num>" --numeric
 		`),
 		Args:    cmdutil.ExactArgs(2, "Cannot create autolink: keyPrefix and urlTemplate arguments are both required"),
 		Aliases: []string{"new"},
 		RunE: func(c *cobra.Command, args []string) error {
 			opts.BaseRepo = f.BaseRepo
-			httpClient, err := f.HttpClient()
 
+			httpClient, err := f.HttpClient()
 			if err != nil {
 				return err
 			}
@@ -82,7 +85,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*createOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.Numeric, "numeric", "n", false, "Mark autolink as non-alphanumeric")
+	cmd.Flags().BoolVarP(&opts.Numeric, "numeric", "n", false, "Mark autolink as numeric")
 
 	return cmd
 }
@@ -92,48 +95,24 @@ func createRun(opts *createOptions) error {
 	if err != nil {
 		return err
 	}
-	cs := opts.IO.ColorScheme()
-
-	isAlphanumeric := !opts.Numeric
 
 	request := AutolinkCreateRequest{
 		KeyPrefix:      opts.KeyPrefix,
 		URLTemplate:    opts.URLTemplate,
-		IsAlphanumeric: isAlphanumeric,
+		IsAlphanumeric: !opts.Numeric,
 	}
 
 	autolink, err := opts.AutolinkClient.Create(repo, request)
-
 	if err != nil {
-		return fmt.Errorf("%s %w", cs.Red("error creating autolink:"), err)
+		return fmt.Errorf("error creating autolink: %w", err)
 	}
 
-	msg := successMsg(autolink, repo, cs)
-	fmt.Fprint(opts.IO.Out, msg)
+	cs := opts.IO.ColorScheme()
+	fmt.Fprintf(opts.IO.Out,
+		"%s Created repository autolink %d on %s\n",
+		cs.SuccessIconWithColor(cs.Green),
+		autolink.ID,
+		ghrepo.FullName(repo))
 
 	return nil
-}
-
-func successMsg(autolink *shared.Autolink, repo ghrepo.Interface, cs *iostreams.ColorScheme) string {
-	autolinkType := "Numeric"
-	if autolink.IsAlphanumeric {
-		autolinkType = "Alphanumeric"
-	}
-
-	createdMsg := fmt.Sprintf(
-		"%s %s autolink created in %s (id: %d)",
-		cs.SuccessIconWithColor(cs.Green),
-		autolinkType,
-		ghrepo.FullName(repo),
-		autolink.ID,
-	)
-
-	autolinkMapMsg := cs.Bluef(
-		"  %s%s → %s",
-		autolink.KeyPrefix,
-		"<num>",
-		autolink.URLTemplate,
-	)
-
-	return fmt.Sprintf("%s\n%s\n", createdMsg, autolinkMapMsg)
 }
